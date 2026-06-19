@@ -1,0 +1,28 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/tests
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"content_id":3867,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780466171190","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+[32mINFO    [0m autotests:tests.py:20 Test created: ID=3867, name=Автотест_тест_админка_1780466171190
+[32mINFO    [0m autotests:test_create_test_api.py:20 Тест создан: ID=3867
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4644,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":1,"type":"single","text":"\u041f\u0435\u0440\u0432\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u04
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3867
+[32mINFO    [0m autotests:test_create_test_api.py:42 Вопрос #1 добавлен: Первый вопрос
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4645,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":2,"type":"multi","text":"\u0412\u0442\u043e\u0440\u043e\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u044
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3867
+[32mINFO    [0m autotests:test_create_test_api.py:42 Вопрос #2 добавлен: Второй вопрос
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4646,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":3,"type":"single","text":"\u0422\u0440\u0435\u0442\u0438\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u04
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3867
+[32mINFO    [0m autotests:test_create_test_api.py:42 Вопрос #3 добавлен: Третий вопрос
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4647,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":4,"type":"multi","text":"\u0427\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3867
+[32mINFO    [0m autotests:test_create_test_api.py:42 Вопрос #4 добавлен: Четвёртый вопрос
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4648,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":5,"type":"single","text":"\u041f\u044f\u0442\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u0442\u04
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3867
+[32mINFO    [0m autotests:test_create_test_api.py:42 Вопрос #5 добавлен: Пятый вопрос
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/3867
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"content_id":3867,"type":"test","name":"\u0422\u0435\u0441\u0442 \u0441 5 \u0432\u043e\u043f\u0440\u043e\u0441\u0430\u043c\u0438","name_client":"\u0422\u0435\u0441\u0442 \u0441 5 \u0432\u043e\u043f\u0440\u043e\u0441\u0430\u043c\u0438","topic":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u044
+[32mINFO    [0m autotests:tests.py:37 Test updated: ID=3867, name=Тест с 5 вопросами
+[32mINFO    [0m autotests:test_create_test_api.py:54 Полный цикл завершён: тест ID=3867 + 5 вопросов

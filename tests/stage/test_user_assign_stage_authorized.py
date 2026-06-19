@@ -1,0 +1,88 @@
+import allure
+import pytest
+import requests
+import time
+import random
+from config.settings import settings
+
+
+@allure.feature("Stage Tests")
+@allure.story("User Assign Flow Authorized")
+class TestUserAssignStageAuthorized:
+
+    @allure.title("Создание пользователя, назначение authorized ЛПД, снятие, удаление")
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.stage
+    def test_user_assign_flow_authorized(self):
+        session = requests.Session()
+        session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
+        session.headers.update({
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+        })
+        base_url = settings.STAGE_BASE_URL or "https://portal-stage.d7.devspark.ru/api/v1"
+
+        ts = int(time.time() * 1000)
+
+        # 1. Создать пользователя
+        name = random.choice(["Иван", "Пётр", "Сергей", "Алексей", "Дмитрий"])
+        surname = random.choice(["Иванов", "Петров", "Сидоров", "Кузнецов", "Смирнов"])
+        patronymic = random.choice(["Иванович", "Петрович", "Сергеевич", "Алексеевич", "Дмитриевич"])
+        email = f"auto_test_lpd{ts}@gmail.com"
+
+        user_payload = {
+            "data": {
+                "attributes": {
+                    "fields": {"personal_phone_number": 0, "phone_number": 0, "email": 0, "position": 0,
+                               "position_level": 0, "organisation": 0, "car_brand": 0, "car_number": 0},
+                    "roles": None, "tags": [],
+                    "email": email, "surname": surname, "name": name, "login": email,
+                    "patronymic": patronymic, "system_password": "SecurePass123", "password": "SecurePass123",
+                    "date_of_birth": "1990-01-01", "region_id": 1, "municipality_id": 1
+                }
+            }
+        }
+        resp = session.post(f"{base_url}/users", json=user_payload)
+        assert resp.status_code in (200, 201), f"User create failed: {resp.status_code}"
+        user_id = resp.json()["data"]["id"]
+        allure.attach(str(user_id), "User ID", allure.attachment_type.TEXT)
+
+        # 2. Создать authorized ЛПД
+        lpd_name = f"Автотест_ЛПД_AUTH_{ts}"
+        lpd_payload = {
+            "data": {
+                "attributes": {
+                    "duration": "3", "content_type": "lpd", "lpd_id": "235",
+                    "name": lpd_name, "name_client": f"{lpd_name}_внешка",
+                    "activity_category_id": 2, "description": f"<p>{lpd_name}</p>",
+                    "cover_uuid": "", "sub_files_uuids": "", "passing_type": "authorized"
+                },
+                "includes": {"archive": [], "image": [], "spreadsheet": [], "video": [], "pdf": [], "document": [],
+                             "offline": [], "webinar": [], "cover": [], "sub_files": []},
+                "permissions": []
+            }
+        }
+        resp_lpd = session.post(f"{base_url}/content", json=lpd_payload)
+        assert resp_lpd.status_code in (200, 201), f"LPD create failed: {resp_lpd.status_code}"
+        content_id = resp_lpd.json()["data"]["id"]
+        allure.attach(str(content_id), "LPD Content ID", allure.attachment_type.TEXT)
+
+        # 3. Назначить на инд. трек
+        assign_payload = {"data": {"attributes": {"content_ids": [content_id], "user_ids": [user_id]}}}
+        resp_assign = session.post(f"{base_url}/users/content/distant/assign-activities", json=assign_payload)
+        assert resp_assign.status_code in (200, 201), f"Assign failed: {resp_assign.status_code}"
+        allure.attach(f"User {user_id} -> LPD {content_id}", "Assignment", allure.attachment_type.TEXT)
+
+        # 4. Снять назначение
+        detach_payload = {"data": {"attributes": {"content_ids": [content_id], "user_ids": [user_id]}}}
+        resp_detach = session.post(f"{base_url}/users/content/distant/detach-activities", json=detach_payload)
+        assert resp_detach.status_code in (200, 201), f"Detach failed: {resp_detach.status_code}"
+
+        # 5. Удалить ЛПД
+        session.delete(f"{base_url}/content/{content_id}")
+
+        # 6. Удалить пользователя
+        session.delete(f"{base_url}/users/{user_id}")
+
+        allure.attach("All cleaned", "Status", allure.attachment_type.TEXT)

@@ -1,0 +1,14 @@
+08:36:02 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+08:36:03 [INFO] Response [201]: {"data":{"content_id":3859,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780464962285","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+08:36:03 [INFO] Test created: ID=3859, name=Автотест_тест_админка_1780464962285
+08:36:03 [INFO] Создан: ID=3859, name=Автотест_тест_админка_1780464962285
+08:36:03 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/3859
+08:36:03 [INFO] Response [200]: {"data":{"content_id":3859,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780464962285","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+08:36:03 [INFO] Получен: ID=3859
+08:36:03 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/3859
+08:36:04 [INFO] Response [200]: {"data":{"content_id":3859,"type":"test","name":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","name_client":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","t
+08:36:04 [INFO] Test updated: ID=3859, name=Обновлённый_автотест
+08:36:04 [INFO] Обновлён: ID=3859, name=Обновлённый_автотест
+08:36:04 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/3859
+08:36:04 [INFO] Response [200]: {"data":{"content_id":3859,"type":"test","name":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","name_client":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","t
+08:36:04 [INFO] Проверка сохранения изменений — OK

@@ -1,0 +1,45 @@
+14:18:27 [INFO] Программа: 2585
+14:18:28 [INFO] Поток: 1864
+14:18:29 [INFO] Модуль: 1325
+14:18:29 [INFO] Пользователь: 2044
+14:18:29 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/2585/streams/1864/assignments
+14:18:30 [INFO] Response [200]: {"data":{"status":"success"}}
+14:18:30 [INFO] Users assigned: [2044] to stream 1864
+14:18:31 [INFO] Обложка: b08b177c-71c8-49d2-b260-fc1394941562
+14:18:31 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+14:18:31 [INFO] Response [201]: {"data":{"content_id":3943,"type":"poll","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1781003911333","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c
+14:18:31 [INFO] Poll created: ID=3943, name=Автотест_опрос_админка_1781003911333
+14:18:31 [INFO] Опрос: 3943
+14:18:31 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+14:18:32 [INFO] Response [200]: {"data":{"question_id":4855,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":1,"type":"single","text":"\u0412\u043e\u043f\u0440\u043e\u0441 \u043e\u043f\u0440\u043e\u0441\u0430 #1","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\
+14:18:32 [INFO] Question created for poll 3943
+14:18:32 [INFO] Вопрос #1 добавлен
+14:18:32 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+14:18:32 [INFO] Response [200]: {"data":{"question_id":4856,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":2,"type":"single","text":"\u0412\u043e\u043f\u0440\u043e\u0441 \u043e\u043f\u0440\u043e\u0441\u0430 #2","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\
+14:18:32 [INFO] Question created for poll 3943
+14:18:32 [INFO] Вопрос #2 добавлен
+14:18:32 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+14:18:33 [INFO] Response [200]: {"data":{"question_id":4857,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":3,"type":"single","text":"\u0412\u043e\u043f\u0440\u043e\u0441 \u043e\u043f\u0440\u043e\u0441\u0430 #3","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\
+14:18:33 [INFO] Question created for poll 3943
+14:18:33 [INFO] Вопрос #3 добавлен
+14:18:33 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/2585/streams/1864/modules/1325/mass-addition
+14:18:33 [INFO] Response [200]: {"data":{"status":"success"}}
+14:18:33 [INFO] Content [3943] assigned to module 1325
+14:18:33 [INFO] Опрос назначен в модуль
+14:18:33 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/tests
+14:18:33 [INFO] Response [200]: {"result":"success"}
+14:18:33 [INFO] Tests deleted: [3943]
+14:18:33 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/2585/streams/1864/modules/1325
+14:18:34 [INFO] Response [200]: {"data":{"status":"success"}}
+14:18:34 [INFO] Module deleted: ID=1325
+14:18:34 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/2585/streams/1864
+14:18:34 [INFO] Response [200]: {"data":{"status":"success"}}
+14:18:34 [INFO] Stream deleted: ID=1864
+14:18:34 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+14:18:35 [INFO] Response [200]: {"data":{"status":"success"}}
+14:18:35 [INFO] Programs mass deleted: IDs=[2585]
+14:18:35 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/2044
+14:18:35 [INFO] Response [200]: {"data":{"status":"success"}}
+14:18:35 [INFO] User deleted: ID=2044
+14:18:35 [INFO] Очистка завершена
+14:18:35 [INFO] E2E Poll → Module завершён!

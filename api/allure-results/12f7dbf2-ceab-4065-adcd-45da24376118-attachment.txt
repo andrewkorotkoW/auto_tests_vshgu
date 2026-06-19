@@ -1,0 +1,12 @@
+INFO     autotests:client.py:22 Cookie передана в ApiClient: True
+INFO     autotests:client.py:23 Cookies в сессии: {'develop': 'eyJpdiI6ImZybmluRU00TjFFWmtnUUU2bW5CQ0E9PSIsInZhbHVlIjoibnJyOVNxdkN5RHpCNmY5WXlvRDJRSzR0MXlvbWxQMm5ROUZEOW9SVnNhRVpLZ09ad2JkbndXS0duaWYzaHZTUDZuWjA2a3Vsc0JQM2VRQisySXB0b2w3MmxaSjVsMnVpb0hwcmlDMFUwY2ZtVG55alFzZm1YcmpBYjEwV283L2QiLCJtYWMiOiI4NzZhOWYxMWIzY2FkYjdkZDJlMzc4Nzk2MmFjOTZlMDdhOGM2NWNkOTI0NGI4MzdhMDJkNTJjMGI3MDliNjQ2IiwidGFnIjoiIn0%3D'}
+INFO     autotests:client.py:27 POST https://portal-develop.d2.devspark.ru/api/v1/users
+INFO     autotests:client.py:28 Headers: {'User-Agent': 'python-requests/2.32.3', 'Accept-Encoding': 'gzip, deflate', 'Accept': 'application/json', 'Connection': 'keep-alive', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'}
+INFO     autotests:client.py:29 Cookies перед запросом: {'develop': 'eyJpdiI6ImZybmluRU00TjFFWmtnUUU2bW5CQ0E9PSIsInZhbHVlIjoibnJyOVNxdkN5RHpCNmY5WXlvRDJRSzR0MXlvbWxQMm5ROUZEOW9SVnNhRVpLZ09ad2JkbndXS0duaWYzaHZTUDZuWjA2a3Vsc0JQM2VRQisySXB0b2w3MmxaSjVsMnVpb0hwcmlDMFUwY2ZtVG55alFzZm1YcmpBYjEwV283L2QiLCJtYWMiOiI4NzZhOWYxMWIzY2FkYjdkZDJlMzc4Nzk2MmFjOTZlMDdhOGM2NWNkOTI0NGI4MzdhMDJkNTJjMGI3MDliNjQ2IiwidGFnIjoiIn0%3D'}
+INFO     autotests:client.py:31 Response [201]: {"data":{"id":612,"attributes":{"avatar":null,"name":"\u0413\u0440\u0438\u0433\u043e\u0440\u0438\u0439","surname":"\u041f\u043e\u043f\u043e\u0432","patronymic":"\u0420\u043e\u043c\u0430\u043d\u043e\u0432\u0438\u0447","email":"auto_test_1778769460582@gmail.com","phone_number":null,"personal_phone_num
+INFO     autotests:users.py:19 User created: ID=612, email=auto_test_1778769460582@gmail.com
+INFO     autotests:test_create_user_api.py:29 ✅ Пользователь создан: ID=612, Email=auto_test_1778769460582@gmail.com
+INFO     autotests:test_create_user_api.py:30 ⏱ Время: 0.84 сек
+INFO     autotests:client.py:43 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/612
+INFO     autotests:client.py:45 Response [200]: {"data":{"status":"success"}}
+INFO     autotests:users.py:33 User deleted: ID=612

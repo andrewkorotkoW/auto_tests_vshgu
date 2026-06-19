@@ -1,0 +1,14 @@
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:40 Программа создана: ID=31
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:55 Поток создан: ID=31
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:65 Модуль создан: ID=33
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:81 Пользователь создан: ID=251
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:87 Пользователь 251 назначен на поток 31
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:102 LPD создан: ID=591
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:108 LPD 591 добавлен в модуль 33
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:121 Пользователь 251 активирован на LPD 591
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:226 Кнопка 'Сохранить страницу' нажата
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:279 ЛПД повторно открыт после обновления
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:343 Анкета успешно пройдена после сохранения и продолжения
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:366 Кнопка 'Отчет формируется' отображается и неактивна
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:376 Очистка завершена
+[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_prog.py:378 UI LPD Save & Continue (Prog) завершён!

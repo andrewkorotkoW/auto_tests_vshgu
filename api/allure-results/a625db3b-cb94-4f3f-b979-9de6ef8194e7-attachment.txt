@@ -1,0 +1,13 @@
+17:37:42 [INFO] Cookie передана в ApiClient: True
+17:37:42 [INFO] Cookies в сессии: {'develop': 'eyJpdiI6ImZybmluRU00TjFFWmtnUUU2bW5CQ0E9PSIsInZhbHVlIjoibnJyOVNxdkN5RHpCNmY5WXlvRDJRSzR0MXlvbWxQMm5ROUZEOW9SVnNhRVpLZ09ad2JkbndXS0duaWYzaHZTUDZuWjA2a3Vsc0JQM2VRQisySXB0b2w3MmxaSjVsMnVpb0hwcmlDMFUwY2ZtVG55alFzZm1YcmpBYjEwV283L2QiLCJtYWMiOiI4NzZhOWYxMWIzY2FkYjdkZDJlMzc4Nzk2MmFjOTZlMDdhOGM2NWNkOTI0NGI4MzdhMDJkNTJjMGI3MDliNjQ2IiwidGFnIjoiIn0%3D'}
+17:37:42 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+17:37:42 [INFO] Headers: {'User-Agent': 'python-requests/2.32.3', 'Accept-Encoding': 'gzip, deflate', 'Accept': 'application/json', 'Connection': 'keep-alive', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'}
+17:37:42 [INFO] Cookies перед запросом: {'develop': 'eyJpdiI6ImZybmluRU00TjFFWmtnUUU2bW5CQ0E9PSIsInZhbHVlIjoibnJyOVNxdkN5RHpCNmY5WXlvRDJRSzR0MXlvbWxQMm5ROUZEOW9SVnNhRVpLZ09ad2JkbndXS0duaWYzaHZTUDZuWjA2a3Vsc0JQM2VRQisySXB0b2w3MmxaSjVsMnVpb0hwcmlDMFUwY2ZtVG55alFzZm1YcmpBYjEwV283L2QiLCJtYWMiOiI4NzZhOWYxMWIzY2FkYjdkZDJlMzc4Nzk2MmFjOTZlMDdhOGM2NWNkOTI0NGI4MzdhMDJkNTJjMGI3MDliNjQ2IiwidGFnIjoiIn0%3D'}
+17:37:43 [INFO] Response [201]: {"data":{"id":614,"attributes":{"avatar":null,"name":"\u0410\u043d\u043d\u0430","surname":"\u041f\u043e\u043f\u043e\u0432\u0430","patronymic":"\u0410\u043d\u0434\u0440\u0435\u0435\u0432\u043d\u0430","email":"auto_test_1778769462654@gmail.com","phone_number":null,"personal_phone_number":null,"positio
+17:37:43 [INFO] User created: ID=614, email=auto_test_1778769462654@gmail.com
+17:37:43 [INFO]   Пользователь #1: ID=614, Email=auto_test_1778769462654@gmail.com
+17:37:43 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+17:37:43 [INFO] Headers: {'User-Agent': 'python-requests/2.32.3', 'Accept-Encoding': 'gzip, deflate', 'Accept': 'application/json', 'Connection': 'keep-alive', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'}
+17:37:43 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/614
+17:37:43 [INFO] Response [200]: {"data":{"status":"success"}}
+17:37:43 [INFO] User deleted: ID=614

@@ -1,0 +1,5 @@
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:37 1. Программа создана: ID=32
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:52 2. Поток создан: ID=32
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:62 3. Модуль создан: ID=34
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:77 4. Пользователь создан: ID=257, email=e2e_2lpd_1781532078066@mail.com
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:83 5. Пользователь 257 назначен на поток 32

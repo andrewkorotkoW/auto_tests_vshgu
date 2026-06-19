@@ -1,0 +1,49 @@
+{
+  "stream_id": 1605,
+  "name": "А-2300-2026-КАС",
+  "date_from": "2026-05-24T21:00:00.000000Z",
+  "date_to": "2026-06-23T21:00:00.000000Z",
+  "managers": [
+    {
+      "id": 1,
+      "attributes": {
+        "name": "Диана",
+        "surname": "Сазонов",
+        "email": "admin1@org2.ru"
+      }
+    },
+    {
+      "id": 2,
+      "attributes": {
+        "name": "Юлия",
+        "surname": "Суханов",
+        "email": "admin2@org2.ru"
+      }
+    },
+    {
+      "id": 3,
+      "attributes": {
+        "name": "Федосья",
+        "surname": "Громов",
+        "email": "admin3@org2.ru"
+      }
+    },
+    {
+      "id": 4,
+      "attributes": {
+        "name": "Лидия",
+        "surname": "Кононов",
+        "email": "admin4@org2.ru"
+      }
+    }
+  ],
+  "tenant": {
+    "tenant_organization_id": 2,
+    "time_zone_utc": "Europe/Moscow",
+    "name": "Главная организация ВШГУ",
+    "acronym": "ГЛВН",
+    "type": "main"
+  },
+  "updated_at": "2026-05-25 16:51:41",
+  "created_at": "2026-05-25 16:51:41"
+}

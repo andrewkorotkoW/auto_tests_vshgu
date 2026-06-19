@@ -1,0 +1,36 @@
+14:18:15 [INFO] Обложка загружена: b08b177c-71c8-49d2-b260-fc1394941562
+14:18:15 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+14:18:16 [INFO] Response [201]: {"data":{"content_id":3939,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1781003895878","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+14:18:16 [INFO] Test created: ID=3939, name=Автотест_тест_админка_1781003895878
+14:18:16 [INFO] Создан тест: ID=3939, name=Автотест_тест_админка_1781003895878
+14:18:16 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+14:18:16 [INFO] Response [200]: {"data":{"question_id":4847,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":1,"type":"single","text":"\u041f\u0435\u0440\u0432\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u04
+14:18:16 [INFO] Question created for test 3939
+14:18:16 [INFO] Вопрос #1 добавлен: Первый вопрос
+14:18:16 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+14:18:17 [INFO] Response [200]: {"data":{"question_id":4848,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":2,"type":"multi","text":"\u0412\u0442\u043e\u0440\u043e\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u044
+14:18:17 [INFO] Question created for test 3939
+14:18:17 [INFO] Вопрос #2 добавлен: Второй вопрос
+14:18:17 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+14:18:17 [INFO] Response [200]: {"data":{"question_id":4849,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":3,"type":"single","text":"\u0422\u0440\u0435\u0442\u0438\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u04
+14:18:17 [INFO] Question created for test 3939
+14:18:17 [INFO] Вопрос #3 добавлен: Третий вопрос
+14:18:17 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+14:18:17 [INFO] Response [200]: {"data":{"question_id":4850,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":4,"type":"multi","text":"\u0427\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b
+14:18:17 [INFO] Question created for test 3939
+14:18:17 [INFO] Вопрос #4 добавлен: Четвёртый вопрос
+14:18:17 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+14:18:18 [INFO] Response [200]: {"data":{"question_id":4851,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":5,"type":"single","text":"\u041f\u044f\u0442\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u0442\u04
+14:18:18 [INFO] Question created for test 3939
+14:18:18 [INFO] Вопрос #5 добавлен: Пятый вопрос
+14:18:18 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/3939
+14:18:18 [INFO] Response [200]: {"data":{"content_id":3939,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1781003895878","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+14:18:18 [INFO] Test updated: ID=3939, name=Автотест_тест_админка_1781003895878
+14:18:18 [INFO] Прокторинг активирован для теста ID=3939
+14:18:18 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/3939
+14:18:19 [INFO] Response [200]: {"data":{"content_id":3939,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1781003895878","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+14:18:19 [INFO] Проверка сохранения прокторинга — OK
+14:18:19 [INFO] Полный цикл с прокторингом завершён!
+14:18:19 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/tests
+14:18:19 [INFO] Response [200]: {"result":"success"}
+14:18:19 [INFO] Tests deleted: [3939]

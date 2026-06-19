@@ -1,0 +1,17 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/tests
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"content_id":3870,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780467224521","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+[32mINFO    [0m autotests:tests.py:20 Test created: ID=3870, name=Автотест_тест_админка_1780467224521
+[32mINFO    [0m autotests:test_create_test_api.py:83 Тест создан: ID=3870
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4649,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":1,"type":"single","text":"\u041f\u0435\u0440\u0432\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u04
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3870
+[32mINFO    [0m autotests:test_create_test_api.py:103 Вопрос #1 добавлен: Первый вопрос
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [500]: {
+    "message": "\"multiple\" is not a valid backing value for enum Tests\\Enums\\TestQuestionType",
+    "exception": "ValueError",
+    "file": "/srv/app/app/Modules/Tests/Dto/Traits/TransformsQuestionAnswers.php",
+    "line": 20,
+    "trace": [
+        {
+            "file": "/srv/app/app/Modules/T

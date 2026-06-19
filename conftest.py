@@ -1,0 +1,446 @@
+import pytest
+from api.client import ApiClient
+from api.endpoints.users import UsersEndpoint
+from api.endpoints.programs import ProgramsEndpoint
+from api.endpoints.streams import StreamsEndpoint
+from api.endpoints.modules import ModulesEndpoint
+from api.endpoints.schedule_items import ScheduleItemsEndpoint
+from api.endpoints.aos import AosEndpoint
+from api.endpoints.assignments import AssignmentsEndpoint
+from playwright.sync_api import sync_playwright
+from api.endpoints.lpd import LpdEndpoint
+from api.endpoints.onboarding import OnboardingEndpoint
+from api.endpoints.info_banner import InfoBannerEndpoint
+from api.endpoints.tincan import TincanEndpoint
+from api.endpoints.omt_cas import OmtCasEndpoint
+from api.endpoints.alpina import AlpinaEndpoint
+from api.endpoints.mif import MifEndpoint
+from api.endpoints.tests import TestsEndpoint
+from api.endpoints.polls import PollsEndpoint
+from api.helpers.data_generator import (
+    generate_user_payload,
+    generate_program_payload,
+    generate_stream_payload,
+    generate_module_payload,
+    generate_schedule_item_payload,
+    generate_lpd_payload,
+    generate_aos_payload,
+    generate_tincan_payload,
+    generate_test_payload,
+    generate_test_update_payload
+
+)
+from config.settings import settings
+from utils.logger import logger
+
+
+@pytest.fixture(scope="function")
+def api_client():
+    """Клиент API — кука из .env."""
+    client = ApiClient(cookie=settings.DEVELOP_COOKIE)
+    yield client
+
+
+@pytest.fixture
+def users_endpoint(api_client):
+    return UsersEndpoint(api_client)
+
+
+@pytest.fixture
+def programs_endpoint(api_client):
+    return ProgramsEndpoint(api_client)
+
+
+@pytest.fixture
+def streams_endpoint(api_client):
+    return StreamsEndpoint(api_client)
+
+
+@pytest.fixture
+def modules_endpoint(api_client):
+    return ModulesEndpoint(api_client)
+
+
+@pytest.fixture
+def schedule_items_endpoint(api_client):
+    return ScheduleItemsEndpoint(api_client)
+
+
+@pytest.fixture
+def aos_endpoint(api_client):
+    return AosEndpoint(api_client)
+
+
+@pytest.fixture
+def created_user(api_client, users_endpoint):
+    user_ids = []
+
+    def _create(**kwargs):
+        payload = generate_user_payload(**kwargs)
+        user_data = users_endpoint.create(payload)
+        user_ids.append(user_data["id"])
+        return {
+            "id": user_data["id"],
+            "email": user_data["attributes"]["email"],
+            "name": user_data["attributes"]["name"],
+            "surname": user_data["attributes"]["surname"],
+            "patronymic": user_data["attributes"]["patronymic"],
+            "password": payload["data"]["attributes"]["password"],
+            "attributes": user_data["attributes"]
+        }
+
+    yield _create
+
+    for user_id in user_ids:
+        try:
+            users_endpoint.delete(user_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete user {user_id}: {e}")
+
+
+@pytest.fixture
+def created_program(api_client, programs_endpoint):
+    program_ids = []
+
+    def _create(**kwargs):
+        payload = generate_program_payload(**kwargs)
+        program_data = programs_endpoint.create(payload)
+        program_ids.append(program_data["id"])
+        return {
+            "id": program_data["id"],
+            "name": program_data["attributes"]["name"],
+            "attributes": program_data["attributes"]
+        }
+
+    yield _create
+
+    if program_ids:
+        try:
+            programs_endpoint.mass_delete(program_ids)
+        except Exception as e:
+            logger.warning(f"Failed to mass delete programs {program_ids}: {e}")
+
+
+@pytest.fixture
+def created_stream(api_client, streams_endpoint, created_program):
+    """Создаёт программу и поток внутри неё. Удаляет после теста."""
+    stream_ids = []
+
+    def _create(program_id=None, **kwargs):
+        if program_id is None:
+            program = created_program()
+            program_id = program["id"]
+
+        payload = generate_stream_payload(**kwargs)
+        stream_data = streams_endpoint.create(program_id, payload)
+        stream_ids.append((program_id, stream_data["id"]))
+        return {
+            "id": stream_data["id"],
+            "program_id": program_id,
+            "name": stream_data["attributes"]["name"],
+            "attributes": stream_data["attributes"]
+        }
+
+    yield _create
+
+    for program_id, stream_id in stream_ids:
+        try:
+            streams_endpoint.delete(program_id, stream_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete stream {stream_id}: {e}")
+
+
+@pytest.fixture
+def created_module(api_client, modules_endpoint, created_program, created_stream):
+    """Создаёт программу → поток → модуль. Удаляет после теста."""
+    module_ids = []
+
+    def _create(program_id=None, stream_id=None, **kwargs):
+        if program_id is None:
+            program = created_program()
+            program_id = program["id"]
+        if stream_id is None:
+            stream = created_stream(program_id=program_id)
+            stream_id = stream["id"]
+        payload = generate_module_payload(**kwargs)
+        module_data = modules_endpoint.create(program_id, stream_id, payload)
+        module_ids.append((program_id, stream_id, module_data["id"]))
+        return {
+            "id": module_data["id"],
+            "program_id": program_id,
+            "stream_id": stream_id,
+            "name": module_data["attributes"]["name"],
+            "attributes": module_data["attributes"]
+        }
+
+    yield _create
+
+    for program_id, stream_id, module_id in module_ids:
+        try:
+            modules_endpoint.delete(program_id, stream_id, module_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete module {module_id}: {e}")
+
+
+@pytest.fixture
+def created_schedule_item(api_client, schedule_items_endpoint, created_program, created_stream, created_module):
+    """Создаёт программу → поток → модуль → элемент расписания. Удаляет после."""
+    schedule_ids = []
+
+    def _create(**kwargs):
+        program = created_program()
+        stream = created_stream(program_id=program["id"])
+        module = created_module(program_id=program["id"], stream_id=stream["id"])
+        payload = generate_schedule_item_payload(**kwargs)
+        item_data = schedule_items_endpoint.create(program["id"], stream["id"], module["id"], payload)
+        schedule_ids.append((program["id"], stream["id"], module["id"], item_data["id"]))
+        return {
+            "id": item_data["id"],
+            "program_id": program["id"],
+            "stream_id": stream["id"],
+            "module_id": module["id"],
+            "name": item_data["attributes"]["name"],
+            "attributes": item_data["attributes"]
+        }
+
+    yield _create
+
+    for program_id, stream_id, module_id, item_id in schedule_ids:
+        try:
+            schedule_items_endpoint.delete(program_id, stream_id, module_id, item_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete schedule item {item_id}: {e}")
+
+
+@pytest.fixture
+def created_aos(api_client, aos_endpoint, created_schedule_item):
+    """Создаёт schedule item → АОС. Удаляет после теста."""
+    aos_ids = []
+
+    def _create(schedule_item_id=None, **kwargs):
+        if schedule_item_id is None:
+            item = created_schedule_item()
+            schedule_item_id = item["id"]
+            program_id = item["program_id"]
+            stream_id = item["stream_id"]
+            # Получаем имя программы через API
+            prog_resp = api_client.get(f"/programs/{program_id}")
+            program_name = prog_resp.json()["data"]["attributes"]["name"]
+        else:
+            program_id = None
+            stream_id = None
+            program_name = "Программа"
+        payload = generate_aos_payload(schedule_item_ids=[schedule_item_id], **kwargs)
+        data = aos_endpoint.create(payload)
+        aos_ids.append(data["content_id"])
+        return {
+            "id": data["content_id"],
+            "name": data["name"],
+            "attributes": data,
+            "schedule_item_id": schedule_item_id,
+            "program_id": program_id,
+            "stream_id": stream_id,
+            "program_name": program_name
+        }
+
+    yield _create
+
+@pytest.fixture
+def assignments_endpoint(api_client):
+    return AssignmentsEndpoint(api_client)
+
+
+@pytest.fixture
+def assigned_user(api_client, created_user, created_stream, assignments_endpoint):
+    """Создаёт пользователя, поток и назначает пользователя в поток."""
+
+    def _create():
+        user = created_user()
+        stream = created_stream()
+        assignments_endpoint.assign(stream["program_id"], stream["id"], [user["id"]])
+        return {
+            "user": user,
+            "stream": stream
+        }
+
+    yield _create
+
+@pytest.fixture(scope="session")
+def browser():
+    """Запуск браузера на всю сессию."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        yield browser
+        browser.close()
+
+@pytest.fixture
+def page(browser):
+    context = browser.new_context(viewport={"width": 1920, "height": 1080})
+    page = context.new_page()
+    yield page
+    context.close()
+
+@pytest.fixture
+def onboarding_endpoint(api_client):
+    return OnboardingEndpoint(api_client)
+
+@pytest.fixture
+def lpd_endpoint(api_client):
+    return LpdEndpoint(api_client)
+
+@pytest.fixture
+def created_lpd(api_client, lpd_endpoint):
+    """Создаёт LPD. Удаляет после теста."""
+    lpd_ids = []
+
+    def _create(**kwargs):
+        logger.info(f"created_lpd kwargs: {kwargs}")
+        payload = generate_lpd_payload(**kwargs)
+        data = lpd_endpoint.create(payload)
+        logger.info(f"Data received: {data}")
+        if data is None:
+            raise ValueError("create returned None")
+        lpd_ids.append(data["id"])
+        return {
+            "id": data["id"],
+            "name": data["attributes"]["name"],
+            "attributes": data["attributes"]
+        }
+
+    yield _create
+
+    for lpd_id in lpd_ids:
+        try:
+            lpd_endpoint.delete(lpd_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete LPD {lpd_id}: {e}")
+
+@pytest.fixture
+def api_client_global():
+    client = ApiClient(cookie=settings.DEVELOP_COOKIE, base_url=settings.GLOBAL_BASE_URL)
+    yield client
+
+@pytest.fixture
+def info_banner_endpoint(api_client_global):
+    return InfoBannerEndpoint(api_client_global)
+
+@pytest.fixture
+def tincan_endpoint(api_client):
+    return TincanEndpoint(api_client)
+
+@pytest.fixture
+def created_tincan(api_client, tincan_endpoint):
+    tincan_ids = []
+
+    def _create(**kwargs):
+        payload = generate_tincan_payload(**kwargs)
+        data = tincan_endpoint.create(payload)
+        tincan_ids.append(data["id"])
+        return {
+            "id": data["id"],
+            "name": data["attributes"]["name"],
+            "attributes": data["attributes"]
+        }
+
+    yield _create
+
+    if tincan_ids:
+        try:
+            tincan_endpoint.mass_delete(tincan_ids)
+        except Exception as e:
+            logger.warning(f"Failed to delete Tincan {tincan_ids}: {e}")
+
+@pytest.fixture
+def omt_cas_endpoint(api_client):
+    return OmtCasEndpoint(api_client)
+
+from api.endpoints.external_cas import ExternalCasEndpoint
+
+
+@pytest.fixture
+def external_cas_endpoint():
+    import requests
+    session = requests.Session()
+    session.headers["Authorization"] = settings.CAS_AUTH_TOKEN  # без Bearer
+    session.headers["Accept"] = "application/json"
+    session.headers["Content-Type"] = "application/json"
+    session.cookies.set("develop", settings.DEVELOP_COOKIE)
+
+    from api.endpoints.external_cas import ExternalCasEndpoint
+    from api.client import ApiClient
+    client = ApiClient.__new__(ApiClient)
+    client.session = session
+    client.base_url = settings.BASE_URL
+    client.timeout = settings.REQUEST_TIMEOUT
+    return ExternalCasEndpoint(client)
+
+@pytest.fixture
+def external_system_client():
+    from api.client import ApiClient
+    client = ApiClient(
+        cookie=settings.DEVELOP_COOKIE,
+        auth_token=settings.EXTERNAL_SYSTEM_CLIENT_TOKEN,
+        base_url=settings.BASE_URL
+    )
+    return client
+
+@pytest.fixture
+def alpina_endpoint(api_client):
+    return AlpinaEndpoint(api_client)
+
+
+@pytest.fixture
+def mif_endpoint(api_client):
+    return MifEndpoint(api_client)
+
+@pytest.fixture
+def tests_endpoint(api_client):
+    from api.endpoints.tests import TestsEndpoint
+    return TestsEndpoint(api_client)
+
+@pytest.fixture
+def created_test(api_client, tests_endpoint):
+    """Создаёт тест (type=test). Удаляет после теста."""
+    test_ids = []
+
+    def _create(**kwargs):
+        from api.helpers.data_generator import generate_test_payload
+        payload = generate_test_payload(**kwargs)
+        data = tests_endpoint.create(payload)
+        test_ids.append(data["id"])
+        return {
+            "id": data["id"],
+            "name": data["name"],
+            "attributes": data
+        }
+
+    yield _create
+
+    for test_id in test_ids:
+        try:
+            tests_endpoint.delete(test_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete test {test_id}: {e}")
+
+@pytest.fixture
+def polls_endpoint(api_client):
+    return PollsEndpoint(api_client)
+
+@pytest.fixture
+def created_poll(api_client, polls_endpoint):
+    """Создаёт опрос (type=poll). НЕ удаляет после теста."""
+    def _create(**kwargs):
+        from api.helpers.data_generator import generate_poll_payload
+        payload = generate_poll_payload(**kwargs)
+        data = polls_endpoint.create(payload)
+        return {
+            "id": data["id"],
+            "name": data["name"],
+            "attributes": data
+        }
+
+    yield _create
+
+
+
+

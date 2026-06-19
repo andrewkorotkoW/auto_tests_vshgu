@@ -1,0 +1,3 @@
+[32mINFO    [0m autotests:test_proctoring_api.py:23 Обложка загружена: 
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/tests
+[32mINFO    [0m autotests:client.py:28 Response [401]: {"message":"Unauthenticated."}

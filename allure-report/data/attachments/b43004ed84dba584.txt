@@ -1,0 +1,2 @@
+[32mINFO    [0m autotests:test_ui_lpd_stage.py:126 Вкладка 'ЛПД' выбрана через JS
+[32mINFO    [0m autotests:test_ui_lpd_stage.py:132 ЛПД 'UI_LPD_1781348211660' открыт

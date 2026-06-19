@@ -1,0 +1,45 @@
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:24 Программа: 2581
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:30 Поток: 1860
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:36 Модуль: 1321
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:42 Пользователь: 2040
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs/2581/streams/1860/assignments
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:assignments.py:29 Users assigned: [2040] to stream 1860
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:91 Обложка: b08b177c-71c8-49d2-b260-fc1394941562
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/tests
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"content_id":3932,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1781003802580","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+[32mINFO    [0m autotests:tests.py:20 Test created: ID=3932, name=Автотест_тест_админка_1781003802580
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:95 Тест: 3932
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4828,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":1,"type":"single","text":"\u0412\u043e\u043f\u0440\u043e\u0441 #1","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u0442\u0432\u0435\u0442","correct":tr
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3932
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:100 Вопрос #1 добавлен
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4829,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":2,"type":"single","text":"\u0412\u043e\u043f\u0440\u043e\u0441 #2","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u0442\u0432\u0435\u0442","correct":tr
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3932
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:100 Вопрос #2 добавлен
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"question_id":4830,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":3,"type":"single","text":"\u0412\u043e\u043f\u0440\u043e\u0441 #3","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u0442\u0432\u0435\u0442","correct":tr
+[32mINFO    [0m autotests:tests.py:66 Question created for test 3932
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:100 Вопрос #3 добавлен
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs/2581/streams/1860/modules/1321/mass-addition
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:assignments.py:48 Content [3932] assigned to module 1321
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:106 Тест назначен в модуль
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/tests
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"result":"success"}
+[32mINFO    [0m autotests:tests.py:50 Tests deleted: [3932]
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/2581/streams/1860/modules/1321
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:modules.py:53 Module deleted: ID=1321
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/2581/streams/1860
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:streams.py:33 Stream deleted: ID=1860
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:programs.py:50 Programs mass deleted: IDs=[2581]
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/2040
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:users.py:33 User deleted: ID=2040
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:71 Очистка завершена
+[32mINFO    [0m autotests:test_e2e_content_to_module.py:112 E2E Test → Module завершён!

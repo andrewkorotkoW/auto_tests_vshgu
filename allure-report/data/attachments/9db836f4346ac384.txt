@@ -1,0 +1,17 @@
+19:22:50 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+19:22:51 [INFO] Response [201]: {"data":{"content_id":3856,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780330970547","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+19:22:51 [INFO] Test created: ID=3856, name=Автотест_тест_админка_1780330970547
+19:22:51 [INFO] Создан: ID=3856, name=Автотест_тест_админка_1780330970547
+19:22:51 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/3856
+19:22:52 [INFO] Response [200]: {"data":{"content_id":3856,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780330970547","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+19:22:52 [INFO] Получен: ID=3856
+19:22:52 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/3856
+19:22:52 [INFO] Response [200]: {"data":{"content_id":3856,"type":"test","name":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","name_client":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","t
+19:22:52 [INFO] Test updated: ID=3856, name=Обновлённый_автотест
+19:22:52 [INFO] Обновлён: ID=3856, name=Обновлённый_автотест
+19:22:52 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/3856
+19:22:53 [INFO] Response [200]: {"data":{"content_id":3856,"type":"test","name":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","name_client":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","t
+19:22:53 [INFO] Проверка сохранения изменений — OK
+19:22:53 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/tests
+19:22:53 [INFO] Response [200]: {"result":"success"}
+19:22:53 [INFO] Tests deleted: [3856]

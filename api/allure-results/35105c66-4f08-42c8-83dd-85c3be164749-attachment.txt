@@ -1,0 +1,12 @@
+INFO     autotests:client.py:22 Cookie передана в ApiClient: True
+INFO     autotests:client.py:23 Cookies в сессии: {'develop': 'eyJpdiI6ImZybmluRU00TjFFWmtnUUU2bW5CQ0E9PSIsInZhbHVlIjoibnJyOVNxdkN5RHpCNmY5WXlvRDJRSzR0MXlvbWxQMm5ROUZEOW9SVnNhRVpLZ09ad2JkbndXS0duaWYzaHZTUDZuWjA2a3Vsc0JQM2VRQisySXB0b2w3MmxaSjVsMnVpb0hwcmlDMFUwY2ZtVG55alFzZm1YcmpBYjEwV283L2QiLCJtYWMiOiI4NzZhOWYxMWIzY2FkYjdkZDJlMzc4Nzk2MmFjOTZlMDdhOGM2NWNkOTI0NGI4MzdhMDJkNTJjMGI3MDliNjQ2IiwidGFnIjoiIn0%3D'}
+INFO     autotests:client.py:27 POST https://portal-develop.d2.devspark.ru/api/v1/users
+INFO     autotests:client.py:28 Headers: {'User-Agent': 'python-requests/2.32.3', 'Accept-Encoding': 'gzip, deflate', 'Accept': 'application/json', 'Connection': 'keep-alive', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json'}
+INFO     autotests:client.py:29 Cookies перед запросом: {'develop': 'eyJpdiI6ImZybmluRU00TjFFWmtnUUU2bW5CQ0E9PSIsInZhbHVlIjoibnJyOVNxdkN5RHpCNmY5WXlvRDJRSzR0MXlvbWxQMm5ROUZEOW9SVnNhRVpLZ09ad2JkbndXS0duaWYzaHZTUDZuWjA2a3Vsc0JQM2VRQisySXB0b2w3MmxaSjVsMnVpb0hwcmlDMFUwY2ZtVG55alFzZm1YcmpBYjEwV283L2QiLCJtYWMiOiI4NzZhOWYxMWIzY2FkYjdkZDJlMzc4Nzk2MmFjOTZlMDdhOGM2NWNkOTI0NGI4MzdhMDJkNTJjMGI3MDliNjQ2IiwidGFnIjoiIn0%3D'}
+INFO     autotests:client.py:31 Response [201]: {"data":{"id":613,"attributes":{"avatar":null,"name":"\u0412\u0438\u043a\u0442\u043e\u0440\u0438\u044f","surname":"\u041d\u0438\u043a\u0438\u0442\u0438\u043d\u0430","patronymic":"\u0420\u043e\u043c\u0430\u043d\u043e\u0432\u043d\u0430","email":"auto_test_1778769461647@gmail.com","phone_number":null,"
+INFO     autotests:users.py:19 User created: ID=613, email=auto_test_1778769461647@gmail.com
+INFO     autotests:test_create_user_api.py:46 ✓ Регион: Москва
+INFO     autotests:test_create_user_api.py:53 ✓ Муниципалитет: Южный округ
+INFO     autotests:client.py:43 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/613
+INFO     autotests:client.py:45 Response [200]: {"data":{"status":"success"}}
+INFO     autotests:users.py:33 User deleted: ID=613

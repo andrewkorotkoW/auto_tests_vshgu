@@ -1,0 +1,4 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/tests
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"content_id":3861,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780465886306","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+[32mINFO    [0m autotests:tests.py:20 Test created: ID=3861, name=Автотест_тест_админка_1780465886306
+[32mINFO    [0m autotests:test_create_test_api.py:21 Тест создан успешно: ID=3861, name=Автотест_тест_админка_1780465886306

@@ -1,0 +1,40 @@
+10:13:59 [INFO] Обложка загружена: b08b177c-71c8-49d2-b260-fc1394941562
+10:13:59 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+10:14:00 [INFO] Response [201]: {"data":{"content_id":3892,"type":"poll","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780470839448","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c
+10:14:00 [INFO] Poll created: ID=3892, name=Автотест_опрос_админка_1780470839448
+10:14:00 [INFO] Создан опрос: ID=3892, name=Автотест_опрос_админка_1780470839448
+10:14:00 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/3892
+10:14:00 [INFO] Response [200]: {"data":{"content_id":3892,"type":"poll","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780470839448","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c
+10:14:00 [INFO] Получен опрос: ID=3892, name=Автотест_опрос_админка_1780470839448
+10:14:00 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:14:01 [INFO] Response [200]: {"data":{"question_id":4700,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":1,"type":"single","text":"\u041f\u0435\u0440\u0432\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u04
+10:14:01 [INFO] Question created for poll 3892
+10:14:01 [INFO] Вопрос #1 добавлен: Первый вопрос
+10:14:01 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:14:02 [INFO] Response [200]: {"data":{"question_id":4701,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":2,"type":"multi","text":"\u0412\u0442\u043e\u0440\u043e\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u044
+10:14:02 [INFO] Question created for poll 3892
+10:14:02 [INFO] Вопрос #2 добавлен: Второй вопрос
+10:14:02 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:14:02 [INFO] Response [200]: {"data":{"question_id":4702,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":3,"type":"single","text":"\u0422\u0440\u0435\u0442\u0438\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u04
+10:14:02 [INFO] Question created for poll 3892
+10:14:02 [INFO] Вопрос #3 добавлен: Третий вопрос
+10:14:02 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:14:02 [INFO] Response [200]: {"data":{"question_id":4703,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":4,"type":"multi","text":"\u0427\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b
+10:14:02 [INFO] Question created for poll 3892
+10:14:02 [INFO] Вопрос #4 добавлен: Четвёртый вопрос
+10:14:02 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:14:03 [INFO] Response [200]: {"data":{"question_id":4704,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":5,"type":"single","text":"\u041f\u044f\u0442\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u0442\u04
+10:14:03 [INFO] Question created for poll 3892
+10:14:03 [INFO] Вопрос #5 добавлен: Пятый вопрос
+10:14:03 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/3892
+10:14:03 [INFO] Response [200]: {"data":{"content_id":3892,"type":"poll","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780470839448","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c
+10:14:03 [INFO] Poll updated: ID=3892, name=Автотест_опрос_админка_1780470839448
+10:14:03 [INFO] Обновлён опрос: ID=3892, name=Автотест_опрос_админка_1780470839448, topic=Новая тема опроса
+10:14:03 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/3892
+10:14:04 [INFO] Response [200]: {"data":{"content_id":3892,"type":"poll","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780470839448","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u043e\u043f\u0440\u043e\u0441_\u0430\u0434\u043c
+10:14:04 [INFO] Проверка сохранения изменений — OK
+10:14:04 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/tests
+10:14:04 [INFO] Response [200]: {"result":"success"}
+10:14:04 [INFO] Polls deleted: [3892]
+10:14:04 [INFO] Опрос удалён: ID=3892
+10:14:04 [INFO] Полный цикл опроса завершён!

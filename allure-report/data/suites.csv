@@ -1,0 +1,61 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Полный цикл: создать тест, обновить, проверить, удалить.","1201","API Develop: Создание → Обновление → Удаление теста","tests.api","Mon Jun 01 19:20:40 MSK 2026","passed","Mon Jun 01 19:20:41 MSK 2026","TestApiTestConstructor","test_create_test_api","",""
+"Назначить пользователя в поток.","251","Назначение пользователя в поток","tests.api","Mon Jun 08 15:26:42 MSK 2026","failed","Mon Jun 08 15:26:42 MSK 2026","TestAssignmentsAPI","test_assignments_api","",""
+"","305","Корректировка синхронизации потока","tests.api","Mon Jun 08 15:26:42 MSK 2026","failed","Mon Jun 08 15:26:43 MSK 2026","TestCasCorrection","test_cas_correction","",""
+"Создание АОС, привязанного к элементу расписания, и его активация.","299","Создание и активация АОС с привязкой к schedule item","tests.api","Mon Jun 08 15:26:44 MSK 2026","failed","Mon Jun 08 15:26:44 MSK 2026","TestCreateAosAPI","test_create_aos_api","",""
+"","1841","Создание пользователя, назначение authorized ЛПД, снятие, удаление","tests.stage","Sat Jun 13 12:38:29 MSK 2026","passed","Sat Jun 13 12:38:31 MSK 2026","TestUserAssignStageAuthorized","test_user_assign_stage_authorized","",""
+"","7962","E2E: Программа → Поток → Модуль → Пользователь → Тест → Назначение в модуль","tests.api","Tue Jun 09 14:18:19 MSK 2026","passed","Tue Jun 09 14:18:27 MSK 2026","TestE2EContentToModule","test_e2e_content_to_module","",""
+"Попытка создать АОС без названия → 422.","251","Создание АОС без названия","tests.api","Mon Jun 08 15:26:44 MSK 2026","failed","Mon Jun 08 15:26:45 MSK 2026","TestCreateAosAPI","test_create_aos_api","",""
+"Полный цикл: создать, получить, обновить, проверить.","2673","API Develop: Создание → Получение → Обновление теста","tests.api","Wed Jun 03 09:20:51 MSK 2026","passed","Wed Jun 03 09:20:54 MSK 2026","TestApiTestConstructor","test_create_test_api","",""
+"Создать тест через API и проверить поля.","631","API Develop: Создание теста (type=test)","tests.api","Wed Jun 03 09:20:50 MSK 2026","passed","Wed Jun 03 09:20:51 MSK 2026","TestApiTestConstructor","test_create_test_api","",""
+"Создание пользователя с конкретной датой рождения.","642","Создание пользователя с кастомной датой рождения","tests.api","Wed Jun 03 08:49:24 MSK 2026","passed","Wed Jun 03 08:49:24 MSK 2026","TestCreateUserAPI","test_create_user_api","",""
+"","501","Закрыть доступ к Альпине","tests.api","Mon Jun 08 15:26:41 MSK 2026","failed","Mon Jun 08 15:26:41 MSK 2026","TestAlpinaAPI","test_alpina_api","",""
+"","270","Синхронизация обычной программы с CAS","tests.api","Mon Jun 08 15:26:43 MSK 2026","failed","Mon Jun 08 15:26:43 MSK 2026","TestCasSyncProgram","test_cas_sync_program","",""
+"Сквозной тест для опроса: создать, получить, добавить вопросы, обновить, удалить.","4077","API Develop: Полный цикл опроса — создать → получить → вопросы → обновить → удалить","tests.api","Tue Jun 09 14:18:11 MSK 2026","passed","Tue Jun 09 14:18:15 MSK 2026","TestApiPollConstructor","test_create_poll_api","",""
+"","53435","UI Stage: Создание → Логин → Онбординг → Инд.трек → ЛПД → Запуск → Анкета","tests.stage","Sat Jun 13 15:33:19 MSK 2026","passed","Sat Jun 13 15:34:13 MSK 2026","TestUILpdStage","test_ui_lpd_stage","",""
+"Валидация ID → создание LPD.","84","Создание LPD с валидацией ID","","Mon Jun 08 15:26:45 MSK 2026","passed","Mon Jun 08 15:26:45 MSK 2026","","","",""
+"","822","Создание ЛПД на стейдже (anonymous)","tests.stage","Sat Jun 13 12:38:21 MSK 2026","passed","Sat Jun 13 12:38:22 MSK 2026","TestLpdStage","test_lpd_stage_authorized","",""
+"","244","Удаление назначений при наличии приказа — 422","tests.api","Mon Jun 08 15:26:43 MSK 2026","failed","Mon Jun 08 15:26:43 MSK 2026","TestCasDismissAssignments","test_cas_dismiss_assignments","",""
+"Создать тест, добавить 5 вопросов, обновить тест.","3770","API Develop: Создать тест + 5 вопросов + обновить","tests.api","Wed Jun 03 09:20:54 MSK 2026","passed","Wed Jun 03 09:20:57 MSK 2026","TestApiTestConstructor","test_create_test_api","",""
+"","17291","E2E Stage: Программа → Поток → Модуль → Пользователь → 2 ЛПД → Назначение → Снятие","tests.stage","Sat Jun 13 12:38:03 MSK 2026","passed","Sat Jun 13 12:38:21 MSK 2026","TestE2ELpdStage","test_e2e_program_lpd_stage","",""
+"Создать тест, добавить вопросы, активировать прокторинг, удалить.","3534","API Develop: Полный цикл с прокторингом — создать → вопросы → прокторинг → удалить","tests.api","Tue Jun 09 14:18:15 MSK 2026","passed","Tue Jun 09 14:18:19 MSK 2026","TestApiProctoring","test_proctoring_api","",""
+"
+        <h3>✅ Пользователь создан:</h3>
+        <ul>
+            <li><b>ID:</b> 2026</li>
+            <li><b>Email:</b> auto_test_1780465761740@gmail.com</li>
+            <li><b>ФИО:</b> Петров Иван Алексеевич</li>
+            <li><b>Время:</b> 1.03 сек</li>
+        </ul>
+        ","1037","Создание пользователя с валидными данными","tests.api","Wed Jun 03 08:49:21 MSK 2026","passed","Wed Jun 03 08:49:22 MSK 2026","TestCreateUserAPI","test_create_user_api","",""
+"","818","Создание ЛПД на стейдже (anonymous)","tests.stage","Sat Jun 13 12:38:21 MSK 2026","passed","Sat Jun 13 12:38:21 MSK 2026","TestLpdStage","test_lpd_stage_anonymous","",""
+"Попытка создать пользователя с очевидным паролем 'password'.","613","Создание пользователя с паролем 'password'","tests.api","Wed Jun 03 08:49:28 MSK 2026","passed","Wed Jun 03 08:49:28 MSK 2026","TestCreateUserAPI","test_create_user_api","",""
+"Попытка создать пользователя с Email, который уже существует.","921","Создание пользователя с уже существующим Email","tests.api","Wed Jun 03 08:49:25 MSK 2026","passed","Wed Jun 03 08:49:26 MSK 2026","TestCreateUserAPI","test_create_user_api","",""
+"Попытка создать пользователя с пустым паролем.","611","Создание пользователя без пароля","tests.api","Wed Jun 03 08:49:27 MSK 2026","passed","Wed Jun 03 08:49:27 MSK 2026","TestCreateUserAPI","test_create_user_api","",""
+"","3968","Создание пользователя, назначение двух ЛПД (anonymous + authorized), снятие, удаление","tests.stage","Sat Jun 13 12:38:22 MSK 2026","passed","Sat Jun 13 12:38:26 MSK 2026","TestUserAssignBothTypes","test_user_assign_both_types","",""
+"Попытка создать пользователя без даты рождения.","423","Создание пользователя без даты рождения","tests.api","Wed Jun 03 08:49:26 MSK 2026","passed","Wed Jun 03 08:49:27 MSK 2026","TestCreateUserAPI","test_create_user_api","",""
+"","8289","E2E: Программа → Поток → Модуль → Пользователь → Тест+Прокторинг → Назначение в модуль","tests.api","Tue Jun 09 14:18:35 MSK 2026","passed","Tue Jun 09 14:18:43 MSK 2026","TestE2EContentToModule","test_e2e_content_to_module","",""
+"Назначить и открепить активность.","211","Открепление активности от пользователя","tests.api","Mon Jun 08 15:26:41 MSK 2026","failed","Mon Jun 08 15:26:42 MSK 2026","TestAssignActivitiesAPI","test_assign_activities_api","",""
+"
+        <h3>✅ Пользователь с регионом:</h3>
+        <ul>
+            <li><b>ID:</b> 2027</li>
+            <li><b>Регион:</b> 33 (Москва)</li>
+            <li><b>Муниципалитет:</b> 2310 (Южный округ)</li>
+        </ul>
+        ","674","Создание пользователя с регионом и муниципалитетом","tests.api","Wed Jun 03 08:49:23 MSK 2026","passed","Wed Jun 03 08:49:23 MSK 2026","TestCreateUserAPI","test_create_user_api","",""
+"","89","Создание пользователя,создание ЛПД(Анононим), назначение на инд. трек, снятие, удаление","","Sat Jun 13 12:36:09 MSK 2026","passed","Sat Jun 13 12:36:09 MSK 2026","","","",""
+"Сквозной тест: создать, получить, добавить 5 вопросов, обновить, удалить.","4803","API Develop: Полный цикл — создать → получить → вопросы → обновить → удалить","tests.api","Tue Jun 09 14:18:06 MSK 2026","passed","Tue Jun 09 14:18:11 MSK 2026","TestApiTestConstructor","test_create_test_api","",""
+"","310","Снятие назначений с потока","tests.api","Mon Jun 08 15:26:43 MSK 2026","failed","Mon Jun 08 15:26:43 MSK 2026","TestCasDismissAssignments","test_cas_dismiss_assignments","",""
+"Попытка создать пользователя с паролем без заглавных букв и цифр.","612","Создание пользователя с паролем только из строчных букв","tests.api","Wed Jun 03 08:49:27 MSK 2026","passed","Wed Jun 03 08:49:28 MSK 2026","TestCreateUserAPI","test_create_user_api","",""
+"","8289","E2E: Программа → Поток → Модуль → Пользователь → Опрос → Назначение в модуль","tests.api","Tue Jun 09 14:18:27 MSK 2026","passed","Tue Jun 09 14:18:35 MSK 2026","TestE2EContentToModule","test_e2e_content_to_module","",""
+"","2668","Создание пользователя,создание ЛПД(Анононим), назначение на инд. трек, снятие, удаление","tests.stage","Sat Jun 13 12:38:26 MSK 2026","passed","Sat Jun 13 12:38:29 MSK 2026","TestUserAssignStage","test_user_assign_stage","",""
+"","250","Обновление CAS-пользователя","tests.api","Mon Jun 08 15:26:44 MSK 2026","failed","Mon Jun 08 15:26:44 MSK 2026","TestCasUpdateUser","test_cas_update_user","",""
+"","28143","UI Stage: Создание → Логин → Онбординг → Инд.трек → ЛПД (auth) → Запуск","tests.stage","Sat Jun 13 12:27:15 MSK 2026","passed","Sat Jun 13 12:27:43 MSK 2026","TestUILpdStageAuth","test_ui_lpd_stage_aut","",""
+"","621","Открыть доступ к Альпине для пользователя","tests.api","Mon Jun 08 15:26:40 MSK 2026","failed","Mon Jun 08 15:26:41 MSK 2026","TestAlpinaAPI","test_alpina_api","",""
+"","259","Проверка публичной ссылки через API","tests.api","Mon Jun 08 15:26:45 MSK 2026","failed","Mon Jun 08 15:26:45 MSK 2026","TestCreateAosAPI","test_create_aos_api","",""
+"","312","Синхронизация обычного потока с CAS","tests.api","Mon Jun 08 15:26:43 MSK 2026","failed","Mon Jun 08 15:26:44 MSK 2026","TestCasSyncStream","test_cas_sync_stream","",""
+"Назначить пользователя дважды — система должна обработать без ошибок.","230","Повторное назначение того же пользователя","tests.api","Mon Jun 08 15:26:42 MSK 2026","failed","Mon Jun 08 15:26:42 MSK 2026","TestAssignmentsAPI","test_assignments_api","",""
+"Создать LPD и пользователя → назначить активность.","326","Назначение активности пользователю","tests.api","Mon Jun 08 15:26:41 MSK 2026","failed","Mon Jun 08 15:26:41 MSK 2026","TestAssignActivitiesAPI","test_assign_activities_api","",""
+"API: программа → поток → модуль → пользователь → Тест → UI: логин → открыть Тест.","902","Пользователь открывает Тест через поток","tests.ui","Sat Jun 06 11:57:18 MSK 2026","failed","Sat Jun 06 11:57:19 MSK 2026","TestUserTestStreamFlow","test_user_test_stream_flow","",""
+"Попытка создать пользователя с паролем '12345678'.","277","Создание пользователя с паролем из одних цифр","tests.api","Wed Jun 03 08:49:28 MSK 2026","passed","Wed Jun 03 08:49:29 MSK 2026","TestCreateUserAPI","test_create_user_api","",""

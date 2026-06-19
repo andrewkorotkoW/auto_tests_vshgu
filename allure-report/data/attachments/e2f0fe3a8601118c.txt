@@ -1,0 +1,7 @@
+19:15:40 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+19:15:40 [INFO] Response [201]: {"data":{"content_id":3854,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780330540434","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+19:15:40 [INFO] Test created: ID=3854, name=Автотест_тест_админка_1780330540434
+19:15:40 [INFO] Создан: ID=3854, name=Автотест_тест_админка_1780330540434
+19:15:41 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/tests
+19:15:41 [INFO] Response [200]: {"result":"success"}
+19:15:41 [INFO] Tests deleted: [3854]

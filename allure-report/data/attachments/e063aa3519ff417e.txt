@@ -1,0 +1,3 @@
+[32mINFO    [0m autotests:test_ui_lpd_stage.py:107 Вкладка 'ЛПД' выбрана
+[32mINFO    [0m autotests:test_ui_lpd_stage.py:123 ЛПД 'UI_LPD_1781346890321' открыт
+[32mINFO    [0m autotests:test_ui_lpd_stage.py:130 URL после запуска: https://portal-stage.d7.devspark.ru/personal_education?t=2

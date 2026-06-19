@@ -1,0 +1,76 @@
+16:57:33 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+16:57:34 [INFO] Response [201]: {"data":{"id":997,"attributes":{"avatar":null,"name":"\u0420\u043e\u043c\u0430\u043d","surname":"\u041b\u0435\u0431\u0435\u0434\u0435\u0432","patronymic":"\u0414\u043c\u0438\u0442\u0440\u0438\u0435\u0432\u0438\u0447","email":"auto_test_1779112653487@gmail.com","phone_number":null,"personal_phone_num
+16:57:34 [INFO] User created: ID=997, email=auto_test_1779112653487@gmail.com
+16:57:34 [INFO] Пользователь: auto_test_1779112653487@gmail.com / SecurePass123
+16:57:34 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/onboarding
+16:57:34 [INFO] Response [200]: {"message":"Success","data":{"name":"sidebar","user_id":3,"updated_at":"2026-05-18T13:57:34.000000Z","created_at":"2026-05-18T13:57:34.000000Z","onboarding_story_id":1158}}
+16:57:34 [INFO] Onboarding completed: sidebar
+16:57:34 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/onboarding
+16:57:34 [INFO] Response [200]: {"message":"Success","data":{"name":"knowledge_base_library","user_id":3,"updated_at":"2026-05-18T13:57:34.000000Z","created_at":"2026-05-18T13:57:34.000000Z","onboarding_story_id":1159}}
+16:57:34 [INFO] Onboarding completed: knowledge_base_library
+16:57:34 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/onboarding
+16:57:35 [INFO] Response [200]: {"message":"Success","data":{"name":"support","user_id":3,"updated_at":"2026-05-18T13:57:34.000000Z","created_at":"2026-05-18T13:57:34.000000Z","onboarding_story_id":1160}}
+16:57:35 [INFO] Onboarding completed: support
+16:57:35 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/onboarding
+16:57:35 [INFO] Response [200]: {"message":"Success","data":{"name":"individual_education_schedule","user_id":3,"updated_at":"2026-05-18T13:57:35.000000Z","created_at":"2026-05-18T13:57:35.000000Z","onboarding_story_id":1161}}
+16:57:35 [INFO] Onboarding completed: individual_education_schedule
+16:57:35 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/onboarding
+16:57:35 [INFO] Response [200]: {"message":"Success","data":{"name":"individual_education_activities","user_id":3,"updated_at":"2026-05-18T13:57:35.000000Z","created_at":"2026-05-18T13:57:35.000000Z","onboarding_story_id":1162}}
+16:57:35 [INFO] Onboarding completed: individual_education_activities
+16:57:35 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/onboarding
+16:57:36 [INFO] Response [200]: {"message":"Success","data":{"name":"program_education_schedule","user_id":3,"updated_at":"2026-05-18T13:57:35.000000Z","created_at":"2026-05-18T13:57:35.000000Z","onboarding_story_id":1163}}
+16:57:36 [INFO] Onboarding completed: program_education_schedule
+16:57:36 [INFO] ✅ Все онбординги пройдены
+16:57:36 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs
+16:57:36 [INFO] Response [201]: {"data":{"id":1378,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_
+16:57:36 [INFO] Program created: ID=1378, name=API-test_1779112656069
+16:57:36 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/1378/streams
+16:57:37 [INFO] Response [201]: {"data":{"id":899,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["stream.read","stream.edit","stream.delete","stream.convert_to_globa
+16:57:37 [INFO] Stream created: ID=899, name=API_stream_1779112656478
+16:57:37 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/1378/streams/899/modules
+16:57:37 [INFO] Response [201]: {"data":{"id":686,"attributes":{"name":"API_module_1779112657209","location":"\u041c\u043e\u0441\u043a\u0432\u0430","must_use_module_region":true,"region":null,"date_from":"2026-05-18","date_to":"2026-06-17"}}}
+16:57:37 [INFO] Module created: ID=686, name=API_module_1779112657209
+16:57:37 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/1378/streams/899/modules/686/schedule-items
+16:57:38 [INFO] Response [201]: {"data":{"id":435,"attributes":{"name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_1779112657429","type":"webinar","date_from":"2026-05-18 10:05:00","date_to":"2026-05-18 11:05:00","stream_module_id":686,"performance_direction_id":1,"broad_topic_id":2,"location":"\u041c\u043e\u0441\u043a\u0432
+16:57:38 [INFO] Schedule item created: ID=435, name=Автотест_1779112657429
+16:57:38 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/programs/1378
+16:57:38 [INFO] Response [200]: {"data":{"id":1378,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_
+16:57:38 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+16:57:39 [INFO] Response [201]: {"data":{"content_id":2242,"type":"feedback","name":"\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442_api_1779112658629","name_client":"\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442_api_1779112658629","topic":"","description":"<p>\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442_api_1779112658629<
+16:57:39 [INFO] AOS created: ID=2242, name=автотест_api_1779112658629
+16:57:39 [INFO] АОС: ID=2242
+16:57:39 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/1378/streams/899/feedback/2242/change-active
+16:57:40 [INFO] Response [200]: {"status":"ok","is_active":true}
+16:57:40 [INFO] AOS activated: ID=2242
+16:57:40 [INFO] ✅ АОС активирован
+16:57:40 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/1378/streams/899/assignments
+16:57:40 [INFO] Response [200]: {"data":{"status":"success"}}
+16:57:40 [INFO] Users assigned: [997] to stream 899
+16:57:40 [INFO] ✅ Пользователь назначен
+16:57:46 [INFO] ✅ Модальное окно обработано
+16:57:48 [INFO] ✅ Нажали 'Пройти обучение'
+16:57:52 [INFO] ✅ Обучение завершено
+16:57:52 [INFO] ✅ Залогинились
+16:58:03 [INFO] ✅ Онбординг программы пройден
+16:58:11 [INFO] ✅ Онбординг программы пройден
+16:58:13 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/tests/2242
+16:58:13 [INFO] Response [405]: {
+    "message": "The DELETE method is not supported for route api/v1/tests/2242. Supported methods: GET, HEAD, PUT.",
+    "exception": "Symfony\\Component\\HttpKernel\\Exception\\MethodNotAllowedHttpException",
+    "file": "/srv/app/vendor/laravel/framework/src/Illuminate/Routing/AbstractRouteColle
+16:58:13 [WARNING] AOS delete failed: ID=2242, status=405
+16:58:13 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/1378/streams/899/modules/686/schedule-items/435
+16:58:13 [INFO] Response [200]: {"data":{"status":"success"},"warning_queries":[{"count":2,"time":3.86,"query":"select * from `stream_schedule_items_files` where `stream_schedule_items_files`.`stream_schedule_item_id` = ? and `stream_schedule_items_files`.`stream_schedule_item_id` is not null and `type` = ? and `stream_schedule_it
+16:58:13 [INFO] Schedule item deleted: ID=435
+16:58:13 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/1378/streams/899/modules/686
+16:58:13 [INFO] Response [200]: {"data":{"status":"success"},"warning_queries":[{"count":9,"time":12.989999999999998,"query":"update `questions` set `deleted_at` = ?, `questions`.`updated_at` = ? where `question_id` = ?","model":"FeedbackForm\\Models\\FeedbackContent","relatedModel":"FeedbackForm\\Models\\Feedback","relation":"Fee
+16:58:13 [INFO] Module deleted: ID=686
+16:58:13 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/1378/streams/899
+16:58:14 [INFO] Response [200]: {"data":{"status":"success"}}
+16:58:14 [INFO] Stream deleted: ID=899
+16:58:14 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+16:58:14 [INFO] Response [200]: {"data":{"status":"success"}}
+16:58:14 [INFO] Programs mass deleted: IDs=[1378]
+16:58:14 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/997
+16:58:15 [INFO] Response [200]: {"data":{"status":"success"}}
+16:58:15 [INFO] User deleted: ID=997

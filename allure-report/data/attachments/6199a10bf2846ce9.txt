@@ -1,0 +1,12 @@
+19:20:40 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+19:20:40 [INFO] Response [201]: {"data":{"content_id":3855,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780330840104","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+19:20:40 [INFO] Test created: ID=3855, name=Автотест_тест_админка_1780330840104
+19:20:40 [INFO] Создан: ID=3855, name=Автотест_тест_админка_1780330840104
+19:20:40 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/3855
+19:20:41 [INFO] Response [200]: {"data":{"content_id":3855,"type":"test","name":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","name_client":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","t
+19:20:41 [INFO] Test updated: ID=3855, name=Обновлённый_автотест
+19:20:41 [INFO] Обновлён: ID=3855, name=Обновлённый_автотест
+19:20:41 [INFO] Тест будет удалён фикстурой
+19:20:41 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/tests
+19:20:41 [INFO] Response [200]: {"result":"success"}
+19:20:41 [INFO] Tests deleted: [3855]

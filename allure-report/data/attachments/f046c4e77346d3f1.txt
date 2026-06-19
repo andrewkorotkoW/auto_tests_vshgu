@@ -1,0 +1,1 @@
+[32mINFO    [0m autotests:test_create_poll_api.py:23 Обложка загружена: b08b177c-71c8-49d2-b260-fc1394941562

@@ -1,0 +1,9 @@
+INFO     autotests:client.py:31 GET https://portal-develop.d2.devspark.ru/api/v1/lpd/validate-id?lpd_id=1234574
+INFO     autotests:client.py:33 Response [200]: {"lpd_id":"1234574","status":"ok"}
+INFO     autotests:lpd.py:17 LPD ID validated: 1234574
+INFO     autotests:test_create_lpd_api.py:24 LPD ID 1234574 провалидирован
+INFO     autotests:conftest.py:298 created_lpd kwargs: {'lpd_id': '1234574'}
+INFO     autotests:lpd.py:23 LPD create payload lpd_id: 1234574
+INFO     autotests:client.py:24 POST https://portal-develop.d2.devspark.ru/api/v1/content
+INFO     autotests:client.py:26 Response [200]: {"data":{"id":2584,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_
+INFO     autotests:lpd.py:25 LPD RAW RESPONSE: {"data":{"id":2584,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_global","content.feedback_target"],"type":"content","attributes":{"sub_files_uuids":[],"files":{"archive":null,"cover":null,"sub_files":[]},"name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0

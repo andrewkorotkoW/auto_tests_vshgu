@@ -1,0 +1,5 @@
+[32mINFO    [0m autotests:conftest.py:297 created_lpd kwargs: {'lpd_id': '1234578'}
+[32mINFO    [0m autotests:lpd.py:23 LPD create payload lpd_id: 1234578
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/content
+[32mINFO    [0m autotests:client.py:28 Response [401]: {"message":"Unauthenticated."}
+[32mINFO    [0m autotests:lpd.py:25 LPD RAW RESPONSE: {"message":"Unauthenticated."}

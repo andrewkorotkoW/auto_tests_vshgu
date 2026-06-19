@@ -1,0 +1,14 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/tests
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"content_id":3872,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780467265205","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+[32mINFO    [0m autotests:tests.py:20 Test created: ID=3872, name=Автотест_тест_админка_1780467265205
+[32mINFO    [0m autotests:test_create_test_api.py:35 Создан: ID=3872, name=Автотест_тест_админка_1780467265205
+[32mINFO    [0m autotests:client.py:33 GET https://portal-develop.d2.devspark.ru/api/v1/tests/3872
+[32mINFO    [0m autotests:client.py:35 Response [200]: {"data":{"content_id":3872,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1780467265205","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d
+[32mINFO    [0m autotests:test_create_test_api.py:42 Получен: ID=3872
+[32mINFO    [0m autotests:client.py:54 PUT https://portal-develop.d2.devspark.ru/api/v1/tests/3872
+[32mINFO    [0m autotests:client.py:56 Response [200]: {"data":{"content_id":3872,"type":"test","name":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","name_client":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","t
+[32mINFO    [0m autotests:tests.py:37 Test updated: ID=3872, name=Обновлённый_автотест
+[32mINFO    [0m autotests:test_create_test_api.py:64 Обновлён: ID=3872, name=Обновлённый_автотест
+[32mINFO    [0m autotests:client.py:33 GET https://portal-develop.d2.devspark.ru/api/v1/tests/3872
+[32mINFO    [0m autotests:client.py:35 Response [200]: {"data":{"content_id":3872,"type":"test","name":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","name_client":"\u041e\u0431\u043d\u043e\u0432\u043b\u0451\u043d\u043d\u044b\u0439_\u0430\u0432\u0442\u043e\u0442\u0435\u0441\u0442","t
+[32mINFO    [0m autotests:test_create_test_api.py:70 Проверка сохранения изменений — OK

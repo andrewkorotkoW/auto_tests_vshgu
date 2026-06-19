@@ -1,0 +1,21 @@
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:129 Вкладка 'ЛПД' выбрана
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:135 ЛПД 'UI_LPD_AUTH_1781440373081' открыт
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:146 URL нового окна: https://test-dp.ranepa.ru/lk/mykonkurs/40ac9cba-fca9-469a-8b3d-39a32e5e0412/
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:157 Кнопка 'Перейти' нажата
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:170 1/10: Самочувствие — хорошее
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:175 2/10: Да/Нет — Да
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:182 3/10: Флажки отмечены
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:187 4/10: Radio — Не очень
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:192 5/10: Шкала — 10
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:197 6/10: Числовое поле — 5
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:204 Кнопка 'Далее' нажата
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:209 7/10: Текстовое поле — Да
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:214 8/10: Дата — 1990-01-01
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:219 9/10: Select — Молодёжная политика
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:248 10/10: Автодополнение — г Москва: Выбрана 
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:272 Анкета успешно пройдена
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:297 Кнопка 'Отчет формируется' отображается и неактивна
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:305 Назначение снято
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:311 LPD удалён
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:317 Пользователь удалён
+[32mINFO    [0m autotests:test_ui_lpd_stage_aut.py:321 Очистка завершена
