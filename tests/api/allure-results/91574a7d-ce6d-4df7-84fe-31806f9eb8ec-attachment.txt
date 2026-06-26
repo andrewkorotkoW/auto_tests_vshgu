@@ -1,1 +1,0 @@
-INFO     autotests:test_external_cas_users_api.py:85 Ошибка валидации (422): Для пары организация-место не сопоставлен тенант
