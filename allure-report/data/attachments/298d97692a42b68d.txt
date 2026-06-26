@@ -1,1 +1,0 @@
-[32mINFO    [0m autotests:test_tincan_api.py:67 Файл: ffffb19a-dced-4383-89cc-dffa81187f2a

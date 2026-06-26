@@ -1,7 +1,0 @@
-10:13:03 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
-10:13:04 [INFO] Response [201]: {"data":{"id":200,"attributes":{"avatar":null,"name":"\u0410\u043b\u0435\u043a\u0441\u0435\u0439","surname":"\u041b\u0435\u0431\u0435\u0434\u0435\u0432","patronymic":"\u0410\u043b\u0435\u043a\u0441\u0435\u0435\u0432\u0438\u0447","email":"auto_test_1782198783931@gmail.com","phone_number":null,"person
-10:13:04 [INFO] User created: ID=200, email=auto_test_1782198783931@gmail.com
-10:13:04 [INFO] ✓ Дата рождения: 2000-01-01
-10:13:04 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/200
-10:13:05 [INFO] Response [200]: {"data":{"status":"success"}}
-10:13:05 [INFO] User deleted: ID=200

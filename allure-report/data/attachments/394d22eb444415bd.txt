@@ -1,8 +1,0 @@
-[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/content
-[32mINFO    [0m autotests:client.py:28 Response [200]: {"data":{"id":223,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_g
-[32mINFO    [0m autotests:tincan.py:133 Tincan created: ID=223, name=Автотест_Tincan_1782199017
-[32mINFO    [0m autotests:test_tincan_api.py:82 Курс создан: ID=223
-[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/activities/mass-delete
-[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
-[32mINFO    [0m autotests:tincan.py:87 Tincan mass deleted: [223]
-[32mINFO    [0m autotests:test_tincan_api.py:86 Массово удалён: 223

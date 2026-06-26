@@ -1,1 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
 allure-results/
+allure-report/
+allure-history/
+allure-2.32.0/
+.pytest_cache/
+.idea/
+.vscode/

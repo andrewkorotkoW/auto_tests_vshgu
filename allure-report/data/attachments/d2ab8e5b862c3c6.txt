@@ -1,4 +1,0 @@
-[32mINFO    [0m autotests:client.py:33 GET https://portal-develop.d2.devspark.ru/api/v1/lpd/validate-id?lpd_id=9999999
-[32mINFO    [0m autotests:client.py:35 Response [422]: {"status":"error","message":"\u0412 \u041b\u041f\u0414 \u043d\u0435\u0442 \u0443\u043a\u0430\u0437\u0430\u043d\u043d\u043e\u0433\u043e \u0438\u0434\u0435\u043d\u0442\u0438\u0444\u0438\u043a\u0430\u0442\u043e\u0440\u0430"}
-[33mWARNING [0m autotests:lpd.py:19 LPD validate failed: 422
-[32mINFO    [0m autotests:test_create_lpd_api.py:38 Результат валидации: ❌

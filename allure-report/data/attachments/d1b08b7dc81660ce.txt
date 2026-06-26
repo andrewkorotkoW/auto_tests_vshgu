@@ -1,1 +1,0 @@
-[32mINFO    [0m autotests:test_tincan_api.py:57 Обложка: 773812dc-fafd-4c03-a4bc-f1942cb05a71
