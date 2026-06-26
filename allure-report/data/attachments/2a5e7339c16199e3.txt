@@ -1,2 +1,0 @@
-[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/cas/tenant-org-locations
-[32mINFO    [0m autotests:client.py:28 Response [401]: {"message":"Unauthenticated."}

@@ -1,0 +1,17 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/cas/tenant-org-locations
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"cas_organization_uuid":"1ee83525-b9fb-11e5-80e1-005056a00b6e","cas_location_uuid":"0a0ceca7-a1a2-11ea-815e-005056a03e4f","tenant_organization_id":2,"cas_organization":"\u0422\u043e\u043c\u0441\u043a\u0438\u0439 \u0444\u0438\u043b\u0438\u0430\u043b","cas_location":"\u041c\u0435\u0436\u0434\u0443\u0
+[32mINFO    [0m autotests:omt_cas.py:21 CAS tenant-org-location created: {'cas_organization_uuid': '1ee83525-b9fb-11e5-80e1-005056a00b6e', 'cas_location_uuid': '0a0ceca7-a1a2-11ea-815e-005056a03e4f', 'tenant_organization_id': 2, 'cas_organization': 'Томский филиал', 'cas_location': 'Международно-правовой факультет', 'updated_at': '2026-06-23T07:11:31.000000Z', 'created_at': '2026-06-23T07:11:31.000000Z', 'id': 27}
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":91,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_gl
+[32mINFO    [0m autotests:programs.py:19 Program created: ID=91, name=CAS_Sync_Program
+[32mINFO    [0m autotests:test_cas_sync_program.py:30 Обычная программа: ID=91
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/external/cas/sync/programs/91
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:external_cas.py:185 CAS program synced: program_id=91
+[32mINFO    [0m autotests:test_cas_sync_program.py:35 Программа синхронизирована
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:programs.py:50 Programs mass deleted: IDs=[91]
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/cas/tenant-org-locations/27
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:omt_cas.py:29 CAS tenant-org-location deleted: ID=27

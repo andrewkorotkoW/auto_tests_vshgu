@@ -1,0 +1,55 @@
+10:13:55 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs
+10:13:56 [INFO] Response [201]: {"data":{"id":121,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_g
+10:13:56 [INFO] Program created: ID=121, name=E2E_LPD_Program
+10:13:56 [INFO] Программа: ID=121
+10:13:56 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/121/streams
+10:13:57 [INFO] Response [201]: {"data":{"id":94,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["stream.read","stream.edit","stream.delete","stream.convert_to_global
+10:13:57 [INFO] Stream created: ID=94, name=API_stream_1782198836434
+10:13:57 [INFO] Поток: ID=94
+10:13:57 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/121/streams/94/modules
+10:13:57 [INFO] Response [201]: {"data":{"id":55,"attributes":{"name":"API_module_1782198837499","location":"\u041c\u043e\u0441\u043a\u0432\u0430","must_use_module_region":true,"region":null,"date_from":"2026-06-23","date_to":"2026-07-23"}}}
+10:13:57 [INFO] Module created: ID=55, name=API_module_1782198837499
+10:13:57 [INFO] Модуль: ID=55
+10:13:57 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:13:58 [INFO] Response [201]: {"data":{"id":206,"attributes":{"avatar":null,"name":"\u041b\u044e\u0434\u043c\u0438\u043b\u0430","surname":"\u041f\u0430\u0432\u043b\u043e\u0432\u0430","patronymic":"\u041c\u0438\u0445\u0430\u0439\u043b\u043e\u0432\u043d\u0430","email":"auto_test_1782198837771@gmail.com","phone_number":null,"person
+10:13:58 [INFO] User created: ID=206, email=auto_test_1782198837771@gmail.com
+10:13:58 [INFO] Пользователь: ID=206, Email=auto_test_1782198837771@gmail.com
+10:13:58 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/121/streams/94/assignments
+10:13:58 [INFO] Response [200]: {"data":{"status":"success"}}
+10:13:58 [INFO] Users assigned: [206] to stream 94
+10:13:58 [INFO] Пользователь назначен на поток
+10:13:58 [INFO] created_lpd kwargs: {'lpd_id': '1234579'}
+10:13:58 [INFO] LPD create payload lpd_id: 1234579
+10:13:58 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/content
+10:14:00 [INFO] Response [200]: {"data":{"id":213,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_g
+10:14:00 [INFO] LPD RAW RESPONSE: {"data":{"id":213,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_global","content.feedback_target"],"type":"content","attributes":{"sub_files_uuids":[],"files":{"archive":null,"cover":null,"sub_files":[]},"name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u04
+10:14:00 [INFO] LPD created: ID=213, name=Автотест_ЛПД_1234579
+10:14:00 [INFO] Data received: {'id': 213, 'tenant': {'id': 2, 'name': 'Главная организация ВШГУ', 'acronym': 'ГЛВН'}, 'permissions': ['content.read', 'content.edit', 'content.delete', 'content.convert_to_global', 'content.feedback_target'], 'type': 'content', 'attributes': {'sub_files_uuids': [], 'files': {'archive': None, 'cover': None, 'sub_files': []}, 'name': 'Автотест_ЛПД_1234579', 'name_client': 'Автотест_ЛПД_1234579_внешка', 'content_type': 'lpd', 'iri': None, 'description': '<p>Автотест_ЛПД_1234579</p>', 'created_at': '2026-06-23 10:13:59', 'updated_at': '2026-06-23 10:13:59', 'deleted_at': None, 'archive_uuid': None, 'cover_uuid': None, 'activity_category_id': 1, 'index_file_url': None, 'allow_load_file_from_program': False, 'allow_load_file_from_base': False, 'allow_load_sub_files_from_program': False, 'allow_load_sub_files_from_base': False, 'disable_all_load': False, 'is_active': True, 'certificatable': False, 'duration': '12', 'in_knowledge_base': False, 'lpd_id': 1234579}, 'includes': []}
+10:14:00 [INFO] LPD: ID=213
+10:14:00 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/121/streams/94/modules/55/mass-addition
+10:14:00 [INFO] Response [200]: {"data":{"status":"success"}}
+10:14:00 [INFO] LPD assigned to module 55: [213]
+10:14:00 [INFO] LPD назначен в модуль
+10:14:00 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/modules/55/contents/213/lpd/assignment?stream=94
+10:14:01 [INFO] Response [200]: {"data":[]}
+10:14:01 [INFO] Users [206] assigned to LPD 213
+10:14:01 [INFO] Пользователь 206 назначен на LPD
+10:14:01 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/modules/55/contents/213/lpd/assignment?stream=94
+10:14:01 [INFO] Response [200]: {"result":"ok"}
+10:14:01 [INFO] Users [206] detached from LPD 213
+10:14:01 [INFO] Пользователь откреплён от LPD
+10:14:01 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/content/213
+10:14:02 [INFO] Response [200]: {"data":{"status":"success"}}
+10:14:02 [INFO] Content deleted: ID=213
+10:14:02 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/206
+10:14:02 [INFO] Response [200]: {"data":{"status":"success"}}
+10:14:02 [INFO] User deleted: ID=206
+10:14:02 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/121/streams/94/modules/55
+10:14:03 [INFO] Response [200]: {"data":{"status":"success"}}
+10:14:03 [INFO] Module deleted: ID=55
+10:14:03 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/121/streams/94
+10:14:03 [INFO] Response [200]: {"data":{"status":"success"}}
+10:14:03 [INFO] Stream deleted: ID=94
+10:14:03 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+10:14:03 [INFO] Response [200]: {"data":{"status":"success"}}
+10:14:03 [INFO] Programs mass deleted: IDs=[121]

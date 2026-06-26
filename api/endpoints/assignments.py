@@ -49,3 +49,39 @@ class AssignmentsEndpoint:
         else:
             logger.warning(f"Content assign failed: {resp.status_code} {resp.text[:200]}")
         return success
+
+    def assign_to_individual(self, content_ids: list, user_ids: list) -> bool:
+        """Назначение активностей пользователям (инд. трек)."""
+        payload = {
+            "data": {
+                "attributes": {
+                    "content_ids": content_ids,
+                    "user_ids": user_ids
+                }
+            }
+        }
+        resp = self.client.post("/users/content/distant/assign-activities", json=payload)
+        success = resp.status_code in (200, 201)
+        if success:
+            logger.info(f"Activities {content_ids} assigned to users {user_ids}")
+        else:
+            logger.warning(f"Assign activities failed: {resp.status_code} {resp.text[:200]}")
+        return success
+
+    def detach_from_individual(self, content_ids: list, user_ids: list) -> bool:
+        """Снятие назначения (инд. трек)."""
+        payload = {
+            "data": {
+                "attributes": {
+                    "content_ids": content_ids,
+                    "user_ids": user_ids
+                }
+            }
+        }
+        resp = self.client.post("/users/content/distant/detach-activities", json=payload)
+        success = resp.status_code in (200, 201)
+        if success:
+            logger.info(f"Activities {content_ids} detached from users {user_ids}")
+        else:
+            logger.warning(f"Detach activities failed: {resp.status_code} {resp.text[:200]}")
+        return success

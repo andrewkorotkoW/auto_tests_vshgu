@@ -1,0 +1,16 @@
+10:16:29 [INFO] Обложка: 773812dc-fafd-4c03-a4bc-f1942cb05a71
+10:16:29 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/content
+10:16:30 [INFO] Response [200]: {"data":{"id":220,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_g
+10:16:30 [INFO] Контент создан: ID=220
+10:16:30 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/content/220
+10:16:32 [INFO] Response [200]: {"data":{"id":220,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_g
+10:16:32 [INFO] Контент активирован: ID=220
+10:16:32 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/external/activities/220
+10:16:32 [INFO] Response [200]: {"data":{"activity_id":220,"name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0432\u043d\u0435\u0448\u043d\u0438\u0439_\u043a\u043e\u043d\u0442\u0435\u043d\u0442_1782198989","type":"external_content","setting":{"individual":"restrict_all","stream":"allow_one_stream","statistic_type":"normal"
+10:16:32 [INFO] Игровая сессия активирована: {"data":{"activity_id":220,"name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0432\u043d\u0435\u0448\u043d\u0438\u0439_\u043a\u043e\u043d\u0442\u0435\u043d\u0442_1782198989","type":"external_c
+10:16:32 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/external/activities/220
+10:16:33 [INFO] Response [208]: {"message":"already initialized"}
+10:16:33 [INFO] Повторная активация вернула 208 (уже активирована)
+10:16:33 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/content/220
+10:16:35 [INFO] Response [200]: {"data":{"status":"success"}}
+10:16:35 [INFO] Контент удалён: ID=220

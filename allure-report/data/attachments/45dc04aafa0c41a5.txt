@@ -1,0 +1,19 @@
+[32mINFO    [0m autotests:conftest.py:297 created_lpd kwargs: {'lpd_id': '1234576'}
+[32mINFO    [0m autotests:lpd.py:23 LPD create payload lpd_id: 1234576
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/content
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"data":{"id":188,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_g
+[32mINFO    [0m autotests:lpd.py:25 LPD RAW RESPONSE: {"data":{"id":188,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["content.read","content.edit","content.delete","content.convert_to_global","content.feedback_target"],"type":"content","attributes":{"sub_files_uuids":[],"files":{"archive":null,"cover":null,"sub_files":[]},"name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u04
+[32mINFO    [0m autotests:lpd.py:30 LPD created: ID=188, name=Автотест_ЛПД_1234576
+[32mINFO    [0m autotests:conftest.py:300 Data received: {'id': 188, 'tenant': {'id': 2, 'name': 'Главная организация ВШГУ', 'acronym': 'ГЛВН'}, 'permissions': ['content.read', 'content.edit', 'content.delete', 'content.convert_to_global', 'content.feedback_target'], 'type': 'content', 'attributes': {'sub_files_uuids': [], 'files': {'archive': None, 'cover': None, 'sub_files': []}, 'name': 'Автотест_ЛПД_1234576', 'name_client': 'Автотест_ЛПД_1234576_внешка', 'content_type': 'lpd', 'iri': None, 'description': '<p>Автотест_ЛПД_1234576</p>', 'created_at': '2026-06-23 10:11:54', 'updated_at': '2026-06-23 10:11:54', 'deleted_at': None, 'archive_uuid': None, 'cover_uuid': None, 'activity_category_id': 1, 'index_file_url': None, 'allow_load_file_from_program': False, 'allow_load_file_from_base': False, 'allow_load_sub_files_from_program': False, 'allow_load_sub_files_from_base': False, 'disable_all_load': False, 'is_active': True, 'certificatable': False, 'duration': '12', 'in_knowledge_base': False, 'lpd_id': 1234576}, 'includes': []}
+[32mINFO    [0m autotests:test_create_lpd_api.py:69 LPD создан: ID=188
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/activities/mass-delete
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:lpd.py:95 Activities mass deleted: [188]
+[32mINFO    [0m autotests:test_create_lpd_api.py:74 Массово удалён: 188
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/content/188
+[32mINFO    [0m autotests:client.py:42 Response [404]: {
+    "message": "No query results for model [LMSCore\\Infrastructure\\Content\\Db\\Eloquent\\Content] 188",
+    "exception": "Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException",
+    "file": "/srv/app/vendor/laravel/framework/src/Illuminate/Foundation/Exceptions/Handler.php",
+    "lin
+[33mWARNING [0m autotests:lpd.py:46 Content delete failed: ID=188, status=404

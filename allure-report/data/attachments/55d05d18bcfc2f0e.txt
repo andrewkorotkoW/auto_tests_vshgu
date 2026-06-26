@@ -1,8 +1,0 @@
-[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/users
-[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":2023,"attributes":{"avatar":null,"name":"\u0412\u0430\u043b\u0435\u043d\u0442\u0438\u043d\u0430","surname":"\u0412\u043e\u043b\u043a\u043e\u0432\u0430","patronymic":"\u0415\u0432\u0433\u0435\u043d\u044c\u0435\u0432\u043d\u0430","email":"auto_test_1780465223004@gmail.com","phone_number"
-[32mINFO    [0m autotests:users.py:19 User created: ID=2023, email=auto_test_1780465223004@gmail.com
-[32mINFO    [0m autotests:test_create_user_api.py:70 ✓ Регион: Москва
-[32mINFO    [0m autotests:test_create_user_api.py:80 ✓ Муниципалитет: Южный округ
-[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/2023
-[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
-[32mINFO    [0m autotests:users.py:33 User deleted: ID=2023

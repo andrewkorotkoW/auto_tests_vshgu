@@ -1,0 +1,10 @@
+10:16:36 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:16:37 [INFO] Response [201]: {"data":{"id":217,"attributes":{"avatar":null,"name":"\u041e\u043b\u044c\u0433\u0430","surname":"\u0421\u0435\u043c\u0451\u043d\u043e\u0432\u0430","patronymic":"\u041c\u0438\u0445\u0430\u0439\u043b\u043e\u0432\u043d\u0430","email":"auto_test_1782198996805@gmail.com","phone_number":null,"personal_pho
+10:16:37 [INFO] User created: ID=217, email=auto_test_1782198996805@gmail.com
+10:16:37 [INFO] PATCH https://portal-develop.d2.devspark.ru/api/v1/mif/access
+10:16:37 [INFO] Response [200]: {"status":"success"}
+10:16:37 [INFO] MIF access set: users=[217], access=True
+10:16:37 [INFO] Доступ открыт: {'status': 'success'}
+10:16:37 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/217
+10:16:38 [INFO] Response [200]: {"data":{"status":"success"}}
+10:16:38 [INFO] User deleted: ID=217

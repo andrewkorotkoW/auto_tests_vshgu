@@ -1,2 +1,0 @@
-15:26:44 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs
-15:26:45 [INFO] Response [401]: {"message":"Unauthenticated."}

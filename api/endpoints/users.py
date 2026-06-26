@@ -35,3 +35,19 @@ class UsersEndpoint:
             logger.warning(f"User delete failed: ID={user_id}, status={resp.status_code}")
         return success
 
+    def get_users(self, params: dict = None) -> list:
+        """Получить список пользователей, фильтруя локально."""
+        resp = self.client.get("/users")
+        assert resp.status_code == 200, f"Get users failed: {resp.status_code}"
+        users = resp.json().get("data", [])
+        if params:
+            # пример локальной фильтрации
+            role = params.get("role")
+            surname_endswith = params.get("filter[surname]", "").rstrip("*")
+            if role:
+                users = [u for u in users if u.get("attributes", {}).get("role") == role]
+            if surname_endswith:
+                users = [u for u in users if u.get("attributes", {}).get("surname", "").endswith(surname_endswith)]
+        logger.info(f"Found {len(users)} users after filtering")
+        return users
+

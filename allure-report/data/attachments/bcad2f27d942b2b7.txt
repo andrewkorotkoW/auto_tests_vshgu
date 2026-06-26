@@ -1,0 +1,8 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/cas/tenant-org-locations
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"cas_organization_uuid":"1a41b037-c5fc-11e5-80e4-005056a00b6e","cas_location_uuid":"3d4b8136-5f9d-11ea-8144-005056a03e4f","tenant_organization_id":2,"cas_organization":"\u041c\u0443\u0440\u043c\u0430\u043d\u0441\u043a\u0438\u0439 \u0444\u0438\u043b\u0438\u0430\u043b","cas_location":"\u041a\u0430\u0
+[32mINFO    [0m autotests:omt_cas.py:21 CAS tenant-org-location created: {'cas_organization_uuid': '1a41b037-c5fc-11e5-80e4-005056a00b6e', 'cas_location_uuid': '3d4b8136-5f9d-11ea-8144-005056a03e4f', 'tenant_organization_id': 2, 'cas_organization': 'Мурманский филиал', 'cas_location': 'Кафедра гражданского права и процесса', 'updated_at': '2026-06-23T07:16:40.000000Z', 'created_at': '2026-06-23T07:16:40.000000Z', 'id': 34}
+[32mINFO    [0m autotests:test_omt_cas_api.py:31 Связь CAS создана: ID=34
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/cas/tenant-org-locations/34
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:omt_cas.py:29 CAS tenant-org-location deleted: ID=34
+[32mINFO    [0m autotests:test_omt_cas_api.py:37 Связь CAS удалена: ID=34

@@ -1,1 +1,0 @@
-[32mINFO    [0m autotests:test_ui_lpd_stage.py:107 Вкладка 'ЛПД' выбрана

@@ -1,0 +1,37 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":103,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_g
+[32mINFO    [0m autotests:programs.py:19 Program created: ID=103, name=MassDelete_Test_1
+[32mINFO    [0m autotests:test_create_program_api.py:103   Создана программа #1: ID=103
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":104,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_g
+[32mINFO    [0m autotests:programs.py:19 Program created: ID=104, name=MassDelete_Test_2
+[32mINFO    [0m autotests:test_create_program_api.py:103   Создана программа #2: ID=104
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":105,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_g
+[32mINFO    [0m autotests:programs.py:19 Program created: ID=105, name=MassDelete_Test_3
+[32mINFO    [0m autotests:test_create_program_api.py:103   Создана программа #3: ID=105
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"},"warning_queries":[{"count":3,"time":6.95,"query":"select * from \"streams\" where \"streams\".\"program_id\" = ? and \"streams\".\"program_id\" is not null and \"streams\".\"deleted_at\" is null and \"streams\".\"_tenant_organization_id\" in (?, ?) order by \"streams\".
+[32mINFO    [0m autotests:programs.py:50 Programs mass deleted: IDs=[103, 104, 105]
+[32mINFO    [0m autotests:test_create_program_api.py:109 Mass delete response success=True
+[32mINFO    [0m autotests:client.py:33 GET https://portal-develop.d2.devspark.ru/api/v1/programs/103
+[32mINFO    [0m autotests:client.py:35 Response [404]: {
+    "message": "\u0422\u0430\u043a\u043e\u0439 \u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u044b \u043d\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442, programId: 103",
+    "exception": "Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException",
+    "file": "/srv/a
+[32mINFO    [0m autotests:test_create_program_api.py:114   Проверка программы 103: статус=404
+[32mINFO    [0m autotests:test_create_program_api.py:120   ✓ Программа 103 удалена (статус 404)
+[32mINFO    [0m autotests:client.py:33 GET https://portal-develop.d2.devspark.ru/api/v1/programs/104
+[32mINFO    [0m autotests:client.py:35 Response [404]: {
+    "message": "\u0422\u0430\u043a\u043e\u0439 \u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u044b \u043d\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442, programId: 104",
+    "exception": "Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException",
+    "file": "/srv/a
+[32mINFO    [0m autotests:test_create_program_api.py:114   Проверка программы 104: статус=404
+[32mINFO    [0m autotests:test_create_program_api.py:120   ✓ Программа 104 удалена (статус 404)
+[32mINFO    [0m autotests:client.py:33 GET https://portal-develop.d2.devspark.ru/api/v1/programs/105
+[32mINFO    [0m autotests:client.py:35 Response [404]: {
+    "message": "\u0422\u0430\u043a\u043e\u0439 \u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u044b \u043d\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442, programId: 105",
+    "exception": "Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException",
+    "file": "/srv/a
+[32mINFO    [0m autotests:test_create_program_api.py:114   Проверка программы 105: статус=404
+[32mINFO    [0m autotests:test_create_program_api.py:120   ✓ Программа 105 удалена (статус 404)

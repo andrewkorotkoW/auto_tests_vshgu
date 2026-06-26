@@ -1,0 +1,39 @@
+10:12:56 [INFO] Обложка загружена: 773812dc-fafd-4c03-a4bc-f1942cb05a71
+10:12:56 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/tests
+10:12:57 [INFO] Response [201]: {"data":{"content_id":203,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1782198776532","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\
+10:12:57 [INFO] Test created: ID=203, name=Автотест_тест_админка_1782198776532
+10:12:57 [INFO] Создан: ID=203, name=Автотест_тест_админка_1782198776532
+10:12:57 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/203
+10:12:58 [INFO] Response [200]: {"data":{"content_id":203,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1782198776532","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\
+10:12:58 [INFO] Получен: ID=203
+10:12:58 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:12:58 [INFO] Response [200]: {"data":{"question_id":283,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":1,"type":"single","text":"\u041f\u0435\u0440\u0432\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u044
+10:12:58 [INFO] Question created for test 203
+10:12:58 [INFO] Вопрос #1 добавлен: Первый вопрос
+10:12:58 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:12:59 [INFO] Response [200]: {"data":{"question_id":284,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":2,"type":"multi","text":"\u0412\u0442\u043e\u0440\u043e\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u0442
+10:12:59 [INFO] Question created for test 203
+10:12:59 [INFO] Вопрос #2 добавлен: Второй вопрос
+10:12:59 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:12:59 [INFO] Response [200]: {"data":{"question_id":285,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":3,"type":"single","text":"\u0422\u0440\u0435\u0442\u0438\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u044
+10:12:59 [INFO] Question created for test 203
+10:12:59 [INFO] Вопрос #3 добавлен: Третий вопрос
+10:12:59 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:13:00 [INFO] Response [200]: {"data":{"question_id":286,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":4,"type":"multi","text":"\u0427\u0435\u0442\u0432\u0451\u0440\u0442\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\
+10:13:00 [INFO] Question created for test 203
+10:13:00 [INFO] Вопрос #4 добавлен: Четвёртый вопрос
+10:13:00 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/questions/store
+10:13:00 [INFO] Response [200]: {"data":{"question_id":287,"can_change":true,"group_id":null,"group":null,"questions_bank_id":null,"order":5,"type":"single","text":"\u041f\u044f\u0442\u044b\u0439 \u0432\u043e\u043f\u0440\u043e\u0441","answers":[{"text":"\u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u044b\u0439 \u043e\u0442\u043
+10:13:00 [INFO] Question created for test 203
+10:13:00 [INFO] Вопрос #5 добавлен: Пятый вопрос
+10:13:00 [INFO] PUT https://portal-develop.d2.devspark.ru/api/v1/tests/203
+10:13:01 [INFO] Response [200]: {"data":{"content_id":203,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1782198776532","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\
+10:13:01 [INFO] Test updated: ID=203, name=Автотест_тест_админка_1782198776532
+10:13:01 [INFO] Обновлён: ID=203, name=Автотест_тест_админка_1782198776532
+10:13:01 [INFO] GET https://portal-develop.d2.devspark.ru/api/v1/tests/203
+10:13:02 [INFO] Response [200]: {"data":{"content_id":203,"type":"test","name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\u043a\u0430_1782198776532","name_client":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_\u0442\u0435\u0441\u0442_\u0430\u0434\u043c\u0438\u043d\
+10:13:02 [INFO] Проверка сохранения изменений — OK
+10:13:02 [INFO] Полный цикл завершён!
+10:13:02 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/tests
+10:13:02 [INFO] Response [200]: {"result":"success"}
+10:13:02 [INFO] Tests deleted: [203]

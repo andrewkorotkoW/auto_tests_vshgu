@@ -89,6 +89,10 @@ class TincanEndpoint:
             logger.warning(f"Tincan mass delete failed: {resp.status_code}")
         return success
 
+    def delete(self, content_id: int) -> bool:
+        """Удаление одного курса Tincan."""
+        return self.mass_delete([content_id])
+
     def assign_to_module(self, program_id: int, stream_id: int, module_id: int, content_ids: list) -> bool:
         """Назначение курса в модуль."""
         payload = {

@@ -1,0 +1,6 @@
+10:13:02 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:13:03 [INFO] Response [201]: {"data":{"id":199,"attributes":{"avatar":null,"name":"\u0412\u0438\u043a\u0442\u043e\u0440","surname":"\u041c\u043e\u0440\u043e\u0437\u043e\u0432","patronymic":"\u041e\u043b\u0435\u0433\u043e\u0432\u0438\u0447","email":"auto_test_1782198782646@gmail.com","phone_number":null,"personal_phone_number":n
+10:13:03 [INFO] User created: ID=199, email=auto_test_1782198782646@gmail.com
+10:13:03 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/199
+10:13:03 [INFO] Response [200]: {"data":{"status":"success"}}
+10:13:03 [INFO] User deleted: ID=199

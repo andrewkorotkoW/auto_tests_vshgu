@@ -1,0 +1,23 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs/120/streams/93/assignments
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:assignments.py:29 Users assigned: [205] to stream 93
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs/120/streams/93/modules/54/mass-addition
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:tincan.py:108 Course assigned to module 54: [211]
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/activities/mass-delete
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:tincan.py:87 Tincan mass deleted: [211]
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/120/streams/93/modules/54
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:modules.py:53 Module deleted: ID=54
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/120/streams/93
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:streams.py:33 Stream deleted: ID=93
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:programs.py:50 Programs mass deleted: IDs=[120]
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/205
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:users.py:33 User deleted: ID=205
+[32mINFO    [0m autotests:test_e2e_create_tincan_api.py:76 Очистка завершена
+[32mINFO    [0m autotests:test_e2e_create_tincan_api.py:78 E2E Tincan завершён!

@@ -1,0 +1,11 @@
+10:10:52 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:10:53 [INFO] Response [201]: {"data":{"id":190,"attributes":{"avatar":null,"name":"\u0418\u0432\u0430\u043d","surname":"\u0421\u043c\u0438\u0440\u043d\u043e\u0432","patronymic":"\u0421\u0435\u0440\u0433\u0435\u0435\u0432\u0438\u0447","email":"auto_test_1782198652609@gmail.com","phone_number":null,"personal_phone_number":null,"p
+10:10:53 [INFO] User created: ID=190, email=auto_test_1782198652609@gmail.com
+10:10:53 [INFO] Пользователь: ID=190
+10:10:53 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/alpina/setUserAlpinaStatus
+10:10:53 [INFO] Response [200]: {"data":{"status":"success"}}
+10:10:53 [INFO] Alpina status set: users=[190], status=True
+10:10:53 [INFO] Доступ открыт: {'data': {'status': 'success'}}
+10:10:53 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/190
+10:10:53 [INFO] Response [200]: {"data":{"status":"success"}}
+10:10:53 [INFO] User deleted: ID=190

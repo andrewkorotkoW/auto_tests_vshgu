@@ -1,0 +1,8 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":100,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_g
+[32mINFO    [0m autotests:programs.py:19 Program created: ID=100, name=API-test_1782198734640
+[32mINFO    [0m autotests:test_create_program_api.py:46 ✅ Программа создана: ID=100, Name=API-test_1782198734640
+[32mINFO    [0m autotests:test_create_program_api.py:47 ⏱ Время: 0.67 сек
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:programs.py:50 Programs mass deleted: IDs=[100]

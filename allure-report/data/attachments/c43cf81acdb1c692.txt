@@ -1,0 +1,10 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/users
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":201,"attributes":{"avatar":null,"name":"\u0410\u0440\u0442\u0451\u043c","surname":"\u0412\u043e\u043b\u043a\u043e\u0432","patronymic":"\u0415\u0432\u0433\u0435\u043d\u044c\u0435\u0432\u0438\u0447","email":"auto_test_1782198785444@gmail.com","phone_number":null,"personal_phone_number":n
+[32mINFO    [0m autotests:users.py:19 User created: ID=201, email=auto_test_1782198785444@gmail.com
+[32mINFO    [0m autotests:test_create_user_api.py:122 Первый пользователь: ID=201, Email=auto_test_1782198785444@gmail.com
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/users
+[32mINFO    [0m autotests:client.py:28 Response [422]: {"message":"\u0422\u0430\u043a\u043e\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435 \u043f\u043e\u043b\u044f \u041b\u043e\u0433\u0438\u043d \u0443\u0436\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442. (and 1 more error)","errors":{"data.attributes.login":["\u0422\u0430\u0
+[32mINFO    [0m autotests:test_create_user_api.py:136 ✓ Дубликат отклонён: статус 422
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/201
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:users.py:33 User deleted: ID=201

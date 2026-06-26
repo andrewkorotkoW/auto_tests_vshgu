@@ -1,8 +1,0 @@
-[32mINFO    [0m autotests:test_ui_lpd_program_stage.py:116 Пользователь 248 активирован на LPD 586 в модуле 31
-[32mINFO    [0m autotests:test_ui_lpd_program_stage.py:178 Вкладка 'ЛПД' в программе выбрана
-[32mINFO    [0m autotests:test_ui_lpd_program_stage.py:199 Программа 'E2E_UI_Program_1781440004306', ЛПД 'UI_LPD_Program_1781440004306' открыт
-[32mINFO    [0m autotests:test_ui_lpd_program_stage.py:210 URL нового окна: https://test-dp.ranepa.ru/ok/
-[32mINFO    [0m autotests:test_ui_lpd_program_stage.py:221 Кнопка 'Перейти' нажата
-[32mINFO    [0m autotests:test_ui_lpd_program_stage.py:267 Анкета успешно пройдена
-[32mINFO    [0m autotests:test_ui_lpd_program_stage.py:292 Кнопка 'Отчет формируется' отображается и неактивна
-[32mINFO    [0m autotests:test_ui_lpd_program_stage.py:313 Очистка завершена

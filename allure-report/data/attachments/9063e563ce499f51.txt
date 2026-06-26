@@ -1,0 +1,11 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/users
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":215,"attributes":{"avatar":null,"name":"\u0415\u0433\u043e\u0440","surname":"\u0421\u043c\u0438\u0440\u043d\u043e\u0432","patronymic":"\u0418\u0432\u0430\u043d\u043e\u0432\u0438\u0447","email":"auto_test_1782198965023@gmail.com","phone_number":null,"personal_phone_number":null,"positio
+[32mINFO    [0m autotests:users.py:19 User created: ID=215, email=auto_test_1782198965023@gmail.com
+[32mINFO    [0m autotests:test_external_cas_sync_users_api.py:23 Пользователь: ID=215, email=auto_test_1782198965023@gmail.com
+[32mINFO    [0m autotests:test_external_cas_sync_users_api.py:29 sync_payload cas_uuid: cas_uuid_111
+[32mINFO    [0m autotests:test_external_cas_sync_users_api.py:30 Full sync_payload: {'sync_status': 'synced', 'name': 'Пётр', 'patronymic': 'Петрович', 'surname': 'Иванов', 'date_of_birth': '1982-02-18', 'personal_phone_number': '+7 939 158 64-86', 'organisation': 'Имэдж Спарк', 'position': 'AQA', 'region': 'Москва', 'cas_uuid': 'cas_uuid_111'}
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/external/cas/sync/users/215
+[32mINFO    [0m autotests:client.py:28 Response [400]: {"message":"\u0421\u0438\u043d\u0445\u0440\u043e\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0434\u043b\u044f \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430","user_id":215,"cas_uuid":null,"user_status":"pending","
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/215
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:users.py:33 User deleted: ID=215

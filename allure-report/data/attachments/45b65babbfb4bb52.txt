@@ -1,0 +1,26 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":106,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_g
+[32mINFO    [0m autotests:programs.py:19 Program created: ID=106, name=API-test_1782198741820
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs/106/streams
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":82,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["stream.read","stream.edit","stream.delete","stream.convert_to_global
+[32mINFO    [0m autotests:streams.py:19 Stream created: ID=82, name=API_stream_1782198742660
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs/106/streams/82/modules
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":45,"attributes":{"name":"API_module_1782198743971","location":"\u041c\u043e\u0441\u043a\u0432\u0430","must_use_module_region":true,"region":null,"date_from":"2026-06-23","date_to":"2026-07-23"}}}
+[32mINFO    [0m autotests:modules.py:22 Module created: ID=45, name=API_module_1782198743971
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/programs/106/streams/82/modules/45/schedule-items
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":24,"attributes":{"name":"\u0410\u0432\u0442\u043e\u0442\u0435\u0441\u0442_1782198744274","type":"webinar","date_from":"2026-06-23 10:05:00","date_to":"2026-06-23 11:05:00","stream_module_id":45,"performance_direction_id":1,"broad_topic_id":2,"location":"\u041c\u043e\u0441\u043a\u0432\u
+[32mINFO    [0m autotests:schedule_items.py:22 Schedule item created: ID=24, name=Автотест_1782198744274
+[32mINFO    [0m autotests:test_create_schedule_item_api.py:51 ✅ Элемент расписания создан: ID=24, Name=Автотест_1782198744274
+[32mINFO    [0m autotests:test_create_schedule_item_api.py:52 ⏱ Время: 2.87 сек
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/106/streams/82/modules/45/schedule-items/24
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"},"warning_queries":[{"count":2,"time":4.01,"query":"select * from \"stream_schedule_items_files\" where \"stream_schedule_items_files\".\"stream_schedule_item_id\" = ? and \"stream_schedule_items_files\".\"stream_schedule_item_id\" is not null and \"type\" = ? and \"strea
+[32mINFO    [0m autotests:schedule_items.py:40 Schedule item deleted: ID=24
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/106/streams/82/modules/45
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:modules.py:53 Module deleted: ID=45
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/106/streams/82
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:streams.py:33 Stream deleted: ID=82
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:programs.py:50 Programs mass deleted: IDs=[106]

@@ -1,0 +1,1 @@
+[32mINFO    [0m autotests:test_tincan_api.py:47 Архив: e8bd5f18-94d4-442e-88aa-5faf3d049f2f

@@ -39,8 +39,8 @@ def generate_user_payload(
     patronymic: str = None,
     password: str = "SecurePass123",
     date_of_birth: str = "1990-10-10",
-    region_id: int = 33,
-    municipality_id: int = 2310
+    region_id: int = 1,
+    municipality_id: int = 158
 ) -> dict:
     """Генерация полного payload для создания пользователя."""
     if not email:
@@ -195,7 +195,6 @@ def generate_module_payload(
             }
         }
     }
-
 
 def generate_module_update_payload(
         name: str = None,
@@ -876,8 +875,10 @@ def generate_poll_payload(
     if not name:
         timestamp = int(time.time() * 1000)
         name = f"Автотест_опрос_админка_{timestamp}"
+    else:
+        timestamp = int(time.time() * 1000)
     if not name_client:
-        name_client = f"{name}_внешка"
+        name_client = f"Автотест_опрос_внешка_{timestamp}"
     if not description:
         description = f"<p>Описание - автотест опроса</p>"
 
@@ -987,6 +988,247 @@ def generate_test_update_proctoring_payload(
                 "onSuccess": {"text": "Верно!"},
                 "onFail": {"text": "Неверно!"},
                 "default": {"text": None}
+            }
+        }
+    }
+def generate_material_payload(
+    name: str = None,
+    content_id: int = 7,
+    material_type: str = "course",
+    is_visible: bool = True,
+    short_description: str = "",
+    description: str = "",
+    article_text: str = "",
+    cover_uuid: str = "",
+    duration: int = 0,
+    files: list = None,
+    authors: list = None,
+    bundles: list = None,
+    categories: list = None,
+    competencies: list = None,
+    tags: list = None,
+    professional_areas: list = None,
+) -> dict:
+    """Генерация payload для создания материала в базе знаний."""
+    if not name:
+        timestamp = int(time.time() * 1000)
+        name = f"Автотест_Курс_{timestamp}"
+    if files is None:
+        files = []
+    if authors is None:
+        authors = [{"name": "AQA", "avatar_url": "", "avatar_uuid": ""}]
+    if bundles is None:
+        bundles = [4]
+    if categories is None:
+        categories = [7]
+    if competencies is None:
+        competencies = [7]
+    if tags is None:
+        tags = [8]
+    if professional_areas is None:
+        professional_areas = []
+
+    return {
+        "data": {
+            "id": None,
+            "name": name,
+            "content_id": content_id,
+            "short_description": short_description,
+            "type": material_type,
+            "is_visible": is_visible,
+            "description": description,
+            "article_text": article_text,
+            "cover_uuid": cover_uuid,
+            "duration": duration,
+            "files": files,
+            "authors": authors,
+            "bundles": bundles,
+            "categories": categories,
+            "competencies": competencies,
+            "tags": tags,
+            "professional_areas": professional_areas,
+        }
+    }
+def generate_homework_payload(
+    name: str = None,
+    name_client: str = None,
+    description: str = None,
+    duration: str = "10",
+    activity_category_id: int = 10,
+    grade_type: str = "five_point",
+    teacher_ids: list = None,
+    inspector_ids: list = None,
+    cover_uuid: str = "",
+    archive_uuid: str = "",
+    sub_files_uuids: list = None,
+) -> dict:
+    """Генерация payload для создания практического задания (homework)."""
+    if not name:
+        timestamp = int(time.time() * 1000)
+        name = f"Автотест_практическое_задание_админка_{timestamp}"
+    if not name_client:
+        # для уникальности используем тот же timestamp
+        ts = int(time.time() * 1000)
+        name_client = f"Автотест_практическое_задание_внешка_{ts}"
+    if not description:
+        description = "<p>Автотест_практическое_задание_описание</p>"
+    if teacher_ids is None:
+        teacher_ids = [16]   # ID преподавателя по умолчанию
+    if inspector_ids is None:
+        inspector_ids = [16]
+    if sub_files_uuids is None:
+        sub_files_uuids = []
+
+    return {
+        "data": {
+            "attributes": {
+                "inspectors": [],
+                "teachers": [],
+                "duration": duration,
+                "teacher_ids": teacher_ids,
+                "content_type": "homework",
+                "grade_type": grade_type,
+                "name": name,
+                "name_client": name_client,
+                "activity_category_id": activity_category_id,
+                "description": description,
+                "inspector_ids": inspector_ids,
+                "archive_uuid": archive_uuid,
+                "cover_uuid": cover_uuid,
+                "sub_files_uuids": sub_files_uuids
+            },
+            "includes": {
+                "archive": [],
+                "image": [],
+                "spreadsheet": [],
+                "video": [],
+                "pdf": [],
+                "document": [],
+                "offline": [],
+                "webinar": [],
+                "cover": [],
+                "sub_files": []
+            }
+        }
+    }
+
+def generate_homework_ten_point_payload(
+    name: str = None,
+    name_client: str = None,
+    description: str = None,
+    duration: str = "10",
+    activity_category_id: int = 10,
+    teacher_ids: list = None,
+    inspector_ids: list = None,
+    cover_uuid: str = "",
+    archive_uuid: str = "",
+    sub_files_uuids: list = None,
+) -> dict:
+    """Генерация payload для 10‑балльного практического задания."""
+    if not name:
+        timestamp = int(time.time() * 1000)
+        name = f"Автотест_ПР_10баллов_{timestamp}"
+    if not name_client:
+        ts = int(time.time() * 1000)
+        name_client = f"Автотест_ПР_10баллов_внешка_{ts}"
+    if not description:
+        description = "<p>Автотест_ПР_10баллов_описание</p>"
+    if teacher_ids is None:
+        teacher_ids = [16]
+    if inspector_ids is None:
+        inspector_ids = [16]
+    if sub_files_uuids is None:
+        sub_files_uuids = []
+
+    return {
+        "data": {
+            "attributes": {
+                "inspectors": [],
+                "teachers": [],
+                "duration": duration,
+                "teacher_ids": teacher_ids,
+                "content_type": "homework",
+                "grade_type": "ten_point",       # <-- ключевое отличие
+                "name": name,
+                "name_client": name_client,
+                "activity_category_id": activity_category_id,
+                "description": description,
+                "inspector_ids": inspector_ids,
+                "archive_uuid": archive_uuid,
+                "cover_uuid": cover_uuid,
+                "sub_files_uuids": sub_files_uuids
+            },
+            "includes": {
+                "archive": [],
+                "image": [],
+                "spreadsheet": [],
+                "video": [],
+                "pdf": [],
+                "document": [],
+                "offline": [],
+                "webinar": [],
+                "cover": [],
+                "sub_files": []
+            }
+        }
+    }
+def generate_homework_pass_fail_payload(
+    name: str = None,
+    name_client: str = None,
+    description: str = None,
+    duration: str = "10",
+    activity_category_id: int = 10,
+    teacher_ids: list = None,
+    inspector_ids: list = None,
+    cover_uuid: str = "",
+    archive_uuid: str = "",
+    sub_files_uuids: list = None,
+) -> dict:
+    """Генерация payload для практического задания (зачёт/незачёт)."""
+    if not name:
+        timestamp = int(time.time() * 1000)
+        name = f"Автотест_ПР_зачёт_{timestamp}"
+    if not name_client:
+        ts = int(time.time() * 1000)
+        name_client = f"Автотест_ПР_зачёт_внешка_{ts}"
+    if not description:
+        description = "<p>Автотест_ПР_зачёт_описание</p>"
+    if teacher_ids is None:
+        teacher_ids = [16]
+    if inspector_ids is None:
+        inspector_ids = [16]
+    if sub_files_uuids is None:
+        sub_files_uuids = []
+
+    return {
+        "data": {
+            "attributes": {
+                "inspectors": [],
+                "teachers": [],
+                "duration": duration,
+                "teacher_ids": teacher_ids,
+                "content_type": "homework",
+                "grade_type": "pass_fail",       # <-- ключевое отличие
+                "name": name,
+                "name_client": name_client,
+                "activity_category_id": activity_category_id,
+                "description": description,
+                "inspector_ids": inspector_ids,
+                "archive_uuid": archive_uuid,
+                "cover_uuid": cover_uuid,
+                "sub_files_uuids": sub_files_uuids
+            },
+            "includes": {
+                "archive": [],
+                "image": [],
+                "spreadsheet": [],
+                "video": [],
+                "pdf": [],
+                "document": [],
+                "offline": [],
+                "webinar": [],
+                "cover": [],
+                "sub_files": []
             }
         }
     }

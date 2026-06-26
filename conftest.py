@@ -17,6 +17,8 @@ from api.endpoints.alpina import AlpinaEndpoint
 from api.endpoints.mif import MifEndpoint
 from api.endpoints.tests import TestsEndpoint
 from api.endpoints.polls import PollsEndpoint
+from api.endpoints.knowledge_base import KnowledgeBaseEndpoint
+from api.endpoints.homework import HomeworkEndpoint
 from api.helpers.data_generator import (
     generate_user_payload,
     generate_program_payload,
@@ -275,7 +277,7 @@ def browser():
 
 @pytest.fixture
 def page(browser):
-    context = browser.new_context(viewport={"width": 1920, "height": 1080})
+    context = browser.new_context(viewport={"width": 1366, "height": 768})
     page = context.new_page()
     yield page
     context.close()
@@ -436,11 +438,115 @@ def created_poll(api_client, polls_endpoint):
         return {
             "id": data["id"],
             "name": data["name"],
+            "name_client": data.get("name_client", data["name"]),
             "attributes": data
         }
 
     yield _create
 
+@pytest.fixture
+def knowledge_base_endpoint(api_client):
+    return KnowledgeBaseEndpoint(api_client)
+
+@pytest.fixture
+def created_material(api_client, knowledge_base_endpoint):
+    """Создаёт материал в базе знаний. НЕ удаляет после теста."""
+    def _create(**kwargs):
+        from api.helpers.data_generator import generate_material_payload
+        payload = generate_material_payload(**kwargs)
+        data = knowledge_base_endpoint.create_material(payload)
+        return {
+            "id": data["id"],
+            "name": data.get("name"),
+            "attributes": data
+        }
+    yield _create
+
+@pytest.fixture
+def created_material(api_client, knowledge_base_endpoint):
+    """Создаёт материал в базе знаний и удаляет после теста."""
+    material_ids = []
+
+    def _create(**kwargs):
+        from api.helpers.data_generator import generate_material_payload
+        payload = generate_material_payload(**kwargs)
+        data = knowledge_base_endpoint.create_material(payload)
+        material_ids.append(data["id"])
+        return {
+            "id": data["id"],
+            "name": data.get("name"),
+            "attributes": data
+        }
+
+    yield _create
+
+    # Автоочистка
+    if material_ids:
+        try:
+            knowledge_base_endpoint.delete_materials(material_ids)
+        except Exception as e:
+            logger.warning(f"Failed to delete materials {material_ids}: {e}")
+
+@pytest.fixture
+def homework_endpoint(api_client):
+    return HomeworkEndpoint(api_client)
+
+@pytest.fixture
+def created_homework(api_client, homework_endpoint):
+    """Создаёт практическое задание (homework). НЕ удаляет после теста."""
+    def _create(**kwargs):
+        from api.helpers.data_generator import generate_homework_payload
+        payload = generate_homework_payload(**kwargs)
+        data = homework_endpoint.create(payload)
+        return {
+            "id": data["id"],
+            "name": data["attributes"]["name"],
+            "name_client": data["attributes"]["name_client"],
+            "attributes": data["attributes"]
+        }
+    yield _create
+
+from api.endpoints.homework_ten_point import HomeworkTenPointEndpoint
+
+@pytest.fixture
+def homework_ten_point_endpoint(api_client):
+    return HomeworkTenPointEndpoint(api_client)
+
+@pytest.fixture
+def created_homework_ten_point(api_client, homework_ten_point_endpoint):
+    """Создаёт практическое задание (10‑балльное). НЕ удаляет после теста."""
+    def _create(**kwargs):
+        from api.helpers.data_generator import generate_homework_ten_point_payload
+        payload = generate_homework_ten_point_payload(**kwargs)
+        data = homework_ten_point_endpoint.create(payload)
+        return {
+            "id": data["id"],
+            "name": data["attributes"]["name"],
+            "name_client": data["attributes"]["name_client"],
+            "attributes": data["attributes"]
+        }
+    yield _create
+
+from api.endpoints.homework_pass_fail import HomeworkPassFailEndpoint
+
+@pytest.fixture
+def homework_pass_fail_endpoint(api_client):
+    return HomeworkPassFailEndpoint(api_client)
+
+@pytest.fixture
+def created_homework_pass_fail(api_client, homework_pass_fail_endpoint):
+    """Создаёт практическое задание (зачёт/незачёт). НЕ удаляет после теста."""
+    def _create(**kwargs):
+        from api.helpers.data_generator import generate_homework_pass_fail_payload
+        payload = generate_homework_pass_fail_payload(**kwargs)
+        data = homework_pass_fail_endpoint.create(payload)
+        return {
+            "id": data["id"],
+            "name": data["attributes"]["name"],
+            "name_client": data["attributes"]["name_client"],
+            "attributes": data["attributes"]
+        }
+    yield _create
 
 
 

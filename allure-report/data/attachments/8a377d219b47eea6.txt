@@ -1,0 +1,25 @@
+10:15:24 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:15:25 [INFO] Response [201]: {"data":{"id":211,"attributes":{"avatar":null,"name":"\u0421\u043e\u0444\u0438\u044f","surname":"\u0410\u043d\u0434\u0440\u0435\u0435\u0432\u0430","patronymic":"\u0410\u043b\u0435\u043a\u0441\u0430\u043d\u0434\u0440\u043e\u0432\u043d\u0430","email":"auto_test_1782198924918@gmail.com","phone_number":
+10:15:25 [INFO] User created: ID=211, email=auto_test_1782198924918@gmail.com
+10:15:25 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:15:26 [INFO] Response [201]: {"data":{"id":212,"attributes":{"avatar":null,"name":"\u0412\u0438\u043a\u0442\u043e\u0440","surname":"\u0410\u043d\u0434\u0440\u0435\u0435\u0432","patronymic":"\u041e\u043b\u0435\u0433\u043e\u0432\u0438\u0447","email":"auto_test_1782198925606@gmail.com","phone_number":null,"personal_phone_number":n
+10:15:26 [INFO] User created: ID=212, email=auto_test_1782198925606@gmail.com
+10:15:26 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:15:27 [INFO] Response [201]: {"data":{"id":213,"attributes":{"avatar":null,"name":"\u0410\u043b\u0451\u043d\u0430","surname":"\u0410\u043b\u0435\u043a\u0441\u0435\u0435\u0432\u0430","patronymic":"\u0421\u0435\u0440\u0433\u0435\u0435\u0432\u043d\u0430","email":"auto_test_1782198926448@gmail.com","phone_number":null,"personal_pho
+10:15:27 [INFO] User created: ID=213, email=auto_test_1782198926448@gmail.com
+10:15:27 [INFO] Пользователь: ID=211
+10:15:27 [INFO] Пользователь: ID=212
+10:15:27 [INFO] Пользователь: ID=213
+10:15:57 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/external/cas/sync/users
+10:15:57 [INFO] Response [200]: {"data":[{"user_id":211,"sync_status":"pending","cas_uuid":null},{"user_id":212,"sync_status":"pending","cas_uuid":null},{"user_id":213,"sync_status":"pending","cas_uuid":null}]}
+10:15:57 [INFO] CAS bulk sync completed: 3 users
+10:15:57 [INFO] Массовая синхронизация выполнена
+10:15:57 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/211
+10:15:58 [INFO] Response [200]: {"data":{"status":"success"}}
+10:15:58 [INFO] User deleted: ID=211
+10:15:58 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/212
+10:15:59 [INFO] Response [200]: {"data":{"status":"success"}}
+10:15:59 [INFO] User deleted: ID=212
+10:15:59 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/213
+10:15:59 [INFO] Response [200]: {"data":{"status":"success"}}
+10:15:59 [INFO] User deleted: ID=213

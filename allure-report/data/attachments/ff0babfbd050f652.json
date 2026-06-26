@@ -1,0 +1,16 @@
+[
+  {
+    "id": 67,
+    "status": "dismissed",
+    "data": {
+      "stream_id": 98,
+      "user_id": 210,
+      "dismissed_text": "Причина отчисления",
+      "dismissed_link": "https://example.com/dismiss",
+      "enlisted_text": null,
+      "enlisted_link": null,
+      "cas_document_link": null,
+      "cas_application_uid": "a1111111-bbbb-cccc-dddd-eeeeeeeeeee1"
+    }
+  }
+]

@@ -1,0 +1,10 @@
+10:12:53 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs
+10:12:54 [INFO] Response [201]: {"data":{"id":116,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_g
+10:12:54 [INFO] Program created: ID=116, name=API-test_1782198773467
+10:12:54 [INFO] Программа создана: ID=116
+10:12:54 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/116/streams
+10:12:54 [INFO] Response [422]: {"message":"\u041f\u043e\u043b\u0435 \u0410\u043a\u0430\u0434\u0435\u043c\u0438\u0447\u0435\u0441\u043a\u0438\u0439 \u0434\u0438\u0440\u0435\u043a\u0442\u043e\u0440 \u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u044b \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u043e \u0434\u043b\
+10:12:54 [INFO] ✓ Пустые academic_directors отклонены: статус 422
+10:12:54 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+10:12:55 [INFO] Response [200]: {"data":{"status":"success"}}
+10:12:55 [INFO] Programs mass deleted: IDs=[116]

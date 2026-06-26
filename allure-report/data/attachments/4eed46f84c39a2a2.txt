@@ -1,0 +1,22 @@
+10:11:05 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:11:05 [INFO] Response [201]: {"data":{"id":194,"attributes":{"avatar":null,"name":"\u0421\u0442\u0435\u043f\u0430\u043d","surname":"\u0421\u0435\u043c\u0451\u043d\u043e\u0432","patronymic":"\u041f\u0430\u0432\u043b\u043e\u0432\u0438\u0447","email":"auto_test_1782198665009@gmail.com","phone_number":null,"personal_phone_number":n
+10:11:05 [INFO] User created: ID=194, email=auto_test_1782198665009@gmail.com
+10:11:05 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs
+10:11:06 [INFO] Response [201]: {"data":{"id":86,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_gl
+10:11:06 [INFO] Program created: ID=86, name=API-test_1782198665710
+10:11:06 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/86/streams
+10:11:07 [INFO] Response [201]: {"data":{"id":68,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["stream.read","stream.edit","stream.delete","stream.convert_to_global
+10:11:07 [INFO] Stream created: ID=68, name=API_stream_1782198666382
+10:11:07 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/86/streams/68/assignments
+10:11:08 [INFO] Response [200]: {"data":{"status":"success"}}
+10:11:08 [INFO] Users assigned: [194] to stream 68
+10:11:08 [INFO] ✓ Пользователь 194 назначен в поток 68
+10:11:08 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/86/streams/68
+10:11:08 [INFO] Response [200]: {"data":{"status":"success"}}
+10:11:08 [INFO] Stream deleted: ID=68
+10:11:08 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+10:11:09 [INFO] Response [200]: {"data":{"status":"success"}}
+10:11:09 [INFO] Programs mass deleted: IDs=[86]
+10:11:09 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/users/194
+10:11:09 [INFO] Response [200]: {"data":{"status":"success"}}
+10:11:09 [INFO] User deleted: ID=194

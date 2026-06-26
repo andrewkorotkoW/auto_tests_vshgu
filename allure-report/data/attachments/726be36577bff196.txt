@@ -1,6 +1,0 @@
-[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/users
-[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":2026,"attributes":{"avatar":null,"name":"\u0418\u0432\u0430\u043d","surname":"\u041f\u0435\u0442\u0440\u043e\u0432","patronymic":"\u0410\u043b\u0435\u043a\u0441\u0435\u0435\u0432\u0438\u0447","email":"auto_test_1780465761740@gmail.com","phone_number":null,"personal_phone_number":null,"
-[32mINFO    [0m autotests:users.py:19 User created: ID=2026, email=auto_test_1780465761740@gmail.com
-[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/2026
-[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
-[32mINFO    [0m autotests:users.py:33 User deleted: ID=2026

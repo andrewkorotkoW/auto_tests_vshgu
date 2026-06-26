@@ -1,0 +1,2 @@
+10:13:03 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/users
+10:13:03 [INFO] Response [422]: {"message":"\u0412\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u0435 \u0434\u043b\u044f data.attributes.municipality id \u043d\u0435\u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u043e.","errors":{"data.attributes.municipality_id":["\u0412\u044b\u0431

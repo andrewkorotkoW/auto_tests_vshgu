@@ -1,6 +1,0 @@
-[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_ind.py:165 Кнопка 'Сохранить страницу' нажата
-[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_ind.py:219 ЛПД повторно открыт после обновления
-[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_ind.py:287 Анкета успешно пройдена после повторного входа
-[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_ind.py:310 Кнопка 'Отчет формируется' отображается и неактивна
-[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_ind.py:319 Очистка завершена
-[32mINFO    [0m autotests:test_ui_lpd_save_and_continue_ind.py:321 UI LPD Save & Continue (Ind) завершён!

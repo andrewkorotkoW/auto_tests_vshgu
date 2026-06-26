@@ -1,0 +1,4 @@
+[32mINFO    [0m autotests:client.py:47 PATCH https://global-develop.d2.devspark.ru/api/v1/admin/info-banner/toggle
+[32mINFO    [0m autotests:client.py:49 Response [200]: {"data":{"is_active":false,"message":"\u0422\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0440\u0430\u0431\u043e\u0442\u044b. \u0423\u0432\u0430\u0436\u0430\u0435\u043c\u044b\u0435 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0438! \u041d\u0430 \u043f\u043e\u0
+[32mINFO    [0m autotests:info_banner.py:14 Info banner toggled: is_active=False
+[32mINFO    [0m autotests:test_info_banner_api.py:24 Баннер выключен

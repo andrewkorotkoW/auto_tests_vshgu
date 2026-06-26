@@ -1,0 +1,15 @@
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:37 1. Программа создана: ID=52
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:52 2. Поток создан: ID=52
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:62 3. Модуль создан: ID=54
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:77 4. Пользователь создан: ID=312, email=e2e_2lpd_1782199019535@mail.com
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:83 5. Пользователь 312 назначен на поток 52
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:100 6a. LPD ANON создан: ID=676
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:106 6b. LPD ANON добавлен в модуль 54
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:118 6c. Пользователь 312 назначен на LPD ANON
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:100 6a. LPD AUTH создан: ID=677
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:106 6b. LPD AUTH добавлен в модуль 54
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:118 6c. Пользователь 312 назначен на LPD AUTH
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:131 7. Назначение снято: LPD=676
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:131 7. Назначение снято: LPD=677
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:142 8. Очистка данных завершена
+[32mINFO    [0m autotests:test_e2e_program_lpd_stage.py:145 E2E LPD Stage завершён!

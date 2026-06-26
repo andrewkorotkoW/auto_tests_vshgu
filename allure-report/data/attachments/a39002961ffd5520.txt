@@ -1,5 +1,0 @@
-15:26:41 [INFO] created_lpd kwargs: {'lpd_id': '1234578'}
-15:26:41 [INFO] LPD create payload lpd_id: 1234578
-15:26:41 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/content
-15:26:41 [INFO] Response [401]: {"message":"Unauthenticated."}
-15:26:41 [INFO] LPD RAW RESPONSE: {"message":"Unauthenticated."}

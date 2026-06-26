@@ -1,0 +1,23 @@
+{
+  "managerIds": [
+    {
+      "id": 1,
+      "is_visible": false
+    },
+    {
+      "id": 2,
+      "is_visible": false
+    },
+    {
+      "id": 3,
+      "is_visible": false
+    },
+    {
+      "id": 4,
+      "is_visible": false
+    }
+  ],
+  "dateFrom": "2026-06-23",
+  "dateTo": "2026-07-20",
+  "programId": 123
+}

@@ -1,3 +1,0 @@
-[32mINFO    [0m autotests:test_ui_lpd_stage.py:130 ЛПД 'UI_LPD_1781345858790' открыт
-[32mINFO    [0m autotests:test_ui_lpd_stage.py:142 URL после запуска: https://test-dp.ranepa.ru/ok/
-[32mINFO    [0m autotests:test_ui_lpd_stage.py:151 URL анкеты: https://test-dp.ranepa.ru/ok/konkurs/fe84f5ce-5689-4f5a-b820-bb8bbbe4680d/anketa/17/

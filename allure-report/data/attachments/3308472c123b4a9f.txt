@@ -1,0 +1,14 @@
+10:12:47 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs
+10:12:48 [INFO] Response [201]: {"data":{"id":113,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["program.read","program.edit","program.delete","program.convert_to_g
+10:12:48 [INFO] Program created: ID=113, name=API-test_1782198767625
+10:12:48 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/113/streams
+10:12:49 [INFO] Response [201]: {"data":{"id":89,"tenant":{"id":2,"name":"\u0413\u043b\u0430\u0432\u043d\u0430\u044f \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u044f \u0412\u0428\u0413\u0423","acronym":"\u0413\u041b\u0412\u041d"},"permissions":["stream.read","stream.edit","stream.delete","stream.convert_to_global
+10:12:49 [INFO] Stream created: ID=89, name=Кастомный поток
+10:12:49 [INFO] ✓ Название: Кастомный поток
+10:12:49 [INFO] ✓ Локация: Санкт-Петербург, Длительность: 200
+10:12:49 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/113/streams/89
+10:12:50 [INFO] Response [200]: {"data":{"status":"success"}}
+10:12:50 [INFO] Stream deleted: ID=89
+10:12:50 [INFO] DELETE https://portal-develop.d2.devspark.ru/api/v1/programs/mass-delete
+10:12:50 [INFO] Response [200]: {"data":{"status":"success"}}
+10:12:50 [INFO] Programs mass deleted: IDs=[113]

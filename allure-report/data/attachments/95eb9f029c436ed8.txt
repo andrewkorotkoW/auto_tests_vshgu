@@ -1,0 +1,6 @@
+10:12:55 [INFO] POST https://portal-develop.d2.devspark.ru/api/v1/programs/999999/streams
+10:12:55 [INFO] Response [404]: {
+    "message": "\u0422\u0430\u043a\u043e\u0439 \u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u044b \u043d\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442, programId: 999999",
+    "exception": "Symfony\\Component\\HttpKernel\\Exception\\NotFoundHttpException",
+    "file": "/sr
+10:12:55 [INFO] ✓ Несуществующая программа отклонена: статус 404

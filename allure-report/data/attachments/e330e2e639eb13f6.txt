@@ -1,0 +1,11 @@
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/users
+[32mINFO    [0m autotests:client.py:28 Response [201]: {"data":{"id":190,"attributes":{"avatar":null,"name":"\u0418\u0432\u0430\u043d","surname":"\u0421\u043c\u0438\u0440\u043d\u043e\u0432","patronymic":"\u0421\u0435\u0440\u0433\u0435\u0435\u0432\u0438\u0447","email":"auto_test_1782198652609@gmail.com","phone_number":null,"personal_phone_number":null,"p
+[32mINFO    [0m autotests:users.py:19 User created: ID=190, email=auto_test_1782198652609@gmail.com
+[32mINFO    [0m autotests:test_alpina_api.py:18 Пользователь: ID=190
+[32mINFO    [0m autotests:client.py:26 POST https://portal-develop.d2.devspark.ru/api/v1/alpina/setUserAlpinaStatus
+[32mINFO    [0m autotests:client.py:28 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:alpina.py:18 Alpina status set: users=[190], status=True
+[32mINFO    [0m autotests:test_alpina_api.py:22 Доступ открыт: {'data': {'status': 'success'}}
+[32mINFO    [0m autotests:client.py:40 DELETE https://portal-develop.d2.devspark.ru/api/v1/users/190
+[32mINFO    [0m autotests:client.py:42 Response [200]: {"data":{"status":"success"}}
+[32mINFO    [0m autotests:users.py:33 User deleted: ID=190
