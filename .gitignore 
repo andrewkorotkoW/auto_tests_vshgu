@@ -1,8 +1,0 @@
-__pycache__/
-*.pyc
-.env
-allure-results/
-allure-report/
-.idea/
-.pytest_cache/
-venv/"
