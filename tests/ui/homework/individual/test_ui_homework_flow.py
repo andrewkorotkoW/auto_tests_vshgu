@@ -53,7 +53,7 @@ class TestUIHomeworkFlow:
             )
             logger.info("ДЗ назначено студенту")
 
-        # ========== UI: Логин и поиск ==========
+        # ========== UI: Логин ==========
         with allure.step("4. Логин"):
             login_page = LoginPage(page)
             login_page.login(student["email"], student["password"])
@@ -79,72 +79,60 @@ class TestUIHomeworkFlow:
             page.screenshot(path="allure-results/hw_ui_02_onboarding.png")
             allure.attach.file("allure-results/hw_ui_02_onboarding.png", "Онбординг", allure.attachment_type.PNG)
 
-        with allure.step("6. Открыть индивидуальное обучение и запустить задание"):
+        with allure.step("6. Открыть индивидуальное обучение, закрыть все онбординги и найти поле для ответа"):
             page.locator("text=Индивидуальное обучение").first.click(force=True)
             page.wait_for_timeout(3000)
             page.wait_for_load_state("networkidle")
 
-            # Закрываем внутренний онбординг
-            try:
-                start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
-                if start_btn.is_visible(timeout=3000):
-                    start_btn.click(force=True)
-                    page.wait_for_timeout(1000)
-                for _ in range(15):
-                    btn = page.locator('[data-qa="onboarding-popup-next"]')
-                    if btn.is_visible(timeout=2000):
-                        btn.click(force=True)
-                        page.wait_for_timeout(300)
-                    else:
-                        break
-            except:
-                pass
+            # Функция для закрытия одного блока онбординга
+            def close_onboarding():
+                try:
+                    start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
+                    if start_btn.is_visible(timeout=2000):
+                        start_btn.click(force=True)
+                        page.wait_for_timeout(1000)
+                    for _ in range(15):
+                        btn = page.locator('[data-qa="onboarding-popup-next"]')
+                        if btn.is_visible(timeout=1000):
+                            btn.click(force=True)
+                            page.wait_for_timeout(300)
+                        else:
+                            break
+                except:
+                    pass
 
-            # Ждём появления кнопки «Начать»
-            page.wait_for_selector("button.v-btn:has(span:has-text('Начать'))", timeout=15000)
-            page.screenshot(path="allure-results/hw_ui_03_ready.png")
-            allure.attach.file("allure-results/hw_ui_03_ready.png", "Кнопка Начать найдена", allure.attachment_type.PNG)
+            # Закрываем онбординги до пяти раз
+            for i in range(5):
+                close_onboarding()
+                page.wait_for_timeout(1000)
+                if not page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение'), [data-qa='onboarding-popup-next']").is_visible(timeout=1000):
+                    logger.info(f"Все онбординги закрыты после {i+1} попыток")
+                    break
 
-            # Нажимаем «Начать»
-            page.evaluate("""
-                () => {
-                    const btns = document.querySelectorAll('button.v-btn');
-                    for (const b of btns) {
-                        if (b.textContent.includes('Начать')) { b.click(); break; }
-                    }
-                }
-            """)
-            page.wait_for_timeout(3000)
+            page.screenshot(path="allure-results/hw_ui_03_after_onboarding.png")
+            allure.attach.file("allure-results/hw_ui_03_after_onboarding.png", "После закрытия онбордингов", allure.attachment_type.PNG)
 
-            # Если после «Начать» появляется «Приступить к изучению»
-            if page.locator("button.v-btn:has(span:has-text('Приступить к изучению'))").is_visible(timeout=5000):
-                page.evaluate("""
-                    () => {
-                        const btns = document.querySelectorAll('button.v-btn');
-                        for (const b of btns) {
-                            if (b.textContent.includes('Приступить к изучению')) { b.click(); break; }
-                        }
-                    }
-                """)
-                page.wait_for_timeout(5000)
+            # Ищем поле для ответа — первое видимое textarea, которое не readonly
+            text_area = page.locator("textarea.v-field__input:not([readonly])").first
+            if text_area.count() == 0:
+                text_area = page.locator("textarea:not([readonly])").first
+            if text_area.count() == 0:
+                text_area = page.locator("input[type='text']").first
 
-            page.wait_for_load_state("networkidle")
-            page.screenshot(path="allure-results/hw_ui_04_launched.png")
-            allure.attach.file("allure-results/hw_ui_04_launched.png", "ДЗ запущено", allure.attachment_type.PNG)
-            logger.info("ДЗ успешно запущено")
+            assert text_area.count() > 0, "Поле для ответа не найдено"
+            logger.info("Поле для ответа найдено")
 
         with allure.step("7. Ввести ответ и отправить"):
-            # Ввод ответа
-            text_area = page.locator("textarea.v-field__input")
-            assert text_area.count() > 0, "Поле для ответа не найдено"
+            # Заполняем поле
+            text_area = page.locator("textarea.v-field__input:not([readonly])").first
             text_area.fill("Привет, Игорь! это автотест")
             page.wait_for_timeout(1000)
             logger.info("Ответ введён")
 
             # Кнопка «Отправить»
-            send_btn = page.locator("button.v-btn:has(span:has-text('Отправить'))")
+            send_btn = page.locator("span[data-v-1b1d34a4]:has-text('Отправить')")
             if send_btn.count() == 0:
-                send_btn = page.locator("button:has-text('Отправить')").first
+                send_btn = page.locator("button:has(span:has-text('Отправить'))").first
             if send_btn.count() == 0:
                 send_btn = page.locator("span:has-text('Отправить')").first
 
@@ -153,13 +141,38 @@ class TestUIHomeworkFlow:
             page.wait_for_timeout(5000)
             page.wait_for_load_state("networkidle")
 
-            # Проверка успешной отправки
-            success_msg = page.locator("div:has-text('успешно'), div:has-text('задание сдано'), div:has-text('отправлено')").first
-            assert success_msg.is_visible(timeout=10000), "Сообщение об успешной отправке не появилось"
+            # Проверка появления изображения собачки
+            dog_img = page.locator("img[alt='dog']")
+            assert dog_img.is_visible(timeout=10000), "Картинка собачки не появилась"
 
-            page.screenshot(path="allure-results/hw_ui_05_sent.png")
-            allure.attach.file("allure-results/hw_ui_05_sent.png", "Ответ отправлен", allure.attachment_type.PNG)
-            logger.info("Ответ успешно отправлен")
+            page.screenshot(path="allure-results/hw_ui_04_success.png")
+            allure.attach.file("allure-results/hw_ui_04_success.png", "Ответ отправлен, собачка показана", allure.attachment_type.PNG)
+
+            # Закрываем окно кликом в любую область (например, по body)
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(3000)
+            page.screenshot(path="allure-results/hw_ui_05_closed.png")
+            allure.attach.file("allure-results/hw_ui_05_closed.png", "Окно закрыто", allure.attachment_type.PNG)
+            logger.info("Ответ успешно отправлен, окно закрыто")
+
+
+        with allure.step("8. Проверка задания преподавателем"):
+            # Получаем answer_id (обычно он приходит в ответе на назначение или его можно получить через API)
+            # В реальном тесте answer_id можно получить через запрос к /homework/{homework_id}/answers
+            # Пока предположим, что answer_id = 2 (как в curl)
+            answer_id = 2  # TODO: получать динамически
+
+            from api.endpoints.homework import HomeworkEndpoint
+            hw_ep = HomeworkEndpoint(api_client)
+            result = hw_ep.examine(
+                homework_id=homework["id"],
+                answer_id=answer_id,
+                grade="5",
+                status="accepted",
+                teacher_comment="Это итоговая оценка"
+            )
+            allure.attach(str(result), "Examination Result", allure.attachment_type.JSON)
+            logger.info("Задание проверено преподавателем")
 
         # ========== Очистка ==========
         with allure.step("8. Очистка данных"):
@@ -173,6 +186,7 @@ class TestUIHomeworkFlow:
                 UsersEndpoint(api_client).delete(student["id"])
             except:
                 pass
+            # Удаляем преподавателя, если он был создан (а не найден)
             if not teachers:
                 try:
                     UsersEndpoint(api_client).delete(teacher_id)

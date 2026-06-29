@@ -51,3 +51,18 @@ class UsersEndpoint:
         logger.info(f"Found {len(users)} users after filtering")
         return users
 
+    def assign_roles(self, user_id: int, role_ids: list) -> Dict:
+        """Назначение ролей пользователю через PUT /access-roles."""
+        payload = {
+            "user_id": user_id,
+            "roles": role_ids
+        }
+        resp = self.client.put("/access-roles", json=payload)
+        assert resp.status_code in (200, 201), (
+            f"Assign roles failed: {resp.status_code} {resp.text}"
+        )
+        data = resp.json()
+        logger.info(f"Roles {role_ids} assigned to user {user_id}")
+        return data
+
+

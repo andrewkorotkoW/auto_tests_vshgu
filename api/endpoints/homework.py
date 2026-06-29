@@ -10,7 +10,7 @@ class HomeworkEndpoint:
         self.client = client
 
     def create(self, payload: dict) -> Dict:
-        """Создание практического задания. Возвращает данные созданного задания."""
+        """Создание практического задания."""
         resp = self.client.post("/content", json=payload)
         assert resp.status_code in (200, 201), (
             f"Homework create failed: {resp.status_code} {resp.text}"
@@ -20,11 +20,11 @@ class HomeworkEndpoint:
         return data
 
     def delete(self, content_id: int) -> bool:
-        """Удаление одного практического задания."""
+        """Удаление одного задания."""
         return self.mass_delete([content_id])
 
     def mass_delete(self, content_ids: list) -> bool:
-        """Массовое удаление практических заданий."""
+        """Массовое удаление заданий."""
         payload = {
             "data": {
                 "attributes": {
@@ -39,3 +39,22 @@ class HomeworkEndpoint:
         else:
             logger.warning(f"Homeworks delete failed: {resp.status_code}")
         return success
+
+    def examine(self, homework_id: int, answer_id: int, grade: str = "5",
+                status: int = 2, teacher_comment: str = "Это итоговая оценка") -> Dict:
+        """Проверка домашнего задания преподавателем."""
+        url = f"{self.client.base_url}/homework/{homework_id}/answers/{answer_id}/examination"
+        payload = {
+            "data": {
+                "attributes": {
+                    "grade": grade,
+                    "status": status,  # число, не строка
+                    "deadline": "",
+                    "teacher_comment": teacher_comment
+                }
+            }
+        }
+        resp = self.client.session.post(url, json=payload)
+        assert resp.status_code == 200, f"Examination failed: {resp.status_code} {resp.text}"
+        logger.info(f"Homework {homework_id} answer {answer_id} examined: status={status}")
+        return resp.json()
