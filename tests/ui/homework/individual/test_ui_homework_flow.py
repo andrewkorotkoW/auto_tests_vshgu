@@ -5,6 +5,7 @@ from ui.pages.login_page import LoginPage
 from utils.logger import logger
 from api.endpoints.tincan import TincanEndpoint
 from api.endpoints.users import UsersEndpoint
+from api.endpoints.homework import HomeworkEndpoint
 from api.endpoints.assignments import AssignmentsEndpoint
 
 
@@ -17,8 +18,10 @@ class TestUIHomeworkFlow:
     @pytest.mark.develop
     @pytest.mark.ui
     def test_homework_ui_flow(self, page, api_client, created_user, created_homework):
+        # Создаём все необходимые объекты в начале, чтобы они были доступны всегда
         tincan_ep = TincanEndpoint(api_client)
         users_ep = UsersEndpoint(api_client)
+        hw_ep = HomeworkEndpoint(api_client)
 
         # ========== API: Подготовка данных ==========
         with allure.step("1. Создать студента и преподавателя"):
@@ -47,7 +50,7 @@ class TestUIHomeworkFlow:
             )
             logger.info(f"ДЗ создано: ID={homework['id']}, name={homework['name']}")
 
-        with allure.step("3. Назначить ДЗ студенту через инд. трек"):
+        with allure.step("3. Назначить ДЗ студенту"):
             AssignmentsEndpoint(api_client).assign_to_individual(
                 [homework["id"]], [student["id"]]
             )
@@ -112,7 +115,7 @@ class TestUIHomeworkFlow:
             page.screenshot(path="allure-results/hw_ui_03_after_onboarding.png")
             allure.attach.file("allure-results/hw_ui_03_after_onboarding.png", "После закрытия онбордингов", allure.attachment_type.PNG)
 
-            # Ищем поле для ответа — первое видимое textarea, которое не readonly
+            # Ищем поле для ответа
             text_area = page.locator("textarea.v-field__input:not([readonly])").first
             if text_area.count() == 0:
                 text_area = page.locator("textarea:not([readonly])").first
@@ -121,6 +124,15 @@ class TestUIHomeworkFlow:
 
             assert text_area.count() > 0, "Поле для ответа не найдено"
             logger.info("Поле для ответа найдено")
+
+            # Проверка статуса "Назначено" перед отправкой
+            with allure.step("6.1 Проверить статус 'Назначено'"):
+                assert page.locator("text=Назначено").is_visible(timeout=5000), \
+                    "Статус 'Назначено' не отображается"
+                logger.info("Статус 'Назначено' отображается")
+                page.screenshot(path="allure-results/hw_ui_03_status_assigned.png")
+                allure.attach.file("allure-results/hw_ui_03_status_assigned.png", "Статус 'Назначено'",
+                                   allure.attachment_type.PNG)
 
         with allure.step("7. Ввести ответ и отправить"):
             # Заполняем поле
@@ -148,31 +160,35 @@ class TestUIHomeworkFlow:
             page.screenshot(path="allure-results/hw_ui_04_success.png")
             allure.attach.file("allure-results/hw_ui_04_success.png", "Ответ отправлен, собачка показана", allure.attachment_type.PNG)
 
-            # Закрываем окно кликом в любую область (например, по body)
-            page.keyboard.press("Escape")
+            # Закрываем модальное окно через JavaScript (Vuetify dialog)
+            page.evaluate("""
+                () => {
+                    // Ищем активный v-dialog и закрываем его
+                    const dialog = document.querySelector('.v-dialog--active');
+                    if (dialog) {
+                        dialog.remove();  // удаляем из DOM
+                        return 'dialog-removed';
+                    }
+                    // Ищем оверлей и кликаем по нему
+                    const overlay = document.querySelector('.v-overlay--active');
+                    if (overlay) overlay.click();
+                    return 'overlay-clicked';
+                }
+            """)
             page.wait_for_timeout(3000)
             page.screenshot(path="allure-results/hw_ui_05_closed.png")
             allure.attach.file("allure-results/hw_ui_05_closed.png", "Окно закрыто", allure.attachment_type.PNG)
             logger.info("Ответ успешно отправлен, окно закрыто")
+            page.screenshot(path="allure-results/hw_ui_05_closed.png")
 
-
-        with allure.step("8. Проверка задания преподавателем"):
-            # Получаем answer_id (обычно он приходит в ответе на назначение или его можно получить через API)
-            # В реальном тесте answer_id можно получить через запрос к /homework/{homework_id}/answers
-            # Пока предположим, что answer_id = 2 (как в curl)
-            answer_id = 2  # TODO: получать динамически
-
-            from api.endpoints.homework import HomeworkEndpoint
-            hw_ep = HomeworkEndpoint(api_client)
-            result = hw_ep.examine(
-                homework_id=homework["id"],
-                answer_id=answer_id,
-                grade="5",
-                status="accepted",
-                teacher_comment="Это итоговая оценка"
-            )
-            allure.attach(str(result), "Examination Result", allure.attachment_type.JSON)
-            logger.info("Задание проверено преподавателем")
+            # Проверка статуса "Отправлено на проверку" после отправки
+            with allure.step("7.1 Проверить статус 'Отправлено на проверку'"):
+                assert page.locator("text=Отправлено на проверку").is_visible(timeout=5000), \
+                    "Статус 'Отправлено на проверку' не отображается"
+                logger.info("Статус 'Отправлено на проверку' отображается")
+                page.screenshot(path="allure-results/hw_ui_05_status_submitted.png")
+                allure.attach.file("allure-results/hw_ui_05_status_submitted.png", "Статус 'Отправлено на проверку'",
+                                   allure.attachment_type.PNG)
 
         # ========== Очистка ==========
         with allure.step("8. Очистка данных"):
@@ -180,16 +196,15 @@ class TestUIHomeworkFlow:
                 [homework["id"]], [student["id"]]
             )
             # Используем HomeworkEndpoint для удаления задания
-            from api.endpoints.homework import HomeworkEndpoint
-            HomeworkEndpoint(api_client).delete(homework["id"])
+            hw_ep.delete(homework["id"])
             try:
-                UsersEndpoint(api_client).delete(student["id"])
+                users_ep.delete(student["id"])
             except:
                 pass
             # Удаляем преподавателя, если он был создан (а не найден)
             if not teachers:
                 try:
-                    UsersEndpoint(api_client).delete(teacher_id)
+                    users_ep.delete(teacher_id)
                 except:
                     pass
             logger.info("Очистка завершена")

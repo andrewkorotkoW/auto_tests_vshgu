@@ -58,3 +58,12 @@ class HomeworkEndpoint:
         assert resp.status_code == 200, f"Examination failed: {resp.status_code} {resp.text}"
         logger.info(f"Homework {homework_id} answer {answer_id} examined: status={status}")
         return resp.json()
+
+    def get_status(self, homework_id: int, user_id: int) -> str:
+        """Получить статус домашнего задания для пользователя."""
+        resp = self.client.get(f"/homework/{homework_id}/status/{user_id}")
+        assert resp.status_code == 200, f"Get status failed: {resp.status_code}"
+        data = resp.json().get("data", {})
+        status = data.get("attributes", {}).get("status") or data.get("status")
+        logger.info(f"Homework {homework_id} status for user {user_id}: {status}")
+        return status
