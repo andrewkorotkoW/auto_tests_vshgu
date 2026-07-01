@@ -1265,3 +1265,58 @@ def generate_certificate_template_payload(
         },
         "serial_prefix": serial_prefix,
     }
+def generate_scorm_payload(
+    name: str = None,
+    name_client: str = None,
+    description: str = None,
+    archive_uuid: str = "",
+    cover_uuid: str = "",
+    duration: str = "10",
+    activity_category_id: int = 10,
+) -> dict:
+    """Генерация payload для создания SCORM-курса (только архив, без sub-файлов)."""
+    if not name:
+        timestamp = int(time.time() * 1000)
+        name = f"Автотест_SCORM2004_{timestamp}"
+    if not name_client:
+        name_client = f"{name}_внешка"
+    if not description:
+        description = f"<p>{name}</p>"
+
+    return {
+        "data": {
+            "attributes": {
+                "inspectors": [],
+                "teachers": [],
+                "duration": duration,
+                "teacher_ids": [],
+                "content_type": "course-scorm",
+                "name": name,
+                "name_client": name_client,
+                "activity_category_id": activity_category_id,
+                "description": description,
+                "archive_uuid": archive_uuid,
+                "cover_uuid": cover_uuid,
+                "sub_files_uuids": []
+            },
+            "includes": {
+                "archive": [{
+                    "uuid": archive_uuid,
+                    "attributes": {
+                        "name": "test_lms_scorm_2004.zip",
+                        "type": "application/zip",
+                        "size": 811381
+                    }
+                }],
+                "image": [],
+                "spreadsheet": [],
+                "video": [],
+                "pdf": [],
+                "document": [],
+                "offline": [],
+                "webinar": [],
+                "cover": [],
+                "sub_files": []
+            }
+        }
+    }
