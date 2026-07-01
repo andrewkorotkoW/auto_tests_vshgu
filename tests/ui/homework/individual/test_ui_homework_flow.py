@@ -13,7 +13,7 @@ from api.endpoints.assignments import AssignmentsEndpoint
 @allure.story("Full Flow: Create → Assign → UI Launch → Submit Answer")
 class TestUIHomeworkFlow:
 
-    @allure.title("E2E Develop: Создать ДЗ, назначить, запустить и отправить ответ")
+    @allure.title("E2E Develop: Создать ДЗ, назначить, запустить и отправить ответ,")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.develop
     @pytest.mark.ui

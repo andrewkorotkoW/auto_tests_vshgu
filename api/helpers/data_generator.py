@@ -1232,3 +1232,36 @@ def generate_homework_pass_fail_payload(
             }
         }
     }
+def generate_certificate_template_payload(
+    name: str = None,
+    template_type: str = "program_stream",  # или "activity"
+    file_id: str = None,
+    config: str = "program3",  # зависит от типа
+    serial_prefix: str = None,
+) -> dict:
+    """Генерация payload для создания шаблона сертификата."""
+    ts = int(time.time() * 1000)
+    if not name:
+        name = f"Автотест_шаблон_сертификата_{ts}"
+    if not serial_prefix:
+        serial_prefix = str(ts)[-6:]  # уникальный префикс
+    if template_type == "activity":
+        config = "activity2"
+    return {
+        "file_id": file_id,
+        "name": name,
+        "type": template_type,
+        "config": config,
+        "marks": {
+            "userFio": True,
+            "duration": True,
+            "completionDate": True,
+            "activityName": True,
+            "programName": True,
+            "programPeriod": True,
+            "programScheduledItemsVisitsPercent": True,
+            "programCompletionPercent": True,
+            "serialNumber": True,
+        },
+        "serial_prefix": serial_prefix,
+    }

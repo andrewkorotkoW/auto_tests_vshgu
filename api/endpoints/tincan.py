@@ -149,3 +149,24 @@ class TincanEndpoint:
             logger.warning(f"Assign activities failed: {resp.status_code}")
         return success
 
+    def upload_certificate_file(self, file_path: str = "test_data/certificat.pdf") -> str:
+        """Загрузка PDF-файла для сертификата. Возвращает UUID."""
+        import subprocess
+        cookie_header = self.client.session.headers.get("Cookie", "")
+        if not cookie_header:
+            cookie_header = f"develop={self.client.session.cookies.get('develop')}"
+        base = self.client.base_url
+        result = subprocess.run([
+            "curl", "-s",
+            f"{base}/upload/certificate_template",
+            "-H", "Accept: application/json",
+            "-H", "X-Requested-With: XMLHttpRequest",
+            "-b", cookie_header,
+            "-F", f"file=@{file_path};type=application/pdf"
+        ], capture_output=True, text=True)
+        resp_json = __import__('json').loads(result.stdout)
+        data = resp_json.get("data", {})
+        if isinstance(data, list):
+            return data[0].get("uuid", "") if data else ""
+        return data.get("uuid", "")
+

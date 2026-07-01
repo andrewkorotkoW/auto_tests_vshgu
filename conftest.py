@@ -19,6 +19,7 @@ from api.endpoints.tests import TestsEndpoint
 from api.endpoints.polls import PollsEndpoint
 from api.endpoints.knowledge_base import KnowledgeBaseEndpoint
 from api.endpoints.homework import HomeworkEndpoint
+from api.endpoints.certificates import CertificatesEndpoint
 from api.helpers.data_generator import (
     generate_user_payload,
     generate_program_payload,
@@ -548,5 +549,27 @@ def created_homework_pass_fail(api_client, homework_pass_fail_endpoint):
         }
     yield _create
 
+@pytest.fixture
+def certificates_endpoint(api_client):
+    return CertificatesEndpoint(api_client)
 
+@pytest.fixture
+def created_template(api_client, certificates_endpoint):
+    """Создаёт шаблон сертификата и удаляет после теста."""
+    template_ids = []
+
+    def _create(**kwargs):
+        from api.helpers.data_generator import generate_certificate_template_payload
+        payload = generate_certificate_template_payload(**kwargs)
+        data = certificates_endpoint.create_template(payload)
+        template_ids.append(data["id"])
+        return data
+
+    yield _create
+
+    if template_ids:
+        try:
+            certificates_endpoint.delete_templates(template_ids)
+        except Exception as e:
+            logger.warning(f"Failed to delete templates {template_ids}: {e}")
 
