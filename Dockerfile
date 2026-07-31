@@ -11,6 +11,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . .
 
-ENTRYPOINT ["pytest"]
+# ENTRYPOINT ["pytest"]
 
-CMD ["-v", "--tb=short"]
+CMD ["pytest", "-v", "--tb=short"]
