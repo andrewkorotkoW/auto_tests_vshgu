@@ -1,6 +1,5 @@
 stage:
   - dockerize
-  - auto-test
 
 
 docker:build:
