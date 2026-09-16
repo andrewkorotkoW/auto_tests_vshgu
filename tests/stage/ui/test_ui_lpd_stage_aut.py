@@ -92,7 +92,7 @@ class TestUILpdStageAuth:
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
+                        page.wait_for_timeout(1000)
                     else:
                         break
             except:
@@ -110,7 +110,7 @@ class TestUILpdStageAuth:
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
+                        page.wait_for_timeout(1000)
                     else:
                         break
             except:

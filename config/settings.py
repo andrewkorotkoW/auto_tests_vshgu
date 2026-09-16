@@ -20,6 +20,9 @@ class Settings:
     STAGE_BASE_URL = os.getenv("STAGE_BASE_URL", "https://portal-stage.d7.devspark.ru/api/v1")
     STAGE_DEVELOP_COOKIE = os.getenv("STAGE_DEVELOP_COOKIE", "")
     STAGE_UI_BASE_URL = os.getenv("STAGE_UI_BASE_URL", "https://portal-stage.d7.devspark.ru")
+    LPD_JWT_TOKEN = os.getenv("LPD_JWT_TOKEN", "токен_по_умолчанию")
+    TEST_USER_EMAIL = os.getenv("admin3@org2.ru")
+    TEST_USER_PASSWORD = os.getenv("SecurePass123")
 
 
 settings = Settings()

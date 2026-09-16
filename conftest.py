@@ -357,9 +357,6 @@ def created_tincan(api_client, tincan_endpoint):
 def omt_cas_endpoint(api_client):
     return OmtCasEndpoint(api_client)
 
-from api.endpoints.external_cas import ExternalCasEndpoint
-
-
 @pytest.fixture
 def external_cas_endpoint():
     import requests
@@ -572,4 +569,13 @@ def created_template(api_client, certificates_endpoint):
             certificates_endpoint.delete_templates(template_ids)
         except Exception as e:
             logger.warning(f"Failed to delete templates {template_ids}: {e}")
+
+@pytest.fixture
+def stage_api_client():
+    """Клиент API для Stage окружения."""
+    from config.settings import settings
+    from api.client import ApiClient
+    client = ApiClient(cookie=settings.STAGE_DEVELOP_COOKIE, base_url=settings.STAGE_BASE_URL)
+    yield client
+
 
