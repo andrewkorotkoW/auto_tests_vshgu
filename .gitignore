@@ -10,3 +10,9 @@ allure-2.32.0/
 .pytest_cache/
 .idea/
 .vscode/
+
+# Allure run-папки
+allure-results-*/
+
+# Состояние авторизации (токены!)
+auth_state.json
