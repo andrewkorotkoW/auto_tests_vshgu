@@ -3,6 +3,7 @@ import random
 import string
 import time
 from typing import Tuple
+from config.settings import settings
 from .constants import (
     MALE_NAMES, FEMALE_NAMES,
     MALE_SURNAMES, FEMALE_SURNAMES,
@@ -666,7 +667,7 @@ def generate_external_content_payload(
                         "name": "cover.png",
                         "type": "image/png",
                         "size": 1174809,
-                        "url": f"https://portal-develop.d2.devspark.ru/static/covers/{cover_uuid}/cover.png",
+                        "url": f"{settings.UI_BASE_URL}/static/covers/{cover_uuid}/cover.png",
                         "created_at": "2026-05-26 16:58:41",
                         "update_at": "2026-05-26 16:58:41"
                     }

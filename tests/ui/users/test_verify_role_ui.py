@@ -1,6 +1,7 @@
 import allure
 import pytest
 from ui.pages.login_page import LoginPage
+from config.settings import settings
 from utils.logger import logger
 from api.endpoints.users import UsersEndpoint
 
@@ -23,9 +24,8 @@ class TestAdminVerifyRoleUI:
             logger.info("Роль teacher назначена")
 
         with allure.step("2. Логин под администратором"):
-            # Учётные данные админа (замени на свои или бери из .env)
-            admin_email = "admin3@org2.ru"
-            admin_password = "SecurePass123"
+            admin_email = settings.TEST_USER_EMAIL
+            admin_password = settings.TEST_USER_PASSWORD
             login_page = LoginPage(page)
             login_page.login(admin_email, admin_password)
             page.wait_for_timeout(3000)

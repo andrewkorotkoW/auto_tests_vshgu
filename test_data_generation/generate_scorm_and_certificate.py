@@ -6,7 +6,7 @@ import requests
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config.settings import settings
 
-BASE_URL = "https://portal-develop.d2.devspark.ru/api/v1"
+BASE_URL = settings.BASE_URL
 COOKIE_NAME = "develop"
 COOKIE_VALUE = settings.DEVELOP_COOKIE
 CAS_TOKEN = settings.CAS_AUTH_TOKEN

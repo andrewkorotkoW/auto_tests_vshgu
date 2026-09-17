@@ -2,6 +2,7 @@ import allure
 import pytest
 from ui.pages.login_page import LoginPage
 from ui.pages.admin_page import AdminPage
+from config.settings import settings
 from utils.logger import logger
 
 
@@ -82,7 +83,7 @@ class TestAdminCasListenersStatuses:
         # ========== UI ==========
         with allure.step("4. Логин и переход к Слушателям"):
             login_page = LoginPage(page)
-            login_page.login("admin3@org2.ru", "SecurePass123")
+            login_page.login(settings.TEST_USER_EMAIL, settings.TEST_USER_PASSWORD)
             page.wait_for_timeout(3000)
 
             admin_page = AdminPage(page)

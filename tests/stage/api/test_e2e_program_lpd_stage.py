@@ -21,9 +21,9 @@ class TestE2ELpdStage:
             "Accept": "application/json",
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
-            "Origin": "https://portal-stage.d7.devspark.ru"
+            "Origin": settings.STAGE_UI_BASE_URL
         })
-        base_url = settings.STAGE_BASE_URL or "https://portal-stage.d7.devspark.ru/api/v1"
+        base_url = settings.STAGE_BASE_URL
         ts = int(time.time() * 1000)
 
         # 1. Программа
@@ -109,7 +109,7 @@ class TestE2ELpdStage:
 
             # Назначить пользователя на ЛПД
             session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
-            session.headers["Referer"] = f"https://portal-stage.d7.devspark.ru/admin/programs/{prog_id}/streams/{stream_id}?i=1"
+            session.headers["Referer"] = f"{settings.STAGE_UI_BASE_URL}/admin/programs/{prog_id}/streams/{stream_id}?i=1"
             resp = session.post(
                 f"{base_url}/modules/{module_id}/contents/{lpd_id}/lpd/assignment?stream={stream_id}",
                 json={"users": [user_id]}
@@ -122,7 +122,7 @@ class TestE2ELpdStage:
         # 7. Снять назначения
         for lpd_id in lpd_ids:
             session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
-            session.headers["Referer"] = f"https://portal-stage.d7.devspark.ru/admin/programs/{prog_id}/streams/{stream_id}?i=1"
+            session.headers["Referer"] = f"{settings.STAGE_UI_BASE_URL}/admin/programs/{prog_id}/streams/{stream_id}?i=1"
             resp_detach = session.delete(
                 f"{base_url}/modules/{module_id}/contents/{lpd_id}/lpd/assignment?stream={stream_id}",
                 json={"users": [user_id]}
