@@ -24,7 +24,7 @@ class TestInfoBannerUI:
 
         with allure.step("3. Проверка баннера на странице входа"):
             page.goto(f"{settings.UI_BASE_URL}/auth/main")
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/banner_login_page.png")
             allure.attach.file("allure-results/banner_login_page.png", "Баннер на странице входа", allure.attachment_type.PNG)
             banner = page.locator("p.text")
@@ -40,7 +40,6 @@ class TestInfoBannerUI:
 
         with allure.step("5. Закрыть баннер по кнопке"):
             page.locator("svg.v-icon__svg").first.click()
-            page.wait_for_timeout(1000)
             banner = page.locator("div.v-alert__content")
             assert not banner.is_visible(timeout=3000), "Баннер не скрылся!"
 
@@ -50,7 +49,7 @@ class TestInfoBannerUI:
         with allure.step("7. Проверка на странице входа (баннер выключен)"):
             page.context.clear_cookies()
             page.goto(f"{settings.UI_BASE_URL}/auth/main")
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/banner_off_login.png")
             allure.attach.file("allure-results/banner_off_login.png", "Страница входа без баннера", allure.attachment_type.PNG)
             banner = page.locator("p.text")

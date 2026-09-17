@@ -2,6 +2,7 @@ import allure
 import pytest
 from ui.pages.login_page import LoginPage
 from ui.pages.tincan_page import TincanPage
+from config.settings import settings
 from utils.logger import logger
 
 
@@ -47,19 +48,15 @@ class TestUserTincanIndividualFlow:
                 if tincan_page.frame.locator("label.c-radio").first.is_visible(timeout=2000):
                     tincan_page.frame.locator("label.c-radio").first.click(force=True)
                     tincan_page.frame.locator("button:has-text('Ответить')").first.click(force=True)
-                    tincan_page.page.wait_for_timeout(500)
                     tincan_page.frame.locator("button:has-text('Далее')").first.click(force=True)
-                    tincan_page.page.wait_for_timeout(1000)
                     if tincan_page.frame.locator("div.navigation-button-item__title:has-text('Тестирование')").is_visible(timeout=2000):
                         tincan_page.frame.locator("div.navigation-button-item__title:has-text('Тестирование')").first.click(force=True)
-                        tincan_page.page.wait_for_timeout(1000)
                         tincan_page.frame.locator("button:has-text('Начать тест')").first.click(force=True)
-                        tincan_page.page.wait_for_timeout(1000)
                 else:
                     break
             if tincan_page.frame.locator("button:has-text('Продолжить обучение')").is_visible(timeout=3000):
                 tincan_page.frame.locator("button:has-text('Продолжить обучение')").first.click(force=True)
-                tincan_page.page.wait_for_timeout(1000)
+                tincan_page.page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             tincan_page.page.screenshot(path="allure-results/tincan_ind_completed.png")
             allure.attach.file("allure-results/tincan_ind_completed.png", "Курс пройден", allure.attachment_type.PNG)
 

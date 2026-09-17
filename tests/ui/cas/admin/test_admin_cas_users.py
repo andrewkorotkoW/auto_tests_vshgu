@@ -37,19 +37,18 @@ class TestAdminCasUsers:
         with allure.step("3. Логин под админом"):
             login_page = LoginPage(page)
             login_page.login(settings.TEST_USER_EMAIL, settings.TEST_USER_PASSWORD)
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
         with allure.step("4. Перейти в Базу Пользователей"):
             admin_page = AdminPage(page)
             admin_page.go_to_admin()
             page.locator("div.v-list-item__title:has-text('База Пользователей')").first.click(force=True)
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
         with allure.step("5. Найти пользователя по ФИО"):
             page.locator('[data-qa="km-search"]').fill(user_fio)
-            page.wait_for_timeout(1000)
             page.locator(f"text={user_fio}").first.click(force=True)
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/cas_admin_user.png")
             allure.attach.file("allure-results/cas_admin_user.png", "Пользователь КАС", allure.attachment_type.PNG)
 
@@ -76,12 +75,10 @@ class TestAdminCasUsers:
 
         with allure.step("7.2. Обновить страницу и проверить отсутствие синхронизации"):
             page.reload()
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             # Повторный поиск
             page.locator('[data-qa="km-search"]').fill(user_fio)
-            page.wait_for_timeout(1000)
             page.locator(f"text={user_fio}").first.click(force=True)
-            page.wait_for_timeout(2000)
 
             assert not page.locator("span.v-chip__content:has-text('Синхронизирован')").first.is_visible(
                 timeout=5000), "Синхронизация не снята!"

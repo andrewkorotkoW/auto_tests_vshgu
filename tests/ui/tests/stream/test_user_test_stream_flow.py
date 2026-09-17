@@ -64,12 +64,10 @@ class TestUserTestStreamFlow:
                 start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                 if start_btn.is_visible(timeout=3000):
                     start_btn.click(force=True)
-                    page.wait_for_timeout(1000)
                 for _ in range(15):
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -81,7 +79,6 @@ class TestUserTestStreamFlow:
             program_element = page.locator(f"text={program['name']}")
             assert program_element.is_visible(timeout=5000), f"Программа '{program['name']}' не отображается"
             program_element.first.click(force=True)
-            page.wait_for_timeout(2000)
             logger.info(f"Программа '{program['name']}' открыта")
 
             # Онбординг внутри программы
@@ -90,7 +87,6 @@ class TestUserTestStreamFlow:
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -101,7 +97,6 @@ class TestUserTestStreamFlow:
             test_element = page.locator(f"text={test_data['name']}")
             assert test_element.is_visible(timeout=5000), f"Тест '{test_data['name']}' не отображается"
             test_element.first.click(force=True)
-            page.wait_for_timeout(2000)
 
             start_button = page.locator("span:has-text('Начать')")
             assert start_button.is_visible(timeout=5000), "Кнопка 'Начать' не отображается"

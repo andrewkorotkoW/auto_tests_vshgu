@@ -1,6 +1,7 @@
 import allure
 import pytest
 from ui.pages.login_page import LoginPage
+from config.settings import settings
 from utils.logger import logger
 
 
@@ -24,7 +25,7 @@ class TestUserCookieBanner:
         with allure.step("2. Логин"):
             login_page = LoginPage(page)
             login_page.login(user["email"], user["password"])
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/cookie_banner_01_login.png")
             allure.attach.file("allure-results/cookie_banner_01_login.png", "Логин", allure.attachment_type.PNG)
 
@@ -33,12 +34,10 @@ class TestUserCookieBanner:
                 start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                 if start_btn.is_visible(timeout=3000):
                     start_btn.click(force=True)
-                    page.wait_for_timeout(1000)
                 for _ in range(15):
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -48,7 +47,6 @@ class TestUserCookieBanner:
                                allure.attachment_type.PNG)
 
         with allure.step("4. Найти cookie-баннер"):
-            page.wait_for_timeout(2000)
             banner = page.locator("div:has-text('Мы используем файлы cookie')").first
             if banner.count() == 0:
                 banner = page.locator("[data-qa='cookie-banner'], .cookie-banner, #cookie-banner").first
@@ -68,7 +66,6 @@ class TestUserCookieBanner:
                 policy_link.click(force=True)
             new_page = new_page_info.value
             new_page.wait_for_load_state("networkidle")
-            new_page.wait_for_timeout(3000)
             new_page.screenshot(path="allure-results/cookie_banner_04_policy.png")
             allure.attach.file("allure-results/cookie_banner_04_policy.png", "Страница политики",
                                allure.attachment_type.PNG)
@@ -83,7 +80,7 @@ class TestUserCookieBanner:
                 accept_btn = page.locator("span:has-text('Принимаю'), span:has-text('Принять')").first
             assert accept_btn.is_visible(timeout=5000), "Кнопка 'Принимаю' не найдена"
             accept_btn.click(force=True)
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/cookie_banner_05_accepted.png")
             allure.attach.file("allure-results/cookie_banner_05_accepted.png", "Cookie приняты",
                                allure.attachment_type.PNG)

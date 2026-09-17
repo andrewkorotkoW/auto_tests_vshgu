@@ -1,9 +1,9 @@
 import allure
 import pytest
-import time
 from ui.pages.login_page import LoginPage
 from ui.pages.test_page import TestPage
 from api.endpoints.tincan import TincanEndpoint
+from config.settings import settings
 from utils.logger import logger
 
 
@@ -49,7 +49,7 @@ class TestUIPollFlow:
         with allure.step("3. Логин"):
             login_page = LoginPage(page)
             login_page.login(user["email"], user["password"])
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/poll_ui_01_login.png")
             allure.attach.file("allure-results/poll_ui_01_login.png", "Логин", allure.attachment_type.PNG)
 
@@ -59,12 +59,10 @@ class TestUIPollFlow:
                 start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                 if start_btn.is_visible(timeout=3000):
                     start_btn.click(force=True)
-                    page.wait_for_timeout(1000)
                 for _ in range(15):
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -74,7 +72,7 @@ class TestUIPollFlow:
 
         with allure.step("5. Индивидуальное обучение → найти опрос"):
             page.locator("text=Индивидуальное обучение").first.click(force=True)
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             # Возможный онбординг внутри
             try:
@@ -82,7 +80,6 @@ class TestUIPollFlow:
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -118,7 +115,7 @@ class TestUIPollFlow:
                 start_btn = page.locator("button.v-btn:has(span:has-text('Начать'))").first
                 start_btn.click(force=True)
 
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/poll_ui_04_launched.png")
             allure.attach.file("allure-results/poll_ui_04_launched.png", "Опрос запущен", allure.attachment_type.PNG)
             logger.info("Кнопка «Начать» нажата")
@@ -134,7 +131,6 @@ class TestUIPollFlow:
                     if radio_wrappers.count() > 0:
                         # Кликаем по первой доступной радио-кнопке (обёртке)
                         radio_wrappers.first.click(force=True)
-                        page.wait_for_timeout(500)
                     else:
                         # Запасной вариант: ищем чекбоксы
                         try:
@@ -149,7 +145,6 @@ class TestUIPollFlow:
                         "button:has-text('Далее'), span:has-text('Далее'), button:has-text('Ответить')").first
                     if next_btn.is_visible(timeout=3000):
                         next_btn.click(force=True)
-                        page.wait_for_timeout(1500)
                     else:
                         break
 

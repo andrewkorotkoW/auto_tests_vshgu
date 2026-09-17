@@ -26,7 +26,7 @@ class TestAosPublicLink:
         with allure.step("2. Открыть публичную ссылку"):
             page.context.clear_cookies()  # убрать все куки, чтобы точно быть анонимом
             page.goto(public_url)
-            page.wait_for_timeout(5000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/aos_public_opened.png")
             allure.attach.file("allure-results/aos_public_opened.png", "АОС по публичной ссылке", allure.attachment_type.PNG)
 
@@ -35,7 +35,6 @@ class TestAosPublicLink:
             aos_page = AosPage(page)
             # Используем готовый метод для запуска анкеты (без открытия программы)
             aos_page.launch_questionnaire()  # если такого метода нет, просто дважды кликнем «Начать»
-            page.wait_for_timeout(2000)
 
         # 5. Пройти вопросы (используем те же универсальные методы)
         with allure.step("4. Пройти вопросы"):
@@ -59,7 +58,7 @@ class TestAosPublicLink:
 
         # 6. Финальный скриншот
         with allure.step("5. Скриншот результата"):
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/aos_public_completed.png")
             allure.attach.file("allure-results/aos_public_completed.png", "АОС пройдена публично", allure.attachment_type.PNG)
             logger.info("Публичное прохождение АОС успешно!")

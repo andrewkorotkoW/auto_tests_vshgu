@@ -9,21 +9,19 @@ class LpdPage(BasePage):
 
     def start_lpd(self):
         """Открыть LPD через индивидуальное обучение."""
-        self.click("text=Индивидуальное обучение")
-        self.page.wait_for_timeout(1000)
+        self.click_and_wait("text=Индивидуальное обучение")
         self.complete_program_onboarding()
-        self.click("text=ЛПД")
-        self.page.wait_for_timeout(1000)
+        self.click_and_wait("text=ЛПД")
         self.complete_program_onboarding()
         # Клик по первому LPD в списке
-        self.page.locator("span:has-text('ЛПД'), .lpd-item, .content-item").first.click()
-        self.page.wait_for_timeout(1000)
-        self.page.locator("span:has-text('Начать')").first.click()
+        lpd_item = self.page.locator("span:has-text('ЛПД'), .lpd-item, .content-item").first
+        start_btn = self.page.locator("span:has-text('Начать')").first
+        self.click_and_wait(lpd_item, wait_for=start_btn)
+        start_btn.click()
 
     def start_stream_lpd(self, program_name: str):
         """Открыть LPD через программу (поток)."""
-        self.page.locator(f"span:has-text('{program_name}')").first.click()
-        self.page.wait_for_timeout(2000)
+        self.click_and_wait(self.page.locator(f"span:has-text('{program_name}')").first)
         self.page.screenshot(path="allure-results/lpd_stream_inside.png")
         self.complete_program_onboarding()
 
@@ -31,12 +29,10 @@ class LpdPage(BasePage):
     def complete_program_onboarding(self):
         """Пройти онбординг."""
         try:
-            self.page.wait_for_timeout(2000)
             for _ in range(25):
                 btn = self.page.locator('[data-qa="onboarding-popup-next"]')
                 if btn.is_visible(timeout=2000):
                     btn.click(force=True)
-                    self.page.wait_for_timeout(500)
                 else:
                     break
             if self.page.locator("text=Завершить").first.is_visible(timeout=2000):

@@ -24,6 +24,7 @@ class TestExternalCasSyncUsersAPI:
 
         with allure.step("2. Синхронизировать пользователя"):
             import time
+            # Ожидание без условия: индексация нового пользователя перед синхронизацией с CAS без статус-эндпоинта.
             time.sleep(20)
             sync_payload = generate_cas_sync_payload()
             logger.info(f"sync_payload cas_uuid: {sync_payload.get('cas_uuid')}")

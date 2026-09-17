@@ -29,7 +29,6 @@ class TestAlpinaFlow:
         # ========== UI ==========
         with allure.step("3. Логин и проверка кнопки Альпины"):
             login_page.login(user["email"], user["password"])
-            page.wait_for_timeout(3000)
 
             alpina_btn = page.locator("span.nav-item__text:has-text('Альпина')").first
             assert alpina_btn.is_visible(timeout=5000), "Кнопка Альпины не отображается!"
@@ -55,7 +54,6 @@ class TestAlpinaFlow:
             page.goto(f"{settings.UI_BASE_URL}/auth/main")
             page.wait_for_load_state("networkidle")
             login_page.login(user["email"], user["password"])
-            page.wait_for_timeout(3000)
 
             alpina_btn = page.locator("span.nav-item__text:has-text('Альпина')").first
             assert not alpina_btn.is_visible(timeout=3000), "Кнопка Альпины всё ещё видна!"

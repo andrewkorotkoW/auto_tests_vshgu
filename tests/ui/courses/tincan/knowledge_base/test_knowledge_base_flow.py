@@ -2,6 +2,7 @@ import allure
 import pytest
 import time
 from ui.pages.login_page import LoginPage
+from config.settings import settings
 from utils.logger import logger
 from api.endpoints.tincan import TincanEndpoint
 from api.endpoints.knowledge_base import KnowledgeBaseEndpoint
@@ -57,7 +58,7 @@ class TestKnowledgeBaseFlow:
         with allure.step("4. Логин"):
             login_page = LoginPage(page)
             login_page.login(user["email"], user["password"])
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/kb_ui_01_login.png")
             allure.attach.file("allure-results/kb_ui_01_login.png", "Логин", allure.attachment_type.PNG)
 
@@ -66,12 +67,10 @@ class TestKnowledgeBaseFlow:
                 start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                 if start_btn.is_visible(timeout=3000):
                     start_btn.click(force=True)
-                    page.wait_for_timeout(1000)
                 for _ in range(15):
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -86,19 +85,17 @@ class TestKnowledgeBaseFlow:
                 kb_tab = page.locator("a:has-text('База знаний'), span:has-text('База знаний')").first
             assert kb_tab.count() > 0, "Вкладка 'База знаний' не найдена"
             kb_tab.first.click(force=True)
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             # Онбординг внутри Базы знаний (такие же шаги, как в основном)
             try:
                 start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                 if start_btn.is_visible(timeout=3000):
                     start_btn.click(force=True)
-                    page.wait_for_timeout(1000)
                 for _ in range(15):
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -113,7 +110,7 @@ class TestKnowledgeBaseFlow:
                 catalog_btn = page.locator("button:has-text('Каталог')").first
             assert catalog_btn.count() > 0, "Кнопка 'Каталог' не найдена"
             catalog_btn.click(force=True)
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             page.screenshot(path="allure-results/kb_ui_03_kb_catalog.png")
             allure.attach.file("allure-results/kb_ui_03_kb_catalog.png", "Каталог Базы знаний",
@@ -128,7 +125,7 @@ class TestKnowledgeBaseFlow:
                 tag_link = page.locator("a.catalog-menu__list-item").first
             assert tag_link.count() > 0, "Пункт каталога не найден"
             tag_link.first.click(force=True)
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             page.screenshot(path="allure-results/kb_ui_03_kb_catalog_filtered.png")
             allure.attach.file("allure-results/kb_ui_03_kb_catalog_filtered.png", "Каталог отфильтрован", allure.attachment_type.PNG)
@@ -142,7 +139,7 @@ class TestKnowledgeBaseFlow:
                 material_card = page.locator(f"text={tincan_name_client}").first
             assert material_card.count() > 0, f"Материал '{tincan_name_client}' не найден в каталоге"
             material_card.click(force=True)
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             page.screenshot(path="allure-results/kb_ui_04_material_opened.png")
             allure.attach.file("allure-results/kb_ui_04_material_opened.png", "Страница материала",
@@ -185,8 +182,6 @@ class TestKnowledgeBaseFlow:
 
                 # Кликаем «Изучать»
                 study_btn.click(force=True)
-                page.wait_for_timeout(3000)
-
 
                 # Ждём появления кнопки «Приступить к изучению»
                 page.wait_for_selector("button.v-btn:has(span:has-text('Приступить к изучению'))", timeout=15000)
@@ -208,7 +203,6 @@ class TestKnowledgeBaseFlow:
                                     }
                                 }
                             """)
-                page.wait_for_timeout(8000)
                 page.wait_for_load_state("networkidle")
 
                 page.screenshot(path="allure-results/kb_ui_06_course_loaded.png")

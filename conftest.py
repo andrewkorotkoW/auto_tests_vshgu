@@ -59,6 +59,20 @@ def pytest_configure(config):
         raise pytest.UsageError(str(exc))
 
 
+def pytest_collection_modifyitems(config, items):
+    """Пропускает тесты с @pytest.mark.env(name), если запуск идёт не под тем окружением."""
+    run_env = config.getoption("--env")
+    for item in items:
+        marker = item.get_closest_marker("env")
+        if marker is None or not marker.args:
+            continue
+        required_env = marker.args[0]
+        if required_env != run_env:
+            item.add_marker(pytest.mark.skip(
+                reason=f"тест требует env={required_env}, запуск идёт с env={run_env}"
+            ))
+
+
 @pytest.fixture(scope="session")
 def env(request):
     """Окружение, выбранное флагом --env (по умолчанию develop)."""

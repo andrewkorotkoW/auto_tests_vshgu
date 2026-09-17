@@ -1,7 +1,7 @@
 import allure
 import pytest
-import time
 from ui.pages.login_page import LoginPage
+from config.settings import settings
 from utils.logger import logger
 from api.endpoints.tincan import TincanEndpoint
 from api.endpoints.users import UsersEndpoint
@@ -60,7 +60,7 @@ class TestUIHomeworkFlow:
         with allure.step("4. Логин"):
             login_page = LoginPage(page)
             login_page.login(student["email"], student["password"])
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/hw_ui_01_login.png")
             allure.attach.file("allure-results/hw_ui_01_login.png", "Логин", allure.attachment_type.PNG)
 
@@ -69,12 +69,10 @@ class TestUIHomeworkFlow:
                 start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                 if start_btn.is_visible(timeout=3000):
                     start_btn.click(force=True)
-                    page.wait_for_timeout(1000)
                 for _ in range(15):
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -84,7 +82,6 @@ class TestUIHomeworkFlow:
 
         with allure.step("6. Открыть индивидуальное обучение, закрыть все онбординги и найти поле для ответа"):
             page.locator("text=Индивидуальное обучение").first.click(force=True)
-            page.wait_for_timeout(3000)
             page.wait_for_load_state("networkidle")
 
             # Функция для закрытия одного блока онбординга
@@ -93,12 +90,10 @@ class TestUIHomeworkFlow:
                     start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                     if start_btn.is_visible(timeout=2000):
                         start_btn.click(force=True)
-                        page.wait_for_timeout(1000)
                     for _ in range(15):
                         btn = page.locator('[data-qa="onboarding-popup-next"]')
                         if btn.is_visible(timeout=1000):
                             btn.click(force=True)
-                            page.wait_for_timeout(300)
                         else:
                             break
                 except:
@@ -107,7 +102,6 @@ class TestUIHomeworkFlow:
             # Закрываем онбординги до пяти раз
             for i in range(5):
                 close_onboarding()
-                page.wait_for_timeout(1000)
                 if not page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение'), [data-qa='onboarding-popup-next']").is_visible(timeout=1000):
                     logger.info(f"Все онбординги закрыты после {i+1} попыток")
                     break
@@ -138,7 +132,6 @@ class TestUIHomeworkFlow:
             # Заполняем поле
             text_area = page.locator("textarea.v-field__input:not([readonly])").first
             text_area.fill("Привет, Игорь! это автотест")
-            page.wait_for_timeout(1000)
             logger.info("Ответ введён")
 
             # Кнопка «Отправить»
@@ -150,7 +143,6 @@ class TestUIHomeworkFlow:
 
             assert send_btn.count() > 0, "Кнопка «Отправить» не найдена"
             send_btn.click(force=True)
-            page.wait_for_timeout(5000)
             page.wait_for_load_state("networkidle")
 
             # Проверка появления изображения собачки
@@ -175,7 +167,10 @@ class TestUIHomeworkFlow:
                     return 'overlay-clicked';
                 }
             """)
-            page.wait_for_timeout(3000)
+            # Ждём, пока модалка/оверлей действительно исчезнут из DOM
+            page.locator(".v-dialog--active, .v-overlay--active").first.wait_for(
+                state="hidden", timeout=settings.UI_TIMEOUT
+            )
             page.screenshot(path="allure-results/hw_ui_05_closed.png")
             allure.attach.file("allure-results/hw_ui_05_closed.png", "Окно закрыто", allure.attachment_type.PNG)
             logger.info("Ответ успешно отправлен, окно закрыто")

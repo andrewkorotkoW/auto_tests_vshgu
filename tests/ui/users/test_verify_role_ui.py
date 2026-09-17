@@ -28,14 +28,13 @@ class TestAdminVerifyRoleUI:
             admin_password = settings.TEST_USER_PASSWORD
             login_page = LoginPage(page)
             login_page.login(admin_email, admin_password)
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/admin_role_ui_01_login.png")
             allure.attach.file("allure-results/admin_role_ui_01_login.png", "Логин админа", allure.attachment_type.PNG)
 
         with allure.step("3. Перейти в список пользователей"):
             # Открываем админку пользователей
             page.goto(f"{api_client.base_url.replace('/api/v1', '')}/admin/users")
-            page.wait_for_timeout(5000)
             page.wait_for_load_state("networkidle")
             page.screenshot(path="allure-results/admin_role_ui_02_user_list.png")
             allure.attach.file("allure-results/admin_role_ui_02_user_list.png", "Список пользователей", allure.attachment_type.PNG)
@@ -52,11 +51,7 @@ class TestAdminVerifyRoleUI:
             # Вводим полное имя (или email)
             full_name = f"{user['surname']} {user['name']}" if user.get('surname') else user['name']
             search_input.fill(full_name)
-
-            # Небольшая пауза, чтобы поиск отработал
-            page.wait_for_timeout(2000)
             page.keyboard.press("Enter")
-            page.wait_for_timeout(2000)
 
             # Ждём появления хотя бы одной строки в таблице (как признак, что поиск завершён)
             try:

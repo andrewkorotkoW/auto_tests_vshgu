@@ -25,7 +25,6 @@ class TestMifFlow:
 
         with allure.step("3. Логин и проверка кнопки MIF"):
             login_page.login(user["email"], user["password"])
-            page.wait_for_timeout(3000)
 
             mif_btn = page.locator("span.nav-item__text:has-text('МИФ')").first
             assert mif_btn.is_visible(timeout=6000), "Кнопка MIF не отображается!"
@@ -37,11 +36,13 @@ class TestMifFlow:
                 mif_btn.click(force=True)
             mif_page = new_page_info.value
             mif_page.wait_for_load_state("networkidle")
-            mif_page.wait_for_timeout(5000)
-
             # Проверить URL редиректа
             # Примечание: бесшовный OAuth-переход (gosedu → miflib) невозможен в Playwright
             # из-за кросс-доменных ограничений. Тест проверяет, что редирект инициирован.
+            try:
+                mif_page.wait_for_url(lambda url: "gosedu" in url or "miflib" in url, timeout=settings.UI_TIMEOUT)
+            except Exception:
+                pass
             assert "gosedu" in mif_page.url or "miflib" in mif_page.url, f"Неверный URL: {mif_page.url}"
             logger.info(f"MIF редирект: {mif_page.url}")
             mif_page.screenshot(path="allure-results/mif_02_page.png")
@@ -55,7 +56,6 @@ class TestMifFlow:
             page.goto(f"{settings.UI_BASE_URL}/auth/main")
             page.wait_for_load_state("networkidle")
             login_page.login(user["email"], user["password"])
-            page.wait_for_timeout(3000)
 
             assert not page.locator("span.nav-item__text:has-text('МИФ')").first.is_visible(timeout=3000), "Кнопка MIF всё ещё видна!"
             page.screenshot(path="allure-results/mif_03_no_access.png")
