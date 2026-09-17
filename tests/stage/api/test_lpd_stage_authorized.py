@@ -20,7 +20,7 @@ class TestLpdStage:
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest"
         })
-        base_url = settings.STAGE_BASE_URL or "https://portal-stage.d7.devspark.ru/api/v1"
+        base_url = settings.STAGE_BASE_URL
 
         name = f"Автотесты_ЛПД_Авторизиваны{int(time.time())}"
         payload = {

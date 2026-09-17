@@ -6,11 +6,12 @@ from utils.logger import logger
 class ApiClient:
     """Базовый клиент для API-запросов."""
 
-    def __init__(self, cookie: str = None, base_url: str = None, auth_token: str = None):
-        self.session = requests.Session()
+    def __init__(self, cookie: str = None, base_url: str = None, auth_token: str = None,
+                 session: requests.Session = None, cookie_name: str = "develop"):
+        self.session = session or requests.Session()
         if cookie:
             # Добавляем куку через заголовок
-            self.session.headers["Cookie"] = f"develop={cookie}"
+            self.session.headers["Cookie"] = f"{cookie_name}={cookie}"
         if auth_token:
             self.session.headers["Authorization"] = auth_token
         self.session.headers.update({

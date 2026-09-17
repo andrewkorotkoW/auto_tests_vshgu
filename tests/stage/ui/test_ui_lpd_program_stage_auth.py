@@ -21,10 +21,10 @@ class TestUILpdProgramStageAuth:
             "Accept": "application/json",
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
-            "Origin": "https://portal-stage.d7.devspark.ru"
+            "Origin": settings.STAGE_UI_BASE_URL
         })
-        base_url = settings.STAGE_BASE_URL or "https://portal-stage.d7.devspark.ru/api/v1"
-        ui_url = settings.STAGE_UI_BASE_URL or "https://portal-stage.d7.devspark.ru"
+        base_url = settings.STAGE_BASE_URL
+        ui_url = settings.STAGE_UI_BASE_URL
         ts = int(time.time() * 1000)
 
         # ========== API ==========
@@ -111,8 +111,8 @@ class TestUILpdProgramStageAuth:
 
         # 8. Активировать пользователя на ЛПД
         session.headers.update({
-            "Origin": "https://portal-stage.d7.devspark.ru",
-            "Referer": f"https://portal-stage.d7.devspark.ru/admin/programs/{prog_id}/streams/{stream_id}?i=1"
+            "Origin": settings.STAGE_UI_BASE_URL,
+            "Referer": f"{settings.STAGE_UI_BASE_URL}/admin/programs/{prog_id}/streams/{stream_id}?i=1"
         })
         resp_assign_user = session.post(
             f"{base_url}/modules/{mod_id}/contents/{lpd_id}/lpd/assignment?stream={stream_id}",

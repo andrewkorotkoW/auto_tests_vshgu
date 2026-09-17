@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from api.client import ApiClient
 from api.endpoints.users import UsersEndpoint
@@ -34,13 +36,57 @@ from api.helpers.data_generator import (
 
 )
 from config.settings import settings
+from config.environments import ENVIRONMENTS, ensure_prod_allowed, get_session, get_storage_state_path
 from utils.logger import logger
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--env",
+        action="store",
+        default=os.getenv("ENV", "develop"),
+        choices=list(ENVIRONMENTS.keys()),
+        help="Окружение для запуска тестов: develop, stage или prod",
+    )
+
+
+def pytest_configure(config):
+    env_name = config.getoption("--env")
+    markexpr = config.getoption("-m") or ""
+    try:
+        ensure_prod_allowed(env_name, markexpr)
+    except RuntimeError as exc:
+        raise pytest.UsageError(str(exc))
+
+
+@pytest.fixture(scope="session")
+def env(request):
+    """Окружение, выбранное флагом --env (по умолчанию develop)."""
+    return ENVIRONMENTS[request.config.getoption("--env")]
+
+
+@pytest.fixture(scope="session")
+def env_session(env):
+    """Авторизованная requests.Session для выбранного окружения (с кэшем в .cache/)."""
+    return get_session(env)
+
+
+@pytest.fixture(scope="session")
+def admin_session(env):
+    """Сессия администратора выбранного окружения."""
+    return get_session(env, role="admin")
+
+
+@pytest.fixture(scope="session")
+def user_session(env):
+    """Сессия обычного пользователя (слушателя) выбранного окружения."""
+    return get_session(env, role="user")
+
+
 @pytest.fixture(scope="function")
-def api_client():
-    """Клиент API — кука из .env."""
-    client = ApiClient(cookie=settings.DEVELOP_COOKIE)
+def api_client(env, env_session):
+    """Клиент API — сессия из фикстуры env (реальный логин или кэш, .env как fallback)."""
+    client = ApiClient(session=env_session, base_url=env.api_base_url, cookie_name=env.cookie_name)
     yield client
 
 
@@ -283,6 +329,32 @@ def page(browser):
     yield page
     context.close()
 
+
+def _authenticated_page(browser, env, role):
+    """Открывает страницу с уже применённым Playwright storage_state, полученным
+    из авторизованной requests.Session (см. config/environments.get_storage_state_path) —
+    без ручного логина через форму в каждом тесте."""
+    storage_state_path = get_storage_state_path(env, role=role)
+    context = browser.new_context(
+        viewport={"width": 1366, "height": 768},
+        storage_state=str(storage_state_path),
+    )
+    page = context.new_page()
+    yield page
+    context.close()
+
+
+@pytest.fixture
+def admin_page(browser, env):
+    """Страница Playwright, уже авторизованная под администратором окружения."""
+    yield from _authenticated_page(browser, env, "admin")
+
+
+@pytest.fixture
+def user_page(browser, env):
+    """Страница Playwright, уже авторизованная под обычным пользователем (слушателем)."""
+    yield from _authenticated_page(browser, env, "user")
+
 @pytest.fixture
 def onboarding_endpoint(api_client):
     return OnboardingEndpoint(api_client)
@@ -319,8 +391,8 @@ def created_lpd(api_client, lpd_endpoint):
             logger.warning(f"Failed to delete LPD {lpd_id}: {e}")
 
 @pytest.fixture
-def api_client_global():
-    client = ApiClient(cookie=settings.DEVELOP_COOKIE, base_url=settings.GLOBAL_BASE_URL)
+def api_client_global(env, env_session):
+    client = ApiClient(session=env_session, base_url=env.global_base_url, cookie_name=env.cookie_name)
     yield client
 
 @pytest.fixture
@@ -358,29 +430,33 @@ def omt_cas_endpoint(api_client):
     return OmtCasEndpoint(api_client)
 
 @pytest.fixture
-def external_cas_endpoint():
+def external_cas_endpoint(env, env_session):
     import requests
+    # Своя сессия (не общий env_session), чтобы не примешивать Authorization/Content-Type
+    # в остальные фикстуры, которые переиспользуют ту же (session-scope) сессию логина.
     session = requests.Session()
-    session.headers["Authorization"] = settings.CAS_AUTH_TOKEN  # без Bearer
+    session.cookies.update(env_session.cookies)
+    session.headers["Authorization"] = env.cas_auth_token  # без Bearer
     session.headers["Accept"] = "application/json"
     session.headers["Content-Type"] = "application/json"
-    session.cookies.set("develop", settings.DEVELOP_COOKIE)
 
     from api.endpoints.external_cas import ExternalCasEndpoint
     from api.client import ApiClient
-    client = ApiClient.__new__(ApiClient)
-    client.session = session
-    client.base_url = settings.BASE_URL
-    client.timeout = settings.REQUEST_TIMEOUT
+    client = ApiClient(session=session, base_url=env.api_base_url)
     return ExternalCasEndpoint(client)
 
 @pytest.fixture
-def external_system_client():
+def external_system_client(env, env_session):
+    import requests
     from api.client import ApiClient
+    # Своя сессия (не общий env_session), чтобы Authorization не примешивался
+    # в остальные фикстуры, которые переиспользуют ту же (session-scope) сессию логина.
+    session = requests.Session()
+    session.cookies.update(env_session.cookies)
     client = ApiClient(
-        cookie=settings.DEVELOP_COOKIE,
-        auth_token=settings.EXTERNAL_SYSTEM_CLIENT_TOKEN,
-        base_url=settings.BASE_URL
+        session=session,
+        auth_token=env.external_system_client_token,
+        base_url=env.api_base_url,
     )
     return client
 
@@ -572,10 +648,10 @@ def created_template(api_client, certificates_endpoint):
 
 @pytest.fixture
 def stage_api_client():
-    """Клиент API для Stage окружения."""
-    from config.settings import settings
-    from api.client import ApiClient
-    client = ApiClient(cookie=settings.STAGE_DEVELOP_COOKIE, base_url=settings.STAGE_BASE_URL)
+    """Клиент API для Stage окружения (сессия из реального логина или кэша, .env как fallback)."""
+    stage_env = ENVIRONMENTS["stage"]
+    session = get_session(stage_env)
+    client = ApiClient(session=session, base_url=stage_env.api_base_url, cookie_name=stage_env.cookie_name)
     yield client
 
 
