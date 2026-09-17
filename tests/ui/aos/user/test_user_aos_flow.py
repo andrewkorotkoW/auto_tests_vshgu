@@ -2,6 +2,7 @@ import allure
 import pytest
 from ui.pages.login_page import LoginPage
 from ui.pages.aos_page import AosPage
+from config.settings import settings
 from utils.logger import logger
 
 
@@ -47,7 +48,7 @@ class TestUserAosFlow:
             aos_page.start_aos(aos["program_name"])
 
         with allure.step("7. Вопрос 1"):
-            aos_page.page.wait_for_timeout(3000)
+            aos_page.page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             aos_page.answer_first_option()
             aos_page.click_answer()
             aos_page.click_next()
@@ -83,15 +84,12 @@ class TestUserAosFlow:
             aos_page.click_next()
 
         with allure.step("14. Вопрос 8 (текст)"):
-            aos_page.page.wait_for_timeout(1000)
             aos_page.answer_textarea("Автотест_8_вопрос")
             aos_page.click_answer()
             aos_page.click_next()
 
         with allure.step("15. Вопрос 9"):
-            aos_page.page.wait_for_timeout(1000)
             aos_page.page.locator("input[type='radio']").first.check(force=True)
-            aos_page.page.wait_for_timeout(500)
             aos_page.click_answer()
 
         with allure.step("16. Завершить АОС"):
@@ -106,18 +104,16 @@ class TestUserAosFlow:
         with allure.step("18. Повторный вход — вкладка не отображается после прохождения АОС"):
             page.context.clear_cookies()
             login_page.login(user["email"], user["password"])
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             # Снова открываем программу
             page.locator(f"span:has-text('{aos['program_name']}')").first.click()
-            page.wait_for_timeout(1000)
             # Проходим онбординг, если появился
             try:
                 for _ in range(10):
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=1000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:

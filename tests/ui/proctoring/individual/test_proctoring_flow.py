@@ -1,7 +1,7 @@
 import allure
 import pytest
-import time
 from ui.pages.login_page import LoginPage
+from config.settings import settings
 from utils.logger import logger
 from api.endpoints.tests import TestsEndpoint
 from api.endpoints.users import UsersEndpoint
@@ -53,7 +53,7 @@ class TestUIProctoringFlow:
         with allure.step("3. Логин"):
             login_page = LoginPage(page)
             login_page.login(student["email"], student["password"])
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/proctoring_ui_01_login.png")
             allure.attach.file("allure-results/proctoring_ui_01_login.png", "Логин", allure.attachment_type.PNG)
 
@@ -62,12 +62,10 @@ class TestUIProctoringFlow:
                 start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                 if start_btn.is_visible(timeout=3000):
                     start_btn.click(force=True)
-                    page.wait_for_timeout(1000)
                 for _ in range(15):
                     btn = page.locator('[data-qa="onboarding-popup-next"]')
                     if btn.is_visible(timeout=2000):
                         btn.click(force=True)
-                        page.wait_for_timeout(300)
                     else:
                         break
             except:
@@ -77,8 +75,7 @@ class TestUIProctoringFlow:
 
         with allure.step("5. Открыть индивидуальное обучение, найти тест и запустить в новой вкладке"):
             page.locator("text=Индивидуальное обучение").first.click(force=True)
-            page.wait_for_timeout(3000)
-            page.wait_for_load_state("networkidle")
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             # Закрываем возможные онбординги (до трёх)
             for _ in range(3):
@@ -86,17 +83,14 @@ class TestUIProctoringFlow:
                     start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
                     if start_btn.is_visible(timeout=3000):
                         start_btn.click(force=True)
-                        page.wait_for_timeout(1000)
                     for _ in range(15):
                         btn = page.locator('[data-qa="onboarding-popup-next"]')
                         if btn.is_visible(timeout=2000):
                             btn.click(force=True)
-                            page.wait_for_timeout(300)
                         else:
                             break
                 except:
                     pass
-                page.wait_for_timeout(2000)
 
             # Ищем название теста (внешнее имя)
             display_name = test.get("name_client", test["name"])
@@ -125,7 +119,6 @@ class TestUIProctoringFlow:
             # Переключаемся на новую вкладку
             new_page = new_page_info.value
             new_page.wait_for_load_state("networkidle")
-            new_page.wait_for_timeout(3000)
             new_page.screenshot(path="allure-results/proctoring_ui_04_new_tab.png")
             allure.attach.file("allure-results/proctoring_ui_04_new_tab.png", "Новая вкладка с тестом", allure.attachment_type.PNG)
             logger.info(f"Новая вкладка открыта: {new_page.url}")
@@ -138,14 +131,12 @@ class TestUIProctoringFlow:
                     radio = new_page.locator("input[type='radio']").first
                 if radio.count() > 0:
                     radio.click(force=True)
-                    new_page.wait_for_timeout(500)
 
                 next_btn = new_page.locator("button.v-btn:has(span:has-text('Следующий вопрос'))").first
                 if next_btn.count() == 0:
                     next_btn = new_page.locator("span.v-btn__content:has-text('Следующий вопрос')").first
                 if next_btn.is_visible(timeout=5000):
                     next_btn.click(force=True)
-                    new_page.wait_for_timeout(1500)
                 else:
                     break
 
@@ -158,7 +149,7 @@ class TestUIProctoringFlow:
                 finish_btn = new_page.locator("span.v-btn__content:has-text('Завершить')").first
             if finish_btn.is_visible(timeout=5000):
                 finish_btn.click(force=True)
-                new_page.wait_for_timeout(3000)
+                new_page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             new_page.screenshot(path="allure-results/proctoring_ui_06_finished.png")
             allure.attach.file("allure-results/proctoring_ui_06_finished.png", "Тест завершён", allure.attachment_type.PNG)
 

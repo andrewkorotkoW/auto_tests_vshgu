@@ -7,6 +7,9 @@ allure-results/
 allure-report/
 allure-history/
 allure-2.32.0/
+
+# Результаты scripts/run.sh|.bat: results/<env>/<timestamp>/, results/<env>/allure-history/, results/<env>/allure-report/
+results/
 .pytest_cache/
 .idea/
 .vscode/

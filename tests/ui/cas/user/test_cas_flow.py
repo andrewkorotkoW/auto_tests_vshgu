@@ -73,18 +73,15 @@ class TestCasFlow:
             allure.attach.file("allure-results/cas_02_region.png", "Регион выбран", allure.attachment_type.PNG)
 
         with allure.step("5. Онбординг"):
-            page.wait_for_timeout(2000)
             for btn_text in ["Пройти обучение", "Начать обучение", "Далее", "Продолжить"]:
                 btn = page.locator(f"button:has-text('{btn_text}')").first
                 if btn.is_visible(timeout=2000):
                     btn.click(force=True)
-                    page.wait_for_timeout(500)
                     break
             for _ in range(15):
                 btn = page.locator('[data-qa="onboarding-popup-next"]')
                 if btn.is_visible(timeout=2000):
                     btn.click(force=True)
-                    page.wait_for_timeout(300)
                 else:
                     break
             page.screenshot(path="allure-results/cas_03_onboarding.png")
@@ -92,14 +89,12 @@ class TestCasFlow:
 
         with allure.step("6. Перейти в ЛК"):
             page.locator("[data-onboarding-step='user-menu']").first.click(force=True)
-            page.wait_for_timeout(1000)
 
             # Кликаем ЛК — открывается новая вкладка
             with page.context.expect_page() as new_page_info:
                 region_page.go_to_lk()
             lk_page = new_page_info.value
             lk_page.wait_for_load_state("networkidle")
-            lk_page.wait_for_timeout(3000)
             lk_page.screenshot(path="allure-results/cas_04_lk.png")
             allure.attach.file("allure-results/cas_04_lk.png", "Личный кабинет", allure.attachment_type.PNG)
             logger.info("Перешли в Личный кабинет")
@@ -114,11 +109,9 @@ class TestCasFlow:
             page.context.clear_cookies()
             page.goto(f"{settings.UI_BASE_URL}/auth/main")
             page.wait_for_load_state("networkidle")
-            page.wait_for_timeout(2000)
             login_page.login(user_email, "SecurePass123")
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.locator("[data-onboarding-step='user-menu']").first.click(force=True)
-            page.wait_for_timeout(1000)
             page.screenshot(path="allure-results/cas_05_no_lk.png")
             allure.attach.file("allure-results/cas_05_no_lk.png", "ЛК отсутствует", allure.attachment_type.PNG)
             assert not page.locator("div.v-list-item-title:has-text('Личный кабинет обучающегося')").is_visible(timeout=3000)

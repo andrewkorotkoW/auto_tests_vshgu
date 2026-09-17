@@ -98,6 +98,7 @@ class TestExternalCasAssignAPI:
             logger.info(f"Назначение снято: {result}")
 
         import time
+        # Ожидание без условия: асинхронная обработка dismiss в CAS не имеет статус-эндпоинта для поллинга.
         time.sleep(60)
 
         with allure.step("6. Очистка"):

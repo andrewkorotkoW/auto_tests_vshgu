@@ -2,6 +2,7 @@ import allure
 import pytest
 from ui.pages.login_page import LoginPage
 from ui.pages.tincan_page import TincanPage
+from config.settings import settings
 from utils.logger import logger
 
 
@@ -54,39 +55,36 @@ class TestUserTincanFlow:
         with allure.step("8. Открыть курс и проверить данные"):
             tincan_page = TincanPage(page)
             tincan_page.start_tincan(program["name"])
-            tincan_page.page.wait_for_timeout(500)
 
         with allure.step("9. Пройти курс"):
             for i in range(30):
                 if tincan_page.frame.locator("label.c-radio").first.is_visible(timeout=2000):
                     tincan_page.answer_by_text("Ответ 1 верный")  # ← заменили
                     tincan_page.frame.locator("button:has-text('Ответить')").first.click(force=True)
-                    tincan_page.page.wait_for_timeout(500)
                     tincan_page.frame.locator("button:has-text('Далее')").first.click(force=True)
                     tincan_page.answer_by_text("Ответ 3 верный")
                     tincan_page.frame.locator("button:has-text('Ответить')").first.click(force=True)
                     tincan_page.frame.locator("button:has-text('Далее')").first.click(force=True)
-                    tincan_page.page.wait_for_timeout(10000)
+                    tincan_page.frame.locator("button:has-text('Продолжить обучение')").first.wait_for(
+                        state="visible", timeout=settings.UI_TIMEOUT
+                    )
                     tincan_page.frame.locator("button:has-text('Продолжить обучение')").first.click(force=True)
                     tincan_page.frame.locator("button:has-text('Начать тест')").first.click(force=True)
                     tincan_page.answer_by_text("Ответ 1")
                     tincan_page.frame.locator("button:has-text('Ответить')").first.click(force=True)
 
-
                     if tincan_page.frame.locator(
                             "div.navigation-button-item__title:has-text('Тестирование')").is_visible(timeout=2000):
                         tincan_page.frame.locator(
                             "div.navigation-button-item__title:has-text('Тестирование')").first.click(force=True)
-                        tincan_page.page.wait_for_timeout(1000)
                         tincan_page.frame.locator("button:has-text('Начать тест')").first.click(force=True)
-                        tincan_page.page.wait_for_timeout(1000)
                 else:
                     break
 
             # После цикла
             if tincan_page.frame.locator("button:has-text('Продолжить обучение')").is_visible(timeout=3000):
                 tincan_page.frame.locator("button:has-text('Продолжить обучение')").first.click(force=True)
-                tincan_page.page.wait_for_timeout(30000)
+                tincan_page.page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             tincan_page.page.screenshot(path="allure-results/tincan_completed.png")
             allure.attach.file("allure-results/tincan_completed.png", "Курс пройден", allure.attachment_type.PNG)

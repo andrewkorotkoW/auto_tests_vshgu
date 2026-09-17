@@ -9,46 +9,41 @@ class AosPage(BasePage):
 
     def open_program(self, program_name: str):
         """Открыть программу без запуска АОС."""
-        self.page.locator(f"span:has-text('{program_name}')").first.click()
-        self.page.wait_for_timeout(1000)
+        self.click_and_wait(self.page.locator(f"span:has-text('{program_name}')").first)
         self.complete_program_onboarding()
 
     def start_aos(self, program_name: str):
         # Открываем программу
-        self.page.locator(f"span:has-text('{program_name}')").first.click()
-        self.page.wait_for_timeout(1000)
+        self.click_and_wait(self.page.locator(f"span:has-text('{program_name}')").first)
         self.complete_program_onboarding()
 
         # Кликаем по вкладке «Анкета обратной связи»
-        self.page.locator("span:has-text('Анкета обратной связи')").first.click()
-        self.page.wait_for_timeout(2000)
+        self.click_and_wait(self.page.locator("span:has-text('Анкета обратной связи')").first)
 
         # Запускаем анкету
-        self.page.locator("span:has-text('Начать')").first.click()
-        self.page.wait_for_timeout(1000)
-        self.page.locator("span:has-text('Начать')").first.click()
+        start_btn = self.page.locator("span:has-text('Начать')").first
+        self.click_and_wait(start_btn)
+        start_btn.click()
 
     def complete_program_onboarding(self):
         """Пройти онбординг после клика по программе."""
         try:
-            self.page.wait_for_timeout(3000)
             for _ in range(25):
                 btn = self.page.locator('[data-qa="onboarding-popup-next"]')
                 if btn.is_visible(timeout=3000):
                     btn.click(force=True)
-                    self.page.wait_for_timeout(500)
                 else:
                     break
             if self.page.locator("text=Завершить").first.is_visible(timeout=2000):
                 self.page.locator("text=Завершить").first.click(force=True)
-                self.page.wait_for_timeout(500)
+                self.wait_loaded()
             logger.info("✅ Онбординг программы пройден")
         except Exception as e:
             logger.info(f"Онбординг программы: {e}")
 
     def answer_first_option(self):
         """Выбрать первый вариант ответа."""
-        self.page.wait_for_timeout(500)
+        self.wait_visible("label, .v-radio")
         # label
         label = self.page.locator("label").first
         if label.count() > 0:
@@ -77,20 +72,18 @@ class AosPage(BasePage):
 
     def click_finish(self):
         """Нажать Завершить в конце АОС."""
-        self.page.wait_for_timeout(1000)
         # Пробуем найти кнопку «Завершить» и кликнуть
         finish_btn = self.page.locator("button:has-text('Завершить')").first
         if finish_btn.is_visible(timeout=5000):
             finish_btn.click(force=True)
-            self.page.wait_for_timeout(1000)
         # Если есть второе окно подтверждения — ещё раз
         confirm_btn = self.page.locator("button:has-text('Завершить')").first
         if confirm_btn.is_visible(timeout=3000):
             confirm_btn.click(force=True)
-            self.page.wait_for_timeout(1000)
+            self.wait_loaded()
 
     def launch_questionnaire(self):
         """Запустить анкету, если программа уже открыта (или мы на странице плеера)."""
-        self.page.locator("span:has-text('Начать')").first.click()
-        self.page.wait_for_timeout(1000)
-        self.page.locator("span:has-text('Начать')").first.click()
+        start_btn = self.page.locator("span:has-text('Начать')").first
+        self.click_and_wait(start_btn)
+        start_btn.click()

@@ -1,0 +1,242 @@
+import allure
+import pytest
+import requests
+import time
+import random
+from utils.logger import logger
+from config.settings import settings
+
+
+@allure.feature("Stage Tests")
+@allure.story("UI LPD Stage")
+class TestUILpdStage:
+
+    @allure.title("UI Stage: Создание → Логин → Онбординг → Инд.трек → ЛПД (anon) → Анкета → Отчет")
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.stage
+    @pytest.mark.env("stage")
+    def test_ui_lpd_flow(self, page):
+        session = requests.Session()
+        session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
+        session.headers.update({
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "Origin": settings.STAGE_UI_BASE_URL
+        })
+        base_url = settings.STAGE_BASE_URL
+        ui_url = settings.STAGE_UI_BASE_URL
+        ts = int(time.time() * 1000)
+
+        # ========== API ==========
+        # 1. Создать пользователя
+        name = random.choice(["Иван", "Пётр", "Сергей"])
+        surname = random.choice(["Иванов", "Петров", "Сидоров"])
+        email = f"ui_lpd_{ts}@mail.com"
+        u = session.post(f"{base_url}/users", json={
+            "data": {"attributes": {
+                "fields": {"personal_phone_number": 0, "phone_number": 0, "email": 0, "position": 0,
+                           "position_level": 0, "organisation": 0, "car_brand": 0, "car_number": 0},
+                "roles": None, "tags": [], "email": email, "surname": surname, "name": name,
+                "login": email, "patronymic": "Автотестович", "system_password": "SecurePass123",
+                "password": "SecurePass123", "date_of_birth": "1990-01-01", "region_id": 1, "municipality_id": 1}}
+        })
+        assert u.status_code in (200, 201), f"User failed: {u.status_code}"
+        user_id = u.json()["data"]["id"]
+
+        # 2. Создать ЛПД (анонимный)
+        lpd_name = f"UI_LPD_{ts}"
+        l = session.post(f"{base_url}/content", json={
+            "data": {"attributes": {"duration": "3", "content_type": "lpd", "lpd_id": "236",
+                                    "name": lpd_name, "name_client": f"{lpd_name}_внешка", "activity_category_id": 2,
+                                    "description": f"<p>{lpd_name}</p>", "cover_uuid": "", "sub_files_uuids": "",
+                                    "passing_type": "anonymous"},
+                     "includes": {"archive": [], "image": [], "spreadsheet": [], "video": [], "pdf": [], "document": [],
+                                  "offline": [], "webinar": [], "cover": [], "sub_files": []},
+                     "permissions": []}
+        })
+        assert l.status_code in (200, 201), f"LPD failed: {l.status_code}"
+        lpd_id = l.json()["data"]["id"]
+
+        # 3. Назначить на инд. трек
+        session.post(f"{base_url}/users/content/distant/assign-activities", json={
+            "data": {"attributes": {"content_ids": [lpd_id], "user_ids": [user_id]}}
+        })
+
+        # ========== UI ==========
+        with allure.step("4. Логин"):
+            page.goto(f"{ui_url}/auth/main")
+            page.wait_for_load_state("networkidle")
+            page.fill('input[name="email_or_login"]', email)
+            page.fill('input[name="password"]', "SecurePass123")
+            page.click('button:has-text("Войти")')
+
+            try:
+                checkbox = page.locator('input[type="checkbox"]')
+                if checkbox.is_visible(timeout=3000):
+                    checkbox.check()
+                    page.locator("text=Отправить").first.click(force=True)
+                    page.wait_for_load_state("networkidle")
+            except:
+                pass
+            page.screenshot(path="allure-results/stage_ui_01_login.png")
+            allure.attach.file("allure-results/stage_ui_01_login.png", "Логин", allure.attachment_type.PNG)
+
+        with allure.step("5. Онбординг"):
+            try:
+                start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
+                if start_btn.is_visible(timeout=3000):
+                    start_btn.click(force=True)
+                for _ in range(15):
+                    btn = page.locator('[data-qa="onboarding-popup-next"]')
+                    if btn.is_visible(timeout=2000):
+                        btn.click(force=True)
+                    else:
+                        break
+            except:
+                pass
+            page.screenshot(path="allure-results/stage_ui_02_onboarding.png")
+            allure.attach.file("allure-results/stage_ui_02_onboarding.png", "Онбординг", allure.attachment_type.PNG)
+
+        with allure.step("6. Индивидуальное обучение → вкладка ЛПД"):
+            page.locator("text=Индивидуальное обучение").first.click(force=True)
+            page.wait_for_load_state("networkidle")
+
+            try:
+                for _ in range(15):
+                    btn = page.locator('[data-qa="onboarding-popup-next"]')
+                    if btn.is_visible(timeout=2000):
+                        btn.click(force=True)
+                    else:
+                        break
+            except:
+                pass
+
+            page.evaluate("""() => {
+                const spans = document.querySelectorAll('span.py-2');
+                for (const span of spans) {
+                    if (span.textContent.trim() === 'ЛПД') {
+                        span.click();
+                        break;
+                    }
+                }
+            }""")
+            logger.info("Вкладка 'ЛПД' выбрана")
+
+            lpd_item = page.locator(f"text={lpd_name}").first
+            lpd_item.wait_for(state="visible", timeout=settings.UI_TIMEOUT)
+            lpd_item.click(force=True)
+            page.wait_for_load_state("networkidle")
+            page.screenshot(path="allure-results/stage_ui_03_lpd.png")
+            allure.attach.file("allure-results/stage_ui_03_lpd.png", "ЛПД открыт", allure.attachment_type.PNG)
+            logger.info(f"ЛПД '{lpd_name}' открыт")
+
+        with allure.step("7. Запустить ЛПД и перехватить новое окно"):
+            with page.context.expect_event("page", timeout=15000) as event:
+                page.locator("span:has-text('Начать')").first.click(force=True)
+            new_page = event.value
+            new_page.wait_for_load_state("networkidle")
+            new_page.screenshot(path="allure-results/stage_ui_04_launched.png")
+            allure.attach.file("allure-results/stage_ui_04_launched.png", "Новое окно ЛПД", allure.attachment_type.PNG)
+            logger.info(f"URL нового окна: {new_page.url}")
+
+        with allure.step("8. Нажать «Перейти» (в новом окне)"):
+            go_btn = new_page.locator("a.btn.btn-primary:has-text('Перейти')")
+            assert go_btn.is_visible(timeout=10000), "Кнопка 'Перейти' не найдена"
+            go_btn.first.click(force=True)
+            new_page.wait_for_load_state("networkidle")
+            new_page.screenshot(path="allure-results/stage_ui_05_anketa_opened.png")
+            allure.attach.file("allure-results/stage_ui_05_anketa_opened.png", "Анкета открыта",
+                               allure.attachment_type.PNG)
+            logger.info("Кнопка 'Перейти' нажата")
+
+        with allure.step("9. Прохождение анкеты"):
+            new_page.wait_for_selector("input[name='field_1275'][value='1']", state="visible", timeout=15000)
+
+            new_page.screenshot(path="allure-results/stage_ui_05_before_radios.png")
+            allure.attach.file("allure-results/stage_ui_05_before_radios.png", "До выбора ответов",
+                               allure.attachment_type.PNG)
+
+            yes_radio = new_page.locator("input[name='field_1275'][value='1']")
+            yes_radio.check(force=True)
+            no_radio = new_page.locator("input[name='field_1276'][value='2']")
+            no_radio.wait_for(state="visible", timeout=5000)
+            no_radio.check(force=True)
+
+            new_page.screenshot(path="allure-results/stage_ui_05_radios_selected.png")
+            allure.attach.file("allure-results/stage_ui_05_radios_selected.png", "Ответы выбраны",
+                               allure.attachment_type.PNG)
+
+            save_btn = new_page.locator("input[name='finish']")
+            save_btn.wait_for(state="visible", timeout=10000)
+            save_btn.click(force=True)
+            new_page.screenshot(path="allure-results/stage_ui_05_after_save.png")
+            allure.attach.file("allure-results/stage_ui_05_after_save.png", "После сохранения",
+                               allure.attachment_type.PNG)
+
+            confirm_btn = new_page.locator("input[value='Данные корректны, ответы подтверждаю']")
+            confirm_btn.wait_for(state="visible", timeout=15000)
+            try:
+                new_page.evaluate(
+                    "document.querySelector('input[value=\"Данные корректны, ответы подтверждаю\"]').click()")
+            except:
+                confirm_btn.click(force=True)
+            new_page.screenshot(path="allure-results/stage_ui_06_after_confirm.png")
+            allure.attach.file("allure-results/stage_ui_06_after_confirm.png", "После подтверждения",
+                               allure.attachment_type.PNG)
+
+            success_msg = new_page.locator("div.alert-primary:has-text('Анкета успешно отправлена')")
+            assert success_msg.is_visible(timeout=5000), "Сообщение об успешной отправке не появилось"
+            new_page.screenshot(path="allure-results/stage_ui_07_anketa_completed.png")
+            allure.attach.file("allure-results/stage_ui_07_anketa_completed.png", "Анкета пройдена",
+                               allure.attachment_type.PNG)
+            logger.info("Анкета успешно пройдена")
+
+        with allure.step("10. Проверить статус «Отчет формируется»"):
+            new_page.close()
+            page.bring_to_front()
+            page.reload()
+            page.wait_for_load_state("networkidle")
+            try:
+                for _ in range(15):
+                    btn = page.locator('[data-qa="onboarding-popup-next"]')
+                    if btn.is_visible(timeout=2000):
+                        btn.click(force=True)
+                    else:
+                        break
+            except:
+                pass
+            report_btn = page.locator("button:has-text('Отчет формируется')").first
+            assert report_btn.is_visible(timeout=10000), "Кнопка 'Отчет формируется' не найдена"
+            is_disabled = report_btn.get_attribute("disabled") is not None
+            assert is_disabled, "Кнопка 'Отчет формируется' должна быть неактивна"
+            page.screenshot(path="allure-results/stage_ui_08_report_pending.png")
+            allure.attach.file("allure-results/stage_ui_08_report_pending.png", "Отчет формируется",
+                               allure.attachment_type.PNG)
+            logger.info("Кнопка 'Отчет формируется' отображается и неактивна")
+
+        # ========== Очистка ==========
+        with allure.step("11. Очистка данных"):
+            resp_detach = session.post(f"{base_url}/users/content/distant/detach-activities", json={
+                "data": {"attributes": {"content_ids": [lpd_id], "user_ids": [user_id]}}
+            })
+            if resp_detach.status_code in (200, 201):
+                logger.info("Назначение снято")
+            else:
+                logger.warning(f"Снятие назначения: {resp_detach.status_code} {resp_detach.text}")
+
+            resp_lpd = session.delete(f"{base_url}/content/{lpd_id}")
+            if resp_lpd.status_code in (200, 204):
+                logger.info("LPD удалён")
+            else:
+                logger.warning(f"Удаление LPD: {resp_lpd.status_code} {resp_lpd.text}")
+
+            resp_user = session.delete(f"{base_url}/users/{user_id}")
+            if resp_user.status_code in (200, 204):
+                logger.info("Пользователь удалён")
+            else:
+                logger.warning(f"Удаление пользователя: {resp_user.status_code} {resp_user.text}")
+
+            logger.info("Очистка завершена")
+
+        logger.info("UI LPD Stage (anonymous) завершён!")

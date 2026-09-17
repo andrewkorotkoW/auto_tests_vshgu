@@ -9,25 +9,22 @@ class AdminPage(BasePage):
 
     def go_to_admin(self):
         """Перейти в Админку из меню пользователя."""
-        self.page.locator("[data-onboarding-step='user-menu']").first.click(force=True)
-        self.page.wait_for_timeout(1000)
-        self.page.locator("div.v-list-item-title:has-text('Админка')").first.click(force=True)
-        self.page.wait_for_timeout(2000)
+        admin_item = self.page.locator("div.v-list-item-title:has-text('Админка')").first
+        self.click_and_wait(self.page.locator("[data-onboarding-step='user-menu']").first, wait_for=admin_item, force=True)
+        self.click_and_wait(admin_item, force=True)
 
     def open_activity_base(self):
         """Открыть Базу Активити."""
-        self.page.locator("div.v-list-item__title:has-text('База Активити')").first.click(force=True)
-        self.page.wait_for_timeout(2000)
+        self.click_and_wait(self.page.locator("div.v-list-item__title:has-text('База Активити')").first, force=True)
 
     def search_activity(self, name: str):
         """Поиск активити по названию."""
         self.page.locator('[data-qa="km-search"]').fill(name)
-        self.page.wait_for_timeout(1000)
+        self.wait_loaded()
 
     def click_activity(self, name: str):
         """Кликнуть по активити в списке."""
-        self.page.locator(f"text={name}").first.click(force=True)
-        self.page.wait_for_timeout(1000)
+        self.click_and_wait(self.page.locator(f"text={name}").first, force=True)
 
     def check_activity_status(self):
         """Проверить, что активити активна (зелёная кнопка mdi-check)."""

@@ -23,6 +23,7 @@ class TestExternalCasBulkSyncAPI:
 
         with allure.step("2. Массовая синхронизация"):
             import time
+            # Ожидание без условия: индексация 3 новых пользователей перед bulk-синхронизацией без статус-эндпоинта.
             time.sleep(30)
             users_payload = [
                 {**generate_cas_sync_payload(), "user_id": u["id"]} for u in users

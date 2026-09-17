@@ -84,23 +84,21 @@ class TestAdminCasListenersStatuses:
         with allure.step("4. Логин и переход к Слушателям"):
             login_page = LoginPage(page)
             login_page.login(settings.TEST_USER_EMAIL, settings.TEST_USER_PASSWORD)
-            page.wait_for_timeout(3000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
             admin_page = AdminPage(page)
             admin_page.go_to_admin()
             page.locator('[data-qa="km-search"]').fill(program_name)
-            page.wait_for_timeout(1000)
             page.locator(f"text={program_name}").first.click(force=True)
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.locator("span.v-btn__content:has-text('Потоки')").first.click(force=True)
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.locator(f"text={stream_data.get('name', 'А-')}").first.click(force=True)
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             # Закрыть модалку кликом вверх
             page.locator("body").click(position={"x": 500, "y": 10})
-            page.wait_for_timeout(1000)
             page.locator("span.v-btn__content:has-text('Слушатели')").first.click(force=True)
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
         with allure.step("5. Проверить статусы"):
             page.screenshot(path="allure-results/cas_admin_listeners.png")

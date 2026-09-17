@@ -33,27 +33,23 @@ class LoginPage(BasePage):
 
     def complete_training(self):  # ← переименовано
         try:
-            self.page.wait_for_timeout(1500)
             start_btn = self.page.locator("span.v-btn__content:has-text('Пройти обучение')")
             if start_btn.is_visible(timeout=3000):
                 start_btn.click()
-                self.page.wait_for_timeout(500)
                 logger.info("✅ Нажали 'Пройти обучение'")
             while self.page.locator("text=Далее").is_visible(timeout=2000):
                 self.click("text=Далее")
-                self.page.wait_for_timeout(300)
             if self.page.locator("text=Завершить").first.is_visible(timeout=2000):
                 self.page.locator("text=Завершить").first.click(force=True)
-                self.page.wait_for_timeout(500)
+                self.wait_loaded()
             logger.info("✅ Обучение завершено")
         except Exception as e:
             logger.info(f"Обучение не появилось: {e}")
 
     def logout(self):
         """Выйти из системы."""
-        # Клик по аватарке — первая v-btn в хедере
-        self.page.locator("header .v-btn").first.click()
-        self.page.wait_for_timeout(500)
+        # Клик по аватарке — первая v-btn в хедере, ждём появления пункта "Выйти"
+        logout_icon = self.page.locator("svg[icon='logout']").first
+        self.click_and_wait(self.page.locator("header .v-btn").first, wait_for=logout_icon)
         # Клик по "Выйти"
-        self.page.locator("svg[icon='logout']").first.click()
-        self.page.wait_for_timeout(1000)
+        self.click_and_wait(logout_icon)
