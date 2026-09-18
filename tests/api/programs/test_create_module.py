@@ -2,6 +2,7 @@ import time
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Modules API")
@@ -92,9 +93,7 @@ class TestCreateModuleAPI:
             allure.attach(str(resp.status_code), "Status (даты раньше)", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response (даты раньше)", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422 на даты раньше потока, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Даты раньше потока отклонены: {resp.status_code}")
 
         with allure.step("4. Попытаться создать модуль с датами ПОЗЖЕ потока"):
@@ -110,9 +109,7 @@ class TestCreateModuleAPI:
             allure.attach(str(resp2.status_code), "Status (даты позже)", allure.attachment_type.TEXT)
             allure.attach(resp2.text, "Response (даты позже)", allure.attachment_type.TEXT)
 
-            assert resp2.status_code == 422, (
-                f"Ожидался 422 на даты позже потока, получен {resp2.status_code}: {resp2.text}"
-            )
+            expect_status(resp2, 422)
             logger.info(f"✓ Даты позже потока отклонены: {resp2.status_code}")
 
     @allure.title("Создание модуля без региона при must_use_module_region=True")
@@ -157,9 +154,7 @@ class TestCreateModuleAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422 при отсутствии region, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Отсутствие region отклонено: {resp.status_code}")
 
     @allure.title("Создание модуля без названия")
@@ -189,9 +184,7 @@ class TestCreateModuleAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Без названия отклонено: {resp.status_code}")
 
     @allure.title("Создание модуля без даты начала")
@@ -221,7 +214,5 @@ class TestCreateModuleAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Без date_from отклонено: {resp.status_code}")

@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class UsersEndpoint:
@@ -12,9 +13,7 @@ class UsersEndpoint:
     def create(self, payload: dict) -> Dict:
         """Создание пользователя. Возвращает данные созданного пользователя."""
         resp = self.client.post("/users", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"User create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"User created: ID={data['id']}, email={data['attributes'].get('email')}")
         return data
@@ -22,7 +21,7 @@ class UsersEndpoint:
     def get(self, user_id: int) -> Dict:
         """Получение пользователя по ID."""
         resp = self.client.get(f"/users/{user_id}")
-        assert resp.status_code == 200, f"Get user failed: {resp.status_code}"
+        expect_status(resp, 200)
         return resp.json()["data"]
 
     def delete(self, user_id: int) -> bool:
@@ -38,7 +37,7 @@ class UsersEndpoint:
     def get_users(self, params: dict = None) -> list:
         """Получить список пользователей, фильтруя локально."""
         resp = self.client.get("/users")
-        assert resp.status_code == 200, f"Get users failed: {resp.status_code}"
+        expect_status(resp, 200)
         users = resp.json().get("data", [])
         if params:
             # пример локальной фильтрации
@@ -58,9 +57,7 @@ class UsersEndpoint:
             "roles": role_ids
         }
         resp = self.client.put("/access-roles", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Assign roles failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()
         logger.info(f"Roles {role_ids} assigned to user {user_id}")
         return data

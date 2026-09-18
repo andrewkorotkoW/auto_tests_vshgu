@@ -3,6 +3,7 @@ import pytest
 from ui.pages.login_page import LoginPage
 from ui.pages.region_page import RegionPage
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("UI Tests")
@@ -53,7 +54,7 @@ class TestCasFlow:
                 json={"data": {"attributes": user_attrs}},
                 headers={"Accept": "application/json", "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "Cookie": f"develop={settings.DEVELOP_COOKIE}"}
             )
-            assert resp.status_code == 200, f"Пароль: {resp.status_code} {resp.text}"
+            expect_status(resp, 200)
             logger.info(f"Пароль установлен для user_id={user_id}")
 
         # ========== UI ==========

@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class ScheduleItemsEndpoint:
@@ -15,9 +16,7 @@ class ScheduleItemsEndpoint:
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}/schedule-items",
             json=payload
         )
-        assert resp.status_code in (200, 201), (
-            f"Schedule item create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"Schedule item created: ID={data['id']}, name={data['attributes'].get('name')}")
         return data
@@ -27,7 +26,7 @@ class ScheduleItemsEndpoint:
         resp = self.client.get(
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}/schedule-items/{item_id}"
         )
-        assert resp.status_code == 200, f"Get schedule item failed: {resp.status_code}"
+        expect_status(resp, 200)
         return resp.json()["data"]
 
     def delete(self, program_id: int, stream_id: int, module_id: int, item_id: int) -> bool:

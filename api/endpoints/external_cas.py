@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class ExternalCasEndpoint:
@@ -11,9 +12,7 @@ class ExternalCasEndpoint:
 
     def create_program(self, payload: dict) -> Dict:
         resp = self.client.post("/external/cas/programs", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"External CAS create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CREATE PROGRAM RAW RESPONSE: {data}")  # ← добавить
         logger.info(f"External CAS program created: {data}")
@@ -32,9 +31,7 @@ class ExternalCasEndpoint:
     def create_stream(self, program_id: int, payload: dict) -> Dict:
         """Создание потока для программы CAS."""
         resp = self.client.post(f"/external/cas/programs/{program_id}/streams", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"External CAS stream create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"External CAS stream created: {data}")
         return data
@@ -52,9 +49,7 @@ class ExternalCasEndpoint:
     def create_user(self, payload: dict) -> Dict:
         """Создание пользователя через внешний CAS."""
         resp = self.client.post("/external/cas/users", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"External CAS user create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"External CAS user created: {data}")
         return data
@@ -77,9 +72,7 @@ class ExternalCasEndpoint:
         if payload is None:
             payload = {}
         resp = self.client.post(f"/external/cas/sync/users/{user_id}", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"CAS user sync failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS user synced: user_id={user_id}")
         return data
@@ -87,9 +80,7 @@ class ExternalCasEndpoint:
     def sync_users_bulk(self, users: list) -> Dict:
         """Массовая синхронизация пользователей."""
         resp = self.client.post("/external/cas/sync/users", json=users)
-        assert resp.status_code in (200, 201), (
-            f"CAS bulk sync failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS bulk sync completed: {len(users)} users")
         return data
@@ -100,9 +91,7 @@ class ExternalCasEndpoint:
             if "должен быть не синхронизирован" in resp.text or "не синхронизирован" in resp.text:
                 logger.info(f"CAS stream already synced or disabled: stream={stream_id}")
                 return resp.json()
-        assert resp.status_code in (200, 201), (
-            f"CAS stream sync failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS stream synced: program={program_id}, stream={stream_id}")
         return data
@@ -114,9 +103,7 @@ class ExternalCasEndpoint:
             f"/external/cas/programs/{program_id}/streams/{stream_id}",
             json=payload
         )
-        assert resp.status_code in (200, 201), (
-            f"CAS stream update failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS stream updated: program={program_id}, stream={stream_id}")
         return data
@@ -129,9 +116,7 @@ class ExternalCasEndpoint:
                 "формируется" in resp.text or "\\u0444\\u043e\\u0440\\u043c\\u0438" in resp.text):
             logger.info(f"Export already in progress for stream={stream_id}")
             return resp.json()
-        assert resp.status_code in (200, 201), (
-            f"CAS export assignments failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS assignments exported: stream={stream_id}")
         return data
@@ -160,27 +145,21 @@ class ExternalCasEndpoint:
             payload["dismissed_link"] = dismissed_link or "https://autotest.com"
 
         resp = self.client.post("/external/cas/assignments", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"CAS assign failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS users assigned to stream {stream_id}: {len(user_ids)} users, status={status}")
         return data
 
     def update_user(self, user_id: int, payload: dict) -> Dict:
         resp = self.client.put(f"/external/cas/users/{user_id}", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"CAS user update failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS user updated: user_id={user_id}")
         return data
 
     def sync_program(self, program_id: int) -> Dict:
         resp = self.client.post(f"/external/cas/sync/programs/{program_id}")
-        assert resp.status_code in (200, 201), (
-            f"CAS program sync failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS program synced: program_id={program_id}")
         return data
@@ -195,9 +174,7 @@ class ExternalCasEndpoint:
             f"/external/cas/sync/programs/{program_id}/streams/{stream_id}/correction",
             json=payload
         )
-        assert resp.status_code in (200, 201), (
-            f"CAS correction failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS correction done: program={program_id}, stream={stream_id}")
         return data
@@ -206,9 +183,7 @@ class ExternalCasEndpoint:
         """Снятие назначений с потока."""
         payload = {"stream_id": stream_id, "user_ids": user_ids}
         resp = self.client.delete("/external/cas/assignments", json=payload)
-        assert resp.status_code in (200, 204), (
-            f"CAS dismiss failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 204))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS assignments dismissed: stream={stream_id}, users={user_ids}")
         return data

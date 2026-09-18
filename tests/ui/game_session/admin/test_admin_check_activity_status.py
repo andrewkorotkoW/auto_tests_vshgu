@@ -4,6 +4,7 @@ from ui.pages.login_page import LoginPage
 from ui.pages.admin_page import AdminPage
 from config.settings import settings
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("UI Tests")
@@ -50,7 +51,7 @@ class TestAdminCheckActivityStatus:
 
         with allure.step("3. Активировать игровую сессию"):
             resp = external_system_client.post(f"/external/activities/{content_id}")
-            assert resp.status_code in (200, 201), f"Активация сессии не удалась: {resp.status_code}"
+            expect_status(resp, (200, 201))
             logger.info("Игровая сессия активирована")
 
         # ========== UI ==========

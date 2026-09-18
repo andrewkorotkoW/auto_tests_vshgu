@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class HomeworkEndpoint:
@@ -12,9 +13,7 @@ class HomeworkEndpoint:
     def create(self, payload: dict) -> Dict:
         """Создание практического задания."""
         resp = self.client.post("/content", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Homework create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"Homework created: ID={data['id']}, name={data['attributes'].get('name')}")
         return data
@@ -55,14 +54,14 @@ class HomeworkEndpoint:
             }
         }
         resp = self.client.session.post(url, json=payload)
-        assert resp.status_code == 200, f"Examination failed: {resp.status_code} {resp.text}"
+        expect_status(resp, 200)
         logger.info(f"Homework {homework_id} answer {answer_id} examined: status={status}")
         return resp.json()
 
     def get_status(self, homework_id: int, user_id: int) -> str:
         """Получить статус домашнего задания для пользователя."""
         resp = self.client.get(f"/homework/{homework_id}/status/{user_id}")
-        assert resp.status_code == 200, f"Get status failed: {resp.status_code}"
+        expect_status(resp, 200)
         data = resp.json().get("data", {})
         status = data.get("attributes", {}).get("status") or data.get("status")
         logger.info(f"Homework {homework_id} status for user {user_id}: {status}")

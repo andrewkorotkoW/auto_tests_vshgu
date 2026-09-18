@@ -1,6 +1,7 @@
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.data_generator import get_next_lpd_id
 
 
 @allure.feature("Assign Activities API")
@@ -17,7 +18,7 @@ class TestAssignActivitiesAPI:
         """Создать LPD и пользователя → назначить активность."""
 
         with allure.step("1. Создать LPD"):
-            lpd = created_lpd(lpd_id="1234578")
+            lpd = created_lpd(lpd_id=get_next_lpd_id())
             logger.info(f"LPD: ID={lpd['id']}")
 
         with allure.step("2. Создать пользователя"):
@@ -39,7 +40,7 @@ class TestAssignActivitiesAPI:
         """Назначить и открепить активность."""
 
         with allure.step("1. Создать LPD и пользователя"):
-            lpd = created_lpd(lpd_id="1234579")
+            lpd = created_lpd(lpd_id=get_next_lpd_id())
             user = created_user()
             logger.info(f"LPD: {lpd['id']}, User: {user['id']}")
 

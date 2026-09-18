@@ -3,6 +3,7 @@ import pytest
 from ui.pages.login_page import LoginPage
 from ui.pages.activity_page import ActivityPage
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("UI Tests")
@@ -64,7 +65,7 @@ class TestActivityLaunchFlow:
 
         with allure.step("8. Активировать игровую сессию"):
             resp = external_system_client.post(f"/external/activities/{content_id}")
-            assert resp.status_code in (200, 201), f"Активация сессии: {resp.status_code}"
+            expect_status(resp, (200, 201))
 
         with allure.step("9. Назначить активити в модуль"):
             ec_ep.assign_to_module(program["id"], stream["id"], module["id"], [content_id])

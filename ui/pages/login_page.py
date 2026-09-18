@@ -8,8 +8,8 @@ class LoginPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
 
-    def login(self, email: str, password: str):
-        self.page.goto(f"{settings.UI_BASE_URL}/auth/main")
+    def login(self, email: str, password: str, base_url: str = None):
+        self.page.goto(f"{base_url or settings.UI_BASE_URL}/auth/main")
         self.wait_for('input[name="email_or_login"]')
         self.fill('input[name="email_or_login"]', email)
         self.fill('input[name="password"]', password)

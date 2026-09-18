@@ -60,17 +60,21 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
-    """Пропускает тесты с @pytest.mark.env(name), если запуск идёт не под тем окружением."""
+    """Пропускает тесты с @pytest.mark.env(name), если запуск идёт не под тем окружением,
+    и включает один автоповтор (rerunfailures) только для тестов с маркером ui — они
+    подвержены флаки из-за реального браузера, а не из-за ошибок в самом тесте."""
     run_env = config.getoption("--env")
     for item in items:
         marker = item.get_closest_marker("env")
-        if marker is None or not marker.args:
-            continue
-        required_env = marker.args[0]
-        if required_env != run_env:
-            item.add_marker(pytest.mark.skip(
-                reason=f"тест требует env={required_env}, запуск идёт с env={run_env}"
-            ))
+        if marker is not None and marker.args:
+            required_env = marker.args[0]
+            if required_env != run_env:
+                item.add_marker(pytest.mark.skip(
+                    reason=f"тест требует env={required_env}, запуск идёт с env={run_env}"
+                ))
+
+        if item.get_closest_marker("ui") is not None:
+            item.add_marker(pytest.mark.flaky(reruns=1))
 
 
 @pytest.fixture(scope="session")

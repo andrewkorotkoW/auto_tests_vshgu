@@ -1,6 +1,7 @@
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Tincan API")
@@ -20,7 +21,7 @@ class TestE2ETincan:
 
         def post(path, json_data):
             r = session.post(f"{base}{path}", json=json_data)
-            assert r.status_code in (200, 201), f"POST {path} failed: {r.status_code} {r.text}"
+            expect_status(r, (200, 201))
             return r.json()
 
         tincan_ep = TincanEndpoint(api_client)

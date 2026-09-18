@@ -10,10 +10,27 @@ from .constants import (
     MALE_PATRONYMICS, FEMALE_PATRONYMICS
 )
 
+def _worker_id() -> str:
+    """ID процесса pytest-xdist (gw0, gw1, ...) или 'master' при запуске без -n."""
+    return os.environ.get("PYTEST_XDIST_WORKER", "master")
+
+
+def _worker_numeric_offset() -> int:
+    """Числовой сдвиг на основе ID воркера — чтобы параллельные процессы не выдавали
+    одинаковые числовые ID (например lpd_id) в один и тот же момент времени."""
+    digits = "".join(ch for ch in _worker_id() if ch.isdigit())
+    return int(digits) if digits else 0
+
+
+def unique_suffix() -> str:
+    """Уникальный суффикс для email/имён сущностей: ID воркера + метка времени в мс,
+    чтобы тесты, запущенные параллельно (pytest-xdist), не создавали дублирующиеся данные."""
+    return f"{_worker_id()}_{int(time.time() * 1000)}"
+
+
 def random_email(domain: str = "gmail.com") -> str:
-    """Генерация уникального email с меткой времени."""
-    timestamp = int(time.time() * 1000)
-    return f"auto_test_{timestamp}@{domain}"
+    """Генерация уникального email с меткой времени и ID воркера xdist."""
+    return f"auto_test_{unique_suffix()}@{domain}"
 
 def random_user_data() -> Tuple[str, str, str]:
     """Генерация случайных ФИО (мужчина или женщина)."""
@@ -89,7 +106,7 @@ def generate_program_payload(
 ) -> dict:
     """Генерация payload для создания программы."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"API-test_{timestamp}"
     if not description:
         description = f"<p>{name}</p>"
@@ -128,7 +145,7 @@ def generate_stream_payload(
     from datetime import datetime, timedelta
 
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"API_stream_{timestamp}"
     if academic_directors is None:
         academic_directors = [1]
@@ -177,7 +194,7 @@ def generate_module_payload(
     from datetime import datetime, timedelta
 
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"API_module_{timestamp}"
 
     today = datetime.now()
@@ -252,7 +269,7 @@ def generate_schedule_item_payload(
     from datetime import datetime, timedelta
 
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"Автотест_{timestamp}"
     if teacher_ids is None:
         teacher_ids = [4]
@@ -297,7 +314,7 @@ def generate_aos_payload(
 ) -> dict:
     """Генерация payload для создания АОС."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"автотест_api_{timestamp}"
     if not name_client:
         name_client = name
@@ -366,34 +383,44 @@ def generate_lpd_payload(
     name_client: str = None,
     description: str = None,
     duration: str = "12",
-    activity_category_id: int = 1
+    activity_category_id: int = 1,
+    passing_type: str = None,
+    permissions: list = None
 ) -> dict:
-    """Генерация payload для создания LPD."""
+    """Генерация payload для создания LPD.
+
+    passing_type ("anonymous"/"authorized") и permissions добавляются в payload,
+    только если переданы явно — чтобы не менять поведение для вызовов без них.
+    """
     if not lpd_id:
         lpd_id = get_next_lpd_id()
     if not name:
         name = f"Автотест_ЛПД_{lpd_id}"
     if not name_client:
-        name_client = f"Автотест_ЛПД_{lpd_id}_внешка"
+        name_client = f"{name}_внешка"
     if not description:
-        description = f"<p>Автотест_ЛПД_{lpd_id}</p>"
+        description = f"<p>{name}</p>"
 
-    return {
+    attributes = {
+        "inspectors": [],
+        "teachers": [],
+        "duration": duration,
+        "teacher_ids": [],
+        "content_type": "lpd",
+        "lpd_id": lpd_id,
+        "name": name,
+        "name_client": name_client,
+        "activity_category_id": activity_category_id,
+        "description": description,
+        "cover_uuid": "",
+        "sub_files_uuids": ""
+    }
+    if passing_type is not None:
+        attributes["passing_type"] = passing_type
+
+    payload = {
         "data": {
-            "attributes": {
-                "inspectors": [],
-                "teachers": [],
-                "duration": duration,
-                "teacher_ids": [],
-                "content_type": "lpd",
-                "lpd_id": lpd_id,
-                "name": name,
-                "name_client": name_client,
-                "activity_category_id": activity_category_id,
-                "description": description,
-                "cover_uuid": "",
-                "sub_files_uuids": ""
-            },
+            "attributes": attributes,
             "includes": {
                 "archive": [],
                 "image": [],
@@ -408,10 +435,15 @@ def generate_lpd_payload(
             }
         }
     }
+    if permissions is not None:
+        payload["data"]["permissions"] = permissions
+    return payload
 
-_lpd_counter = 1234576
+_lpd_counter = 1234576 + _worker_numeric_offset() * 100000
 
 def get_next_lpd_id() -> str:
+    """Следующий числовой lpd_id. Сдвинут по воркеру xdist, чтобы параллельные
+    процессы не генерировали одинаковые ID."""
     global _lpd_counter
     _lpd_counter += 1
     return str(_lpd_counter)
@@ -549,7 +581,7 @@ def generate_external_cas_user_payload(
     if not patronymic:
         patronymic = random.choice(["Иванович", "Петрович", "Сергеевич", "Алексеевич", "Дмитриевич"])
     if not email:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         email = f"cas_user_{timestamp}@mail.com"
     if not date_of_birth:
         year = random.randint(1970, 1990)
@@ -699,7 +731,7 @@ def generate_test_payload(
 ) -> dict:
     """Генерация payload для создания теста (type=test)."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"Автотест_тест_админка_{timestamp}"
     if not name_client:
         name_client = f"{name}_внешка"
@@ -874,10 +906,10 @@ def generate_poll_payload(
 ) -> dict:
     """Генерация payload для создания опроса (type=poll)."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"Автотест_опрос_админка_{timestamp}"
     else:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
     if not name_client:
         name_client = f"Автотест_опрос_внешка_{timestamp}"
     if not description:
@@ -1012,7 +1044,7 @@ def generate_material_payload(
 ) -> dict:
     """Генерация payload для создания материала в базе знаний."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"Автотест_Курс_{timestamp}"
     if files is None:
         files = []
@@ -1065,7 +1097,7 @@ def generate_homework_payload(
 ) -> dict:
     """Генерация payload для создания практического задания (homework)."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"Автотест_практическое_задание_админка_{timestamp}"
     if not name_client:
         # для уникальности используем тот же timestamp
@@ -1127,7 +1159,7 @@ def generate_homework_ten_point_payload(
 ) -> dict:
     """Генерация payload для 10‑балльного практического задания."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"Автотест_ПР_10баллов_{timestamp}"
     if not name_client:
         ts = int(time.time() * 1000)
@@ -1187,7 +1219,7 @@ def generate_homework_pass_fail_payload(
 ) -> dict:
     """Генерация payload для практического задания (зачёт/незачёт)."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"Автотест_ПР_зачёт_{timestamp}"
     if not name_client:
         ts = int(time.time() * 1000)
@@ -1277,7 +1309,7 @@ def generate_scorm_payload(
 ) -> dict:
     """Генерация payload для создания SCORM-курса (только архив, без sub-файлов)."""
     if not name:
-        timestamp = int(time.time() * 1000)
+        timestamp = unique_suffix()
         name = f"Автотест_SCORM2004_{timestamp}"
     if not name_client:
         name_client = f"{name}_внешка"

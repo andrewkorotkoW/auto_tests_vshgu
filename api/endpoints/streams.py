@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class StreamsEndpoint:
@@ -12,9 +13,7 @@ class StreamsEndpoint:
     def create(self, program_id: int, payload: dict) -> Dict:
         """Создание потока для программы."""
         resp = self.client.post(f"/programs/{program_id}/streams", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Stream create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"Stream created: ID={data['id']}, name={data['attributes'].get('name')}")
         return data
@@ -22,7 +21,7 @@ class StreamsEndpoint:
     def get(self, program_id: int, stream_id: int) -> Dict:
         """Получение потока по ID."""
         resp = self.client.get(f"/programs/{program_id}/streams/{stream_id}")
-        assert resp.status_code == 200, f"Get stream failed: {resp.status_code}"
+        expect_status(resp, 200)
         return resp.json()["data"]
 
     def delete(self, program_id: int, stream_id: int) -> bool:

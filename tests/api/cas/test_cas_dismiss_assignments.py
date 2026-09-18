@@ -5,6 +5,7 @@ from api.endpoints.users import UsersEndpoint
 from api.client import ApiClient
 from config.settings import settings
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("External CAS API")
@@ -134,7 +135,7 @@ class TestCasDismissAssignments:
             )
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response", allure.attachment_type.TEXT)
-            assert resp.status_code == 422, f"Ожидался 422, получен {resp.status_code}"
+            expect_status(resp, 422)
             logger.info("Удаление с приказом отклонено (422)")
 
         with allure.step("5. Очистка"):

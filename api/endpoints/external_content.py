@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class ExternalContentEndpoint:
@@ -9,13 +10,13 @@ class ExternalContentEndpoint:
 
     def create(self, payload: dict) -> Dict:
         resp = self.client.post("/content", json=payload)
-        assert resp.status_code in (200, 201), f"Create failed: {resp.status_code}"
+        expect_status(resp, (200, 201))
         return resp.json()["data"]
 
     def activate(self, content_id: int, payload: dict) -> Dict:
         """Активация контента."""
         resp = self.client.put(f"/content/{content_id}", json=payload)
-        assert resp.status_code == 200, f"Activate failed: {resp.status_code} {resp.text}"
+        expect_status(resp, 200)
         return resp.json()["data"]
 
     def delete(self, content_id: int) -> bool:

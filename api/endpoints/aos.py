@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class AosEndpoint:
@@ -12,9 +13,7 @@ class AosEndpoint:
     def create(self, payload: dict) -> Dict:
         """Создание АОС."""
         resp = self.client.post("/tests", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"AOS create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"AOS created: ID={data.get('content_id')}, name={data.get('name')}")
         return data
@@ -22,7 +21,7 @@ class AosEndpoint:
     def get(self, aos_id: int) -> Dict:
         """Получение АОС по ID."""
         resp = self.client.get(f"/tests/{aos_id}")
-        assert resp.status_code == 200, f"Get AOS failed: {resp.status_code}"
+        expect_status(resp, 200)
         return resp.json()["data"]
 
     def activate(self, program_id: int, stream_id: int, aos_id: int) -> bool:
