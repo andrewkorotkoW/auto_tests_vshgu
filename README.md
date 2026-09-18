@@ -173,3 +173,20 @@ utils/
 в `.env` (устаревший пароль/кука), а не кода `login()`/`get_session()`: сервер в ответ на
 неверные учётные данные возвращает осмысленную ошибку с формой логина, и `login()` эту
 ситуацию распознаёт (`LoginError`) и корректно откатывается на ручную куку.
+
+## 7. Запуск в Docker
+
+Образ собирается на базе `mcr.microsoft.com/playwright/python` (Chromium и системные
+зависимости уже внутри), версия образа привязана к `playwright` из `requirements.txt`.
+`.env` в образ не попадает: он пробрасывается при запуске через `env_file`.
+
+```bash
+docker compose build
+docker compose run --rm tests --env develop
+docker compose run --rm tests --env stage -m "smoke and api"
+docker compose run --rm tests --env prod -m smoke
+```
+
+Внутри контейнера запускается тот же `scripts/run.sh`, UI-тесты идут в headless-режиме
+(`HEADLESS=1`), результаты остаются на хосте в `results/<env>/<timestamp>/`, кэш сессий —
+в `.cache/`. Локально без Docker `HEADLESS` не задан, и браузер открывается с окном, как раньше.

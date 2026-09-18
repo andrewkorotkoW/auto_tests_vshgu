@@ -335,8 +335,11 @@ def assigned_user(api_client, created_user, created_stream, assignments_endpoint
 @pytest.fixture(scope="session")
 def browser():
     """Запуск браузера на всю сессию."""
+    # HEADLESS=1 (по умолчанию в Docker, см. Dockerfile) — без окна браузера;
+    # локально по умолчанию окно открывается, как и раньше.
+    headless = os.getenv("HEADLESS", "0").lower() in ("1", "true", "yes")
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=headless)
         yield browser
         browser.close()
 

@@ -1,0 +1,19 @@
+# Запуск автотестов в контейнере.
+#
+#   docker compose run --rm tests --env develop
+#   docker compose run --rm tests --env stage -m "smoke and api"
+#   docker compose run --rm tests --env prod -m smoke
+#
+# Учётки и куки берутся из .env (в образ не попадает, пробрасывается на запуске).
+# Результаты каждого прогона остаются на хосте в results/<env>/<timestamp>/.
+services:
+  tests:
+    build: .
+    image: auto_tests_vshgu:latest
+    env_file: .env
+    environment:
+      HEADLESS: "1"
+    volumes:
+      - ./results:/tests/results
+      - ./.cache:/tests/.cache
+    shm_size: 1g
