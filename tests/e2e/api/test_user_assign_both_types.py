@@ -17,7 +17,7 @@ class TestUserAssignBothTypes:
     @pytest.mark.env("stage")
     def test_user_assign_both_types(self):
         session = requests.Session()
-        session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
+        session.cookies.set(settings.STAGE_COOKIE_NAME, settings.STAGE_DEVELOP_COOKIE)
         session.headers.update({
             "Accept": "application/json",
             "Content-Type": "application/json",

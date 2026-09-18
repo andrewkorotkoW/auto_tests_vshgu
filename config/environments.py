@@ -94,8 +94,8 @@ ENVIRONMENTS = {
     "stage": _build_environment(
         "stage",
         cookie_name="stage",
-        default_api="https://portal-stage.d7.devspark.ru/api/v1",
-        default_ui="https://portal-stage.d7.devspark.ru",
+        default_api="https://portal.stage.gosedu.ru/api/v1",
+        default_ui="https://portal.stage.gosedu.ru",
         default_global="https://global-stage.d7.devspark.ru/api/v1",
         legacy={
             "api_base_url": "STAGE_BASE_URL",

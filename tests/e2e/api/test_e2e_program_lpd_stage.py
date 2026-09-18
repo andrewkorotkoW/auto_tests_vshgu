@@ -19,7 +19,7 @@ class TestE2ELpdStage:
     @pytest.mark.env("stage")
     def test_e2e_lpd_stage(self):
         session = requests.Session()
-        session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
+        session.cookies.set(settings.STAGE_COOKIE_NAME, settings.STAGE_DEVELOP_COOKIE)
         session.headers.update({
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -109,7 +109,7 @@ class TestE2ELpdStage:
             logger.info(f"6b. LPD {prefix} добавлен в модуль {module_id}")
 
             # Назначить пользователя на ЛПД
-            session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
+            session.cookies.set(settings.STAGE_COOKIE_NAME, settings.STAGE_DEVELOP_COOKIE)
             session.headers["Referer"] = f"{settings.STAGE_UI_BASE_URL}/admin/programs/{prog_id}/streams/{stream_id}?i=1"
             resp = retry_until_success(lambda: session.post(
                 f"{base_url}/modules/{module_id}/contents/{lpd_id}/lpd/assignment?stream={stream_id}",
@@ -120,7 +120,7 @@ class TestE2ELpdStage:
 
         # 7. Снять назначения
         for lpd_id in lpd_ids:
-            session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
+            session.cookies.set(settings.STAGE_COOKIE_NAME, settings.STAGE_DEVELOP_COOKIE)
             session.headers["Referer"] = f"{settings.STAGE_UI_BASE_URL}/admin/programs/{prog_id}/streams/{stream_id}?i=1"
             resp_detach = session.delete(
                 f"{base_url}/modules/{module_id}/contents/{lpd_id}/lpd/assignment?stream={stream_id}",
