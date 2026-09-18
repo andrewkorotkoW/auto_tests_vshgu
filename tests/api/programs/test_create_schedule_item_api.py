@@ -2,6 +2,7 @@ import time
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Schedule Items API")
@@ -109,9 +110,7 @@ class TestCreateScheduleItemAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Без названия отклонено: {resp.status_code}")
 
     @allure.title("Создание элемента расписания без региона")
@@ -142,9 +141,7 @@ class TestCreateScheduleItemAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Без region отклонено: {resp.status_code}")
 
     @allure.title("Создание элемента расписания с датами вне модуля")
@@ -192,9 +189,7 @@ class TestCreateScheduleItemAPI:
             allure.attach(str(resp.status_code), "Status (даты раньше)", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response (даты раньше)", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422 на даты раньше модуля, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Даты раньше модуля отклонены: {resp.status_code}")
 
         with allure.step("5. Попытаться создать элемент с датами ПОЗЖЕ модуля"):
@@ -210,7 +205,5 @@ class TestCreateScheduleItemAPI:
             allure.attach(str(resp2.status_code), "Status (даты позже)", allure.attachment_type.TEXT)
             allure.attach(resp2.text, "Response (даты позже)", allure.attachment_type.TEXT)
 
-            assert resp2.status_code == 422, (
-                f"Ожидался 422 на даты позже модуля, получен {resp2.status_code}: {resp2.text}"
-            )
+            expect_status(resp2, 422)
             logger.info(f"✓ Даты позже модуля отклонены: {resp2.status_code}")

@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class OmtCasEndpoint:
@@ -14,9 +15,7 @@ class OmtCasEndpoint:
         if resp.status_code == 422 and "уже существует" in resp.text:
             logger.info("CAS связь уже существует")
             return resp.json()
-        assert resp.status_code in (200, 201), (
-            f"CAS create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json().get("data", resp.json())
         logger.info(f"CAS tenant-org-location created: {data}")
         return data

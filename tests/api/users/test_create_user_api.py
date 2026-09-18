@@ -2,6 +2,7 @@ import time
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Users API")
@@ -130,9 +131,7 @@ class TestCreateUserAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался статус 422 (дубликат), получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Дубликат отклонён: статус {resp.status_code}")
 
     @allure.title("Создание пользователя без даты рождения")
@@ -153,9 +152,7 @@ class TestCreateUserAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Запрос без ДР отклонён: статус {resp.status_code}")
 
     @allure.title("Создание пользователя без пароля")
@@ -177,9 +174,7 @@ class TestCreateUserAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Пустой пароль отклонён: статус {resp.status_code}")
 
     @allure.title("Создание пользователя с паролем только из строчных букв")
@@ -203,9 +198,7 @@ class TestCreateUserAPI:
             if resp.status_code in (200, 201):
                 logger.warning("⚠️ Пароль 'abcdefgh' принят (слабые требования к паролю)")
             else:
-                assert resp.status_code == 422, (
-                    f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-                )
+                expect_status(resp, 422)
                 logger.info(f"✓ Слабый пароль отклонён: статус {resp.status_code}")
 
     @allure.title("Создание пользователя с паролем 'password'")
@@ -229,9 +222,7 @@ class TestCreateUserAPI:
             if resp.status_code in (200, 201):
                 logger.warning("⚠️ Пароль 'password' принят (слабые требования к паролю)")
             else:
-                assert resp.status_code == 422, (
-                    f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-                )
+                expect_status(resp, 422)
                 logger.info(f"✓ Очевидный пароль отклонён: статус {resp.status_code}")
 
     @allure.title("Создание пользователя с паролем из одних цифр")
@@ -255,7 +246,5 @@ class TestCreateUserAPI:
             if resp.status_code in (200, 201):
                 logger.warning("⚠️ Пароль '12345678' принят (слабые требования к паролю)")
             else:
-                assert resp.status_code == 422, (
-                    f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-                )
+                expect_status(resp, 422)
                 logger.info(f"✓ Цифровой пароль отклонён: статус {resp.status_code}")

@@ -4,6 +4,7 @@ import json
 import requests
 from utils.logger import logger
 from config.settings import settings
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("External CAS API")
@@ -86,5 +87,5 @@ class TestExternalCasUsersAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, f"Ожидался 422, получен {resp.status_code}"
+            expect_status(resp, 422)
             logger.info(f"Ошибка валидации (422): {resp.json().get('message', '')}")

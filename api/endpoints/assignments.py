@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class AssignmentsEndpoint:
@@ -22,9 +23,7 @@ class AssignmentsEndpoint:
             f"/programs/{program_id}/streams/{stream_id}/assignments",
             json=payload
         )
-        assert resp.status_code in (200, 201), (
-            f"Assignment failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()
         logger.info(f"Users assigned: {user_ids} to stream {stream_id}")
         return data

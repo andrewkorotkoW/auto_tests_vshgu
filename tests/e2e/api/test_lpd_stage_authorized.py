@@ -3,6 +3,7 @@ import pytest
 import requests
 import time
 from config.settings import settings
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Stage Tests")
@@ -46,11 +47,11 @@ class TestLpdStage:
 
          # Создать
         resp = session.post(f"{base_url}/content", json=payload)
-        assert resp.status_code in (200, 201), f"Create failed: {resp.status_code}"
+        expect_status(resp, (200, 201))
         content_id = resp.json()["data"]["id"]
         allure.attach(str(content_id), "Content ID", allure.attachment_type.TEXT)
 
         # Удалить
         resp_del = session.delete(f"{base_url}/content/{content_id}")
-        assert resp_del.status_code in (200, 204), f"Delete failed: {resp_del.status_code}"
+        expect_status(resp_del, (200, 204))
         allure.attach("Deleted", "Status", allure.attachment_type.TEXT)

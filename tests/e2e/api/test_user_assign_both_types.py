@@ -4,6 +4,7 @@ import requests
 import time
 import random
 from config.settings import settings
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Stage Tests")
@@ -44,7 +45,7 @@ class TestUserAssignBothTypes:
             }
         }
         resp = session.post(f"{base_url}/users", json=user_payload)
-        assert resp.status_code in (200, 201), f"User create failed: {resp.status_code}"
+        expect_status(resp, (200, 201))
         user_id = resp.json()["data"]["id"]
         allure.attach(str(user_id), "User ID", allure.attachment_type.TEXT)
 
@@ -66,7 +67,7 @@ class TestUserAssignBothTypes:
                 }
             }
             resp_lpd = session.post(f"{base_url}/content", json=lpd_payload)
-            assert resp_lpd.status_code in (200, 201), f"LPD {prefix} create failed: {resp_lpd.status_code}"
+            expect_status(resp_lpd, (200, 201))
             cid = resp_lpd.json()["data"]["id"]
             content_ids.append(cid)
             allure.attach(str(cid), f"LPD {prefix} ID", allure.attachment_type.TEXT)
@@ -74,14 +75,14 @@ class TestUserAssignBothTypes:
             # Назначить
             assign_payload = {"data": {"attributes": {"content_ids": [cid], "user_ids": [user_id]}}}
             resp_assign = session.post(f"{base_url}/users/content/distant/assign-activities", json=assign_payload)
-            assert resp_assign.status_code in (200, 201), f"Assign {prefix} failed: {resp_assign.status_code}"
+            expect_status(resp_assign, (200, 201))
             allure.attach(f"User {user_id} -> LPD {cid}", f"Assignment {prefix}", allure.attachment_type.TEXT)
 
         # 3. Снять назначения
         for cid in content_ids:
             detach_payload = {"data": {"attributes": {"content_ids": [cid], "user_ids": [user_id]}}}
             resp_detach = session.post(f"{base_url}/users/content/distant/detach-activities", json=detach_payload)
-            assert resp_detach.status_code in (200, 201), f"Detach {cid} failed: {resp_detach.status_code}"
+            expect_status(resp_detach, (200, 201))
 
         # 4. Удалить ЛПД
         for cid in content_ids:

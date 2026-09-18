@@ -5,6 +5,7 @@ import time
 from config.settings import settings
 from utils.logger import logger
 from utils.retry import retry_until_success
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Stage LPD API")
@@ -35,7 +36,7 @@ class TestLpdStoreState:
                     "description": f"<p>E2E_StoreState_{ts}</p>", "is_active": True,
                     "color": "45ace1", "completed_color": "e3f3fb", "completed_text_color": "00385d"}}
             })
-            assert p.status_code in (200, 201), f"Program failed: {p.status_code}"
+            expect_status(p, (200, 201))
             prog_id = p.json()["data"]["id"]
             logger.info(f"Программа создана: ID={prog_id}")
 
@@ -51,7 +52,7 @@ class TestLpdStoreState:
                     "program_level": 4, "program_department": 8, "program_type": 10,
                     "learning_format": 13, "academic_directors": [1], "experts_entity_name": "13"}}
             })
-            assert s.status_code in (200, 201), f"Stream failed: {s.status_code}"
+            expect_status(s, (200, 201))
             stream_id = s.json()["data"]["id"]
             logger.info(f"Поток создан: ID={stream_id}")
 
@@ -62,7 +63,7 @@ class TestLpdStoreState:
                     "date_from": time.strftime("%Y-%m-%d"),
                     "date_to": time.strftime("%Y-%m-%d", time.localtime(ts/1000 + 30*86400))}}
             })
-            assert m.status_code in (200, 201), f"Module failed: {m.status_code}"
+            expect_status(m, (200, 201))
             module_id = m.json()["data"]["id"]
             logger.info(f"Модуль создан: ID={module_id}")
 
@@ -76,7 +77,7 @@ class TestLpdStoreState:
                     "login": email, "patronymic": "Автотестович", "system_password": "SecurePass123",
                     "password": "SecurePass123", "date_of_birth": "1990-01-01", "region_id": 1, "municipality_id": 1}}
             })
-            assert u.status_code in (200, 201), f"User failed: {u.status_code}"
+            expect_status(u, (200, 201))
             user_id = u.json()["data"]["id"]
             logger.info(f"Пользователь создан: ID={user_id}, email={email}")
 
@@ -98,7 +99,7 @@ class TestLpdStoreState:
                 "includes": {"archive":[],"image":[],"spreadsheet":[],"video":[],"pdf":[],"document":[],"offline":[],"webinar":[],"cover":[],"sub_files":[]},
                 "permissions": []}
             })
-            assert l.status_code in (200, 201), f"LPD failed: {l.status_code}"
+            expect_status(l, (200, 201))
             lpd_id = l.json()["data"]["id"]
             logger.info(f"ЛПД создан: ID={lpd_id}")
 
@@ -114,7 +115,7 @@ class TestLpdStoreState:
                 f"{base_url}/modules/{module_id}/contents/{lpd_id}/lpd/assignment?stream={stream_id}",
                 json={"users": [user_id]}
             ))
-            assert resp.status_code in (200, 201), f"LPD assign failed: {resp.status_code}"
+            expect_status(resp, (200, 201))
             invite_id = resp.json()["data"][0]["invite_id"]
             logger.info(f"Пользователь активирован, invite_id={invite_id}")
 
@@ -128,7 +129,7 @@ class TestLpdStoreState:
                 store_url,
                 headers={"Authorization": jwt_token, "Accept": "application/json"}
             )
-            assert store_resp.status_code == 200, f"store-state failed: {store_resp.status_code} {store_resp.text}"
+            expect_status(store_resp, 200)
             result = store_resp.json()
             assert "changes" in result
             assert result["changes"]["status"] == 5

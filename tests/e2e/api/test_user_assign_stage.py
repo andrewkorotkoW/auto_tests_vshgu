@@ -4,6 +4,7 @@ import requests
 import time
 import random
 from config.settings import settings
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Stage Tests")
@@ -45,7 +46,7 @@ class TestUserAssignStage:
             }
         }
         resp = session.post(f"{base_url}/users", json=user_payload)
-        assert resp.status_code in (200, 201), f"User create failed: {resp.status_code} - {resp.text[:300]}"
+        expect_status(resp, (200, 201))
         user_id = resp.json()["data"]["id"]
         allure.attach(str(user_id), "User ID", allure.attachment_type.TEXT)
 
@@ -65,18 +66,18 @@ class TestUserAssignStage:
             }
         }
         resp_lpd = session.post(f"{base_url}/content", json=lpd_payload)
-        assert resp_lpd.status_code in (200, 201), f"LPD create failed: {resp_lpd.status_code}"
+        expect_status(resp_lpd, (200, 201))
         content_id = resp_lpd.json()["data"]["id"]
 
         # 3. Назначить на инд. трек
         assign_payload = {"data": {"attributes": {"content_ids": [content_id], "user_ids": [user_id]}}}
         resp_assign = session.post(f"{base_url}/users/content/distant/assign-activities", json=assign_payload)
-        assert resp_assign.status_code in (200, 201), f"Assign failed: {resp_assign.status_code}"
+        expect_status(resp_assign, (200, 201))
 
         # 4. Снять назначение
         detach_payload = {"data": {"attributes": {"content_ids": [content_id], "user_ids": [user_id]}}}
         resp_detach = session.post(f"{base_url}/users/content/distant/detach-activities", json=detach_payload)
-        assert resp_detach.status_code in (200, 201), f"Detach failed: {resp_detach.status_code}"
+        expect_status(resp_detach, (200, 201))
         allure.attach(f"User {user_id} -> LPD {content_id}", "Assignment", allure.attachment_type.TEXT)
 
         # 5. Удалить ЛПД

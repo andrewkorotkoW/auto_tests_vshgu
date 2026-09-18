@@ -4,7 +4,13 @@ from utils.logger import logger
 
 
 class ApiClient:
-    """Базовый клиент для API-запросов."""
+    """Базовый клиент для API-запросов.
+
+    Паттерн возврата: методы api/endpoints/* сохраняют исторически сложившийся для
+    каждого метода тип возврата (Dict/list/bool с распарсенными данными), а проверку
+    статуса ответа выполняют через api.helpers.expectations.expect_status вместо
+    голого assert внутри метода — она бросает AssertionError с resp.text при несовпадении.
+    """
 
     def __init__(self, cookie: str = None, base_url: str = None, auth_token: str = None,
                  session: requests.Session = None, cookie_name: str = "develop"):
@@ -29,10 +35,10 @@ class ApiClient:
         logger.info(f"Response [{resp.status_code}]: {resp.text[:300]}")
         return resp
 
-    def get(self, endpoint: str) -> requests.Response:
+    def get(self, endpoint: str, headers: dict = None) -> requests.Response:
         url = f"{self.base_url}{endpoint}"
         logger.info(f"GET {url}")
-        resp = self.session.get(url, timeout=self.timeout)
+        resp = self.session.get(url, headers=headers, timeout=self.timeout)
         logger.info(f"Response [{resp.status_code}]: {resp.text[:300]}")
         return resp
 

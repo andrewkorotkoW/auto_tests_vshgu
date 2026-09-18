@@ -1,6 +1,7 @@
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Tincan API")
@@ -33,7 +34,7 @@ class TestTincanAPI:
         resp = api_client.post("/content", json=payload)
         allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
         allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
-        assert resp.status_code == 422, f"Ожидался 422, получен {resp.status_code}"
+        expect_status(resp, 422)
         logger.info(f"Без названия отклонено: {resp.status_code}")
 
     @allure.title("Загрузка архива курса")

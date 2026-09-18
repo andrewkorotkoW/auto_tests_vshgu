@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 class CertificatesEndpoint:
     """Методы для работы с шаблонами сертификатов."""
@@ -11,9 +12,7 @@ class CertificatesEndpoint:
     def create_template(self, payload: dict) -> Dict:
         """Создание шаблона сертификата."""
         resp = self.client.post("/certificates/templates/create", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Template create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         # Сервер возвращает template_id, а не id
         data["id"] = data["template_id"]
@@ -43,7 +42,7 @@ class CertificatesEndpoint:
             "content_ids": content_ids
         }
         resp = self.client.post("/certificates/template/assign", json=payload)
-        assert resp.status_code in (200, 201), f"Assign template failed: {resp.status_code} {resp.text}"
+        expect_status(resp, (200, 201))
         data = resp.json()
         logger.info(f"Template {template_id} assigned to content {content_ids}")
         return data

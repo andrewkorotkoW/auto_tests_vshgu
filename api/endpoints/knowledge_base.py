@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 class KnowledgeBaseEndpoint:
     """Методы для работы с материалами базы знаний."""
@@ -11,7 +12,7 @@ class KnowledgeBaseEndpoint:
     def create_material(self, payload: dict) -> Dict:
         """Создание материала (курса/файла/книги) в базе знаний."""
         resp = self.client.post("/knowledge-base/admin/materials", json=payload)
-        assert resp.status_code in (200, 201), f"Create material failed: {resp.status_code} {resp.text}"
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"Material created: ID={data['id']}, name={data.get('name')}")
         return data
@@ -23,7 +24,7 @@ class KnowledgeBaseEndpoint:
             f"/knowledge-base/admin/materials/{material_id}/toggle-visibility",
             json=payload
         )
-        assert resp.status_code == 200, f"Toggle visibility failed: {resp.status_code} {resp.text}"
+        expect_status(resp, 200)
         data = resp.json().get("data", {})
         logger.info(f"Visibility for material {material_id} set to {is_visible}")
         return data

@@ -1,6 +1,10 @@
 from typing import Dict
+from urllib.parse import quote
+
 from api.client import ApiClient
 from utils.logger import logger
+from utils.retry import retry_until_success
+from api.helpers.expectations import expect_status
 
 
 class LpdEndpoint:
@@ -23,9 +27,7 @@ class LpdEndpoint:
         logger.info(f"LPD create payload lpd_id: {payload['data']['attributes'].get('lpd_id')}")
         resp = self.client.post("/content", json=payload)
         logger.info(f"LPD RAW RESPONSE: {resp.text[:500]}")
-        assert resp.status_code in (200, 201), (
-            f"LPD create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"LPD created: ID={data['id']}, name={data['attributes'].get('name')}")
         return data
@@ -33,7 +35,7 @@ class LpdEndpoint:
     def get(self, content_id: int) -> Dict:
         """Получение контента по ID."""
         resp = self.client.get(f"/content/{content_id}")
-        assert resp.status_code == 200, f"Get content failed: {resp.status_code}"
+        expect_status(resp, 200)
         return resp.json()["data"]
 
     def delete(self, content_id: int) -> bool:
@@ -79,6 +81,18 @@ class LpdEndpoint:
         else:
             logger.warning(f"LPD user assign failed: {resp.status_code}")
         return success
+
+    def assign_users_with_retry(self, module_id: int, content_id: int, stream_id: int, user_ids: list):
+        """Назначение пользователей на LPD с повтором, пока бэкенд не проиндексирует
+        только что добавленный в модуль контент (см. utils.retry.retry_until_success).
+        Возвращает сырой Response — вызывающий код сам решает, что делать со статусом."""
+        resp = retry_until_success(lambda: self.client.post(
+            f"/modules/{module_id}/contents/{content_id}/lpd/assignment?stream={stream_id}",
+            json={"users": user_ids}
+        ))
+        expect_status(resp, (200, 201))
+        logger.info(f"Users {user_ids} activated on LPD {content_id} in module {module_id}")
+        return resp
 
     def mass_delete(self, content_ids: list) -> bool:
         """Массовое удаление активностей."""
@@ -132,6 +146,22 @@ class LpdEndpoint:
         else:
             logger.warning(f"Detach activities failed: {resp.status_code}")
         return success
+
+    def get_result(self, content_id: int, user_id: int) -> Dict:
+        """Получение результата прохождения LPD (invite_id и т.п.)."""
+        resp = self.client.get(f"/lpd/result?content_id={content_id}&user_id={user_id}")
+        expect_status(resp, 200)
+        return resp.json().get("data", {})
+
+    def store_state(self, user_id: int, invite_id: str, state_id: int, jwt_token: str):
+        """Принудительно меняет состояние прохождения LPD (используется для сброса прогресса)."""
+        resp = self.client.get(
+            f"/lpd/result/store-state?userId={user_id}&inviteId={quote(invite_id)}&stateId={state_id}",
+            headers={"Authorization": jwt_token, "Accept": "application/json"},
+        )
+        expect_status(resp, 200)
+        logger.info(f"LPD store-state: user={user_id}, invite={invite_id}, state={state_id}")
+        return resp
 
     def detach_users(self, module_id: int, content_id: int, stream_id: int, user_ids: list) -> bool:
         """Открепление пользователей от LPD в модуле."""

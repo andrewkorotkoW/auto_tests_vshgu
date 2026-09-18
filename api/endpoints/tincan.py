@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class TincanEndpoint:
@@ -130,9 +131,7 @@ class TincanEndpoint:
     def create(self, payload: dict) -> Dict:
         """Создание курса Tincan."""
         resp = self.client.post("/content", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Tincan create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"Tincan created: ID={data['id']}, name={data['attributes'].get('name')}")
         return data

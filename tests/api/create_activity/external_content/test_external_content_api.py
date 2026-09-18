@@ -2,6 +2,7 @@ import allure
 import pytest
 import json
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("External Content API")
@@ -53,14 +54,14 @@ class TestExternalContentAPI:
             resp = external_system_client.post(f"/external/activities/{content_id}")
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text[:300], "Response", allure.attachment_type.TEXT)
-            assert resp.status_code in (200, 201), f"Session activation failed: {resp.status_code} {resp.text}"
+            expect_status(resp, (200, 201))
             logger.info(f"Игровая сессия активирована: {resp.text[:200]}")
 
         with allure.step("4.5. Повторная активация — 208"):
             resp2 = external_system_client.post(f"/external/activities/{content_id}")
             allure.attach(str(resp2.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp2.text[:300], "Response", allure.attachment_type.TEXT)
-            assert resp2.status_code == 208, f"Ожидался 208, получен {resp2.status_code}"
+            expect_status(resp2, 208)
             logger.info("Повторная активация вернула 208 (уже активирована)")
 
         with allure.step("5. Удалить внешний контент"):

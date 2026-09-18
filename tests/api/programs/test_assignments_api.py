@@ -1,6 +1,7 @@
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Assignments API")
@@ -50,8 +51,6 @@ class TestAssignmentsAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 400, (
-                f"Ожидался 400, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 400)
 
             logger.info(f"✓ Повторное назначение: статус {resp.status_code}")

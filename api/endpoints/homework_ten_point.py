@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class HomeworkTenPointEndpoint:
@@ -14,9 +15,7 @@ class HomeworkTenPointEndpoint:
         # Принудительно выставляем десятибалльную шкалу
         payload["data"]["attributes"]["grade_type"] = "ten_point"
         resp = self.client.post("/content", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Homework (ten_point) create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"Homework (ten_point) created: ID={data['id']}, name={data['attributes'].get('name')}")
         return data

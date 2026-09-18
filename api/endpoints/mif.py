@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class MifEndpoint:
@@ -11,9 +12,7 @@ class MifEndpoint:
         """Открыть/закрыть доступ к MIF."""
         payload = {"user_ids": user_ids, "access": access}
         resp = self.client.patch("/mif/access", json=payload)
-        assert resp.status_code in (200, 204), (
-            f"MIF set access failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 204))
         data = resp.json() if resp.text else {"status": "success"}
         logger.info(f"MIF access set: users={user_ids}, access={access}")
         return data

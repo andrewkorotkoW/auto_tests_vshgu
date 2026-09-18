@@ -2,6 +2,7 @@ import time
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Streams API")
@@ -96,9 +97,7 @@ class TestCreateStreamAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Пустое название отклонено: статус {resp.status_code}")
 
     @allure.title("Создание потока без даты начала")
@@ -122,9 +121,7 @@ class TestCreateStreamAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Без date_from отклонено: статус {resp.status_code}")
 
     @allure.title("Создание потока без academic_directors")
@@ -148,9 +145,7 @@ class TestCreateStreamAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 422, (
-                f"Ожидался 422, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 422)
             logger.info(f"✓ Пустые academic_directors отклонены: статус {resp.status_code}")
 
     @allure.title("Создание потока для несуществующей программы")
@@ -168,7 +163,5 @@ class TestCreateStreamAPI:
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
 
-            assert resp.status_code == 404, (
-                f"Ожидался 404, получен {resp.status_code}: {resp.text}"
-            )
+            expect_status(resp, 404)
             logger.info(f"✓ Несуществующая программа отклонена: статус {resp.status_code}")

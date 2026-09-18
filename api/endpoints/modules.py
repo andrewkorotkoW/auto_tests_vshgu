@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class ModulesEndpoint:
@@ -15,9 +16,7 @@ class ModulesEndpoint:
             f"/programs/{program_id}/streams/{stream_id}/modules",
             json=payload
         )
-        assert resp.status_code in (200, 201), (
-            f"Module create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         logger.info(f"Module created: ID={data['id']}, name={data['attributes'].get('name')}")
         return data
@@ -27,7 +26,7 @@ class ModulesEndpoint:
         resp = self.client.get(
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
         )
-        assert resp.status_code == 200, f"Get module failed: {resp.status_code}"
+        expect_status(resp, 200)
         return resp.json()["data"]
 
     def update(self, program_id: int, stream_id: int, module_id: int, payload: dict) -> Dict:
@@ -36,9 +35,7 @@ class ModulesEndpoint:
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}",
             json=payload
         )
-        assert resp.status_code == 200, (
-            f"Module update failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, 200)
         data = resp.json()["data"]
         logger.info(f"Module updated: ID={data['id']}, name={data['attributes'].get('name')}")
         return data

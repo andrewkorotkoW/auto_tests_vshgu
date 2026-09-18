@@ -1,6 +1,7 @@
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 class TestsEndpoint:
@@ -12,9 +13,7 @@ class TestsEndpoint:
     def create(self, payload: dict) -> Dict:
         """Создание теста. Возвращает данные созданного теста."""
         resp = self.client.post("/tests", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Test create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         data["id"] = data["content_id"]
         logger.info(f"Test created: ID={data['id']}, name={data.get('name')}")
@@ -23,15 +22,13 @@ class TestsEndpoint:
     def get(self, test_id: int) -> Dict:
         """Получение теста по ID."""
         resp = self.client.get(f"/tests/{test_id}")
-        assert resp.status_code == 200, f"Get test failed: {resp.status_code}"
+        expect_status(resp, 200)
         return resp.json()["data"]
 
     def update(self, test_id: int, payload: dict) -> Dict:
         """Обновление теста (PUT). Возвращает обновлённые данные."""
         resp = self.client.put(f"/tests/{test_id}", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Test update failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()["data"]
         data["id"] = data.get("content_id", test_id)
         logger.info(f"Test updated: ID={data['id']}, name={data.get('name')}")
@@ -59,9 +56,7 @@ class TestsEndpoint:
             "question": question
         }
         resp = self.client.put("/tests/questions/store", json=payload)
-        assert resp.status_code in (200, 201), (
-            f"Question create failed: {resp.status_code} {resp.text}"
-        )
+        expect_status(resp, (200, 201))
         data = resp.json()
         logger.info(f"Question created for test {content_id}")
         return data
