@@ -101,6 +101,11 @@ ENVIRONMENTS = {
             "api_base_url": "STAGE_BASE_URL",
             "ui_base_url": "STAGE_UI_BASE_URL",
             "cookie": "STAGE_DEVELOP_COOKIE",
+            # Токены интеграций на develop и stage общие — если STAGE_* не заданы,
+            # берём те же плоские имена, что и для develop.
+            "cas_auth_token": "CAS_AUTH_TOKEN",
+            "external_system_client_token": "EXTERNAL_SYSTEM_CLIENT_TOKEN",
+            "lpd_jwt_token": "LPD_JWT_TOKEN",
         },
     ),
     "prod": _build_environment(
