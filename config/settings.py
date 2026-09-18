@@ -22,7 +22,9 @@ class Settings:
 
     STAGE_BASE_URL = _stage.api_base_url
     STAGE_DEVELOP_COOKIE = _stage.cookie
+    STAGE_COOKIE_NAME = _stage.cookie_name
     STAGE_UI_BASE_URL = _stage.ui_base_url
+    STAGE_LPD_JWT_TOKEN = _stage.lpd_jwt_token
 
     DEFAULT_LOGIN = os.getenv("DEFAULT_LOGIN", "admin@example.com")
     DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD", "SecurePass123")

@@ -19,7 +19,7 @@ class TestLpdStoreState:
     @pytest.mark.api
     def test_store_state_authorized(self):
         session = requests.Session()
-        session.cookies.set("stage", settings.STAGE_DEVELOP_COOKIE)
+        session.cookies.set(settings.STAGE_COOKIE_NAME, settings.STAGE_DEVELOP_COOKIE)
         session.headers.update({
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -121,8 +121,10 @@ class TestLpdStoreState:
 
         # 8. Вызвать store-state с stateId=5
         with allure.step("8. Вызвать store-state"):
-            # Явно задаём рабочий JWT, чтобы избежать проблем с .env
-            jwt_token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3BvcnRhbC1zdGFnZS5kNy5kZXZzcGFyay5ydSIsInN1YiI6ImxwZC1jbGllbnQiLCJpYXQiOjE3ODAzMDM3NDMuOTQyMTU3LCJhdWQiOiJ2c2hndS1hcGkifQ.n90exTuPJf3TdT8A35V7oUILurJyE1qjJu-pOBJxSak"
+            # JWT для LPD API берётся из STAGE_LPD_JWT (.env). Токен привязан к домену
+            # стенда (claim iss) — после переезда стенда на новый домен нужно
+            # перевыпустить его и положить в STAGE_LPD_JWT.
+            jwt_token = settings.STAGE_LPD_JWT_TOKEN
             invite_encoded = requests.utils.quote(invite_id, safe='')
             store_url = f"{base_url}/lpd/result/store-state?userId={user_id}&inviteId={invite_encoded}&stateId=5"
             store_resp = session.get(
