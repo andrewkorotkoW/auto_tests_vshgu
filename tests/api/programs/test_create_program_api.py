@@ -2,6 +2,7 @@ import time
 import allure
 import pytest
 from utils.logger import logger
+from api.helpers.expectations import expect_status
 
 
 @allure.feature("Programs API")
@@ -118,3 +119,43 @@ class TestCreateProgramAPI:
                     pytest.fail(f"Программа {pid} не удалена. Статус 200, программа существует.")
                 else:
                     logger.info(f"  ✓ Программа {pid} удалена (статус {resp.status_code})")
+
+    # ==================== НЕГАТИВНЫЕ КЕЙСЫ ====================
+
+    @allure.title("Создание программы без названия")
+    @allure.severity(allure.severity_level.CRITICAL)
+    @allure.tag("api", "negative", "validation")
+    @pytest.mark.api
+    def test_create_program_without_name(self, api_client):
+        """Попытка создать программу с пустым названием (name = None)."""
+        from api.helpers.data_generator import generate_program_payload
+
+        with allure.step("Отправить запрос без name"):
+            payload = generate_program_payload()
+            payload["data"]["attributes"]["name"] = None
+
+            resp = api_client.post("/programs", json=payload)
+
+            allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
+            allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
+
+            expect_status(resp, 422)
+            logger.info(f"✓ Пустое название отклонено: статус {resp.status_code}")
+
+    @allure.title("Создание программы с пустым payload")
+    @allure.severity(allure.severity_level.CRITICAL)
+    @allure.tag("api", "negative", "validation")
+    @pytest.mark.api
+    def test_create_program_empty_payload(self, api_client):
+        """Попытка создать программу вообще без атрибутов."""
+
+        with allure.step("Отправить запрос с пустыми attributes"):
+            payload = {"data": {"attributes": {}}}
+
+            resp = api_client.post("/programs", json=payload)
+
+            allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
+            allure.attach(resp.text, "Response body", allure.attachment_type.TEXT)
+
+            expect_status(resp, 422)
+            logger.info(f"✓ Пустой payload отклонён: статус {resp.status_code}")
