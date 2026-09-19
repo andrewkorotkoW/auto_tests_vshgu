@@ -12,7 +12,8 @@ class OmtCasEndpoint:
 
     def create_tenant_org_location(self, payload: dict) -> Dict:
         resp = self.client.post("/cas/tenant-org-locations", json=payload)
-        if resp.status_code == 422 and "уже существует" in resp.text:
+        # Сервер экранирует кириллицу (\uXXXX), поэтому ищем по распарсенному message, а не по resp.text
+        if resp.status_code == 422 and "уже существует" in resp.json().get("message", ""):
             logger.info("CAS связь уже существует")
             return resp.json()
         expect_status(resp, (200, 201))
