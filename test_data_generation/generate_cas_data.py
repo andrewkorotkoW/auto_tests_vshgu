@@ -1,11 +1,14 @@
 """Генерация тестовых данных CAS на выбранном окружении.
 
-Создаёт связку: программа CAS -> поток -> синхронизация -> пользователь CAS с паролем
--> зачисление в поток. Это env-aware версия generate_scorm_and_certificate.py:
+Создаёт связку: программа CAS -> поток -> синхронизация -> модуль в потоке
+-> пользователи CAS с паролем -> зачисление в поток с разными статусами
+(enlisted «Зачислен», dismissed «Отчислен», waiting «Ожидание приказа» = enlisted без текстов).
+Это env-aware версия generate_scorm_and_certificate.py:
 логин по <ENV>_LOGIN/<ENV>_PASSWORD (или кука), токен из <ENV>_CAS_TOKEN.
 
     .venv/bin/python test_data_generation/generate_cas_data.py --env stage
-    .venv/bin/python test_data_generation/generate_cas_data.py --env develop --users 3
+    .venv/bin/python test_data_generation/generate_cas_data.py --env develop --users 2 --statuses enlisted,dismissed
+    .venv/bin/python test_data_generation/generate_cas_data.py --env stage --no-module
 """
 import argparse
 import os
@@ -18,6 +21,11 @@ from config.environments import ENVIRONMENTS, get_session  # noqa: E402
 from api.helpers.constants import CAS_LOCATIONS, CAS_ORGANIZATIONS  # noqa: E402
 
 DEFAULT_PASSWORD = "SecurePass123"
+STATUSES = {
+    "enlisted": "Зачислен",
+    "dismissed": "Отчислен",
+    "waiting": "Ожидание приказа",
+}
 
 
 def _msg(resp) -> str:
@@ -47,11 +55,19 @@ def _id(resp, *keys):
 def main() -> int:
     parser = argparse.ArgumentParser(description="Генерация данных CAS")
     parser.add_argument("--env", default="develop", choices=sorted(ENVIRONMENTS))
-    parser.add_argument("--users", type=int, default=1, help="сколько пользователей CAS создать и зачислить")
+    parser.add_argument("--users", type=int, default=1, help="сколько пользователей CAS создать на каждый статус")
+    parser.add_argument("--statuses", default=",".join(STATUSES),
+                        help="статусы зачисления через запятую: " + ", ".join(f"{k} ({v})" for k, v in STATUSES.items()))
+    parser.add_argument("--no-module", action="store_true", help="не создавать модуль в потоке")
     parser.add_argument("--org", default=CAS_ORGANIZATIONS[1][0], help="organization_uuid CAS")
     parser.add_argument("--location", default=CAS_LOCATIONS[4][0], help="location_uuid CAS")
     parser.add_argument("--tenant", type=int, default=2, help="tenant_organization_id для связки org+location")
     args = parser.parse_args()
+    statuses = [x.strip() for x in args.statuses.split(",") if x.strip()]
+    unknown = [x for x in statuses if x not in STATUSES]
+    if unknown:
+        print(f"Неизвестные статусы: {unknown}; допустимые: {', '.join(STATUSES)}")
+        return 2
 
     env = ENVIRONMENTS[args.env]
     if not env.cas_auth_token:
@@ -101,10 +117,12 @@ def main() -> int:
     print(f"   ID={prog_id}")
 
     print("2. Поток...")
+    date_from = time.strftime("%Y-%m-%d")
+    date_to = time.strftime("%Y-%m-%d", time.localtime(ts + 30 * 86400))
     r = post(f"/external/cas/programs/{prog_id}/streams", {
         "name": f"CAS_Stream_{ts}",
-        "date_from": time.strftime("%Y-%m-%d"),
-        "date_to": time.strftime("%Y-%m-%d", time.localtime(ts + 30 * 86400)),
+        "date_from": date_from,
+        "date_to": date_to,
         "managers_email": ["admin1@org2.ru", "admin2@org2.ru"],
     })
     if r.status_code not in (200, 201):
@@ -125,11 +143,27 @@ def main() -> int:
             status = f"{r.status_code} {_msg(r)}"
         print(f"   {path.split('/sync/')[1]}: {status}")
 
+    module_id = None
+    if not args.no_module:
+        print("4. Модуль в потоке CAS (админ-API)...")
+        r = post(f"/programs/{prog_id}/streams/{stream_id}/modules", {
+            "data": {"attributes": {
+                "name": f"CAS_Module_{ts}", "location": "Москва",
+                "date_from": date_from, "date_to": date_to,
+            }}
+        }, cas=False)
+        if r.status_code in (200, 201):
+            module_id = _id(r)
+            print(f"   ID={module_id}")
+        else:
+            print(f"   ошибка: {r.status_code} {_msg(r)}")
+
     created = []
-    for i in range(args.users):
-        suffix = f"{ts}_{i}"
+    plan = [(st, i) for st in statuses for i in range(args.users)]
+    for n, (status, i) in enumerate(plan):
+        suffix = f"{ts}_{status}_{i}"
         email = f"cas_user_{env.name}_{suffix}@mail.com"
-        print(f"4. Пользователь CAS {i + 1}/{args.users}: {email}")
+        print(f"5. Пользователь CAS {n + 1}/{len(plan)} [{STATUSES[status]}]: {email}")
         r = post("/external/cas/users", {
             "email": email, "name": "CAS", "surname": "Testov", "patronymic": "Testovich",
             "date_of_birth": "1990-01-01", "gender": 1, "region": "Москва",
@@ -154,18 +188,26 @@ def main() -> int:
         r = session.put(f"{base}/users/{user_id}", json={"data": {"attributes": attrs}})
         print(f"   пароль: {'ok' if r.ok else str(r.status_code) + ' ' + _msg(r)}")
 
-        r = post("/external/cas/assignments", {
+        assignment = {
             "user_ids": [{"user_id": user_id, "cas_application_uid": f"auto-{suffix}-{user_id}"}],
-            "stream_id": stream_id, "status": "enlisted",
-            "enlisted_text": "Зачислен по автотесту", "enlisted_link": "https://autotest.com",
-        })
-        print(f"   зачисление: {'ok' if r.ok else str(r.status_code) + ' ' + _msg(r)}")
-        created.append((user_id, email))
+            "stream_id": stream_id,
+        }
+        if status == "enlisted":
+            assignment.update(status="enlisted", enlisted_text="Зачислен по автотесту",
+                              enlisted_link="https://autotest.com")
+        elif status == "dismissed":
+            assignment.update(status="dismissed", dismissed_text="Отчислен по автотесту",
+                              dismissed_link="https://autotest.com")
+        else:  # waiting: enlisted без текстов -> «Ожидание приказа»
+            assignment.update(status="enlisted")
+        r = post("/external/cas/assignments", assignment)
+        print(f"   зачисление [{STATUSES[status]}]: {'ok' if r.ok else str(r.status_code) + ' ' + _msg(r)}")
+        created.append((user_id, email, STATUSES[status]))
 
     print("\nГотово.")
-    print(f"  Программа: {prog_id}, поток: {stream_id}")
-    for user_id, email in created:
-        print(f"  Пользователь: {email} / {DEFAULT_PASSWORD} (id={user_id})")
+    print(f"  Программа: {prog_id}, поток: {stream_id}" + (f", модуль: {module_id}" if module_id else ""))
+    for user_id, email, label in created:
+        print(f"  {label:16} {email} / {DEFAULT_PASSWORD} (id={user_id})")
     return 0
 
 
