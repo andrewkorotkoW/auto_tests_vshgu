@@ -24,3 +24,5 @@ results/
 
 # Кэш авторизованных сессий/storage_state для окружений (config/environments.py)
 .cache/
+
+*.log
