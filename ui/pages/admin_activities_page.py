@@ -101,11 +101,22 @@ class AdminActivitiesPage(BasePage):
 
     def upload_main_document(self, path: Union[str, Path]) -> None:
         self.page.locator("xpath=(//input[@accept='*'])[1]").set_input_files(str(path))
+        self._wait_upload_complete()
 
     def upload_additional_document(self, path: Union[str, Path]) -> None:
         self.page.locator(
             "xpath=//span[contains(text(),'Добавить дополнительный документ')]/following::input[@class='file__input']"
         ).set_input_files(str(path))
+        self._wait_upload_complete()
+
+    def _wait_upload_complete(self) -> None:
+        """Дождаться скрытия индикатора «Идет загрузка: N%» после set_input_files.
+        Пока он виден, страница держит поверх модалок собственный overlay/scrim — если
+        открыть модалку «Добавить преподавателей/проверяющих» до его исчезновения, клик
+        по комбобоксу попадает в чужой scrim и модалка закрывается сама, не приняв ввод."""
+        loader = self.page.get_by_text("Идет загрузка", exact=False)
+        if loader.count():
+            expect(loader.first).to_be_hidden(timeout=30000)
 
     # ── Преподаватель / проверяющий (мультиселект по ФИО) ───────────────
 
@@ -113,15 +124,20 @@ class AdminActivitiesPage(BasePage):
         add_button = self.page.locator("xpath=(//button[contains(@class,'button-admin ma-0')])[1]")
         add_button.click(timeout=5000)
 
-        modal = self.page.locator("xpath=//div[contains(@class,'km-modal-container')]")
+        modal = self.page.locator("xpath=//div[contains(@class,'v-dialog__content--active')]")
         expect(modal).to_be_visible(timeout=15000)
 
         select_field = self.page.locator(
             "xpath=//div[contains(@class,'v-dialog__content--active')]//div[contains(@class,'v-input__slot') and @role='combobox']"
         )
-        # force=True: поле — Vuetify combobox, обычный клик иногда перехватывается overlay модалки
-        select_field.click(timeout=5000, force=True)
+        # Без force=True: пока не осела transition-анимация модалки, её scrim (z-index: auto,
+        # pointer-events: auto) перехватывает клик поверх комбобокса (v-dialog__content--active
+        # держит pointer-events: none, пока не станет активным) — обычный click дожидается,
+        # пока цель реально начнёт принимать события, а не форсирует клик в перехватчик.
+        select_field.click(timeout=15000)
         self.page.keyboard.type(full_name, delay=30)
+        # debounce поиска по ФИО — без паузы поиск иногда не успевает отработать на свежесозданном пользователе
+        self.page.wait_for_timeout(800)
 
         option = self._dropdown_option_by_text(full_name)
         expect(option).to_be_visible(timeout=15000)
@@ -137,6 +153,9 @@ class AdminActivitiesPage(BasePage):
             "xpath=//div[contains(@class,'v-dialog__content--active')]//button[.//span[contains(text(),'Добавить')]]"
         )
         add_confirm.click(timeout=5000)
+        # дождаться закрытия модалки — иначе клик по кнопке «Добавить» проверяющего может
+        # попасть в ещё не отыгравшую transition закрытия модалки преподавателей
+        expect(modal).to_be_hidden(timeout=15000)
 
     def add_reviewer(self, full_name: str) -> None:
         add_button = self.page.locator("xpath=(//button[contains(@class,'button-admin ma-0')])[2]")
@@ -144,7 +163,7 @@ class AdminActivitiesPage(BasePage):
 
         modal_title = self.page.locator(
             "xpath=//div[contains(@class,'v-dialog__content--active')]"
-            "//*[contains(@class,'display-3') and normalize-space()='Добавить проверяющих']"
+            "//*[contains(text(),'Добавить проверяющих')]"
         )
         expect(modal_title).to_be_visible(timeout=15000)
 
@@ -152,9 +171,12 @@ class AdminActivitiesPage(BasePage):
             "xpath=//div[contains(@class,'v-dialog__content--active')]"
             "//label[normalize-space()='Проверяющий']/ancestor::div[contains(@class,'v-input')][1]"
         )
-        # force=True: та же причина — combobox перекрыт overlay-анимацией модалки
-        select_field.click(timeout=5000, force=True)
+        # Без force=True — та же причина, что в add_teacher: пока scrim модалки не «остыл»
+        # после transition, он перехватывает клик поверх комбобокса.
+        select_field.click(timeout=15000)
         self.page.keyboard.type(full_name, delay=30)
+        # debounce поиска по ФИО — без паузы поиск иногда не успевает отработать на свежесозданном пользователе
+        self.page.wait_for_timeout(800)
 
         safe_name = full_name.replace("'", "")
         option = self.page.locator(
@@ -201,6 +223,12 @@ class AdminActivitiesPage(BasePage):
     def expect_created(self, name: str) -> None:
         self.search(name)
         expect(self.row_by_name(name)).to_be_visible(timeout=15000)
+
+    def activity_id(self, name: str) -> int:
+        """ID созданной активити — из href ссылки на неё в строке таблицы (после expect_created)."""
+        link = self.row_by_name(name).locator("a[href*='/admin/activities/']").first
+        href = link.get_attribute("href")
+        return int(href.rstrip("/").split("/")[-1])
 
     # ── Композитный сценарий создания ПЗ ────────────────────────────────
 

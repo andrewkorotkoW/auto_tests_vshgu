@@ -1,7 +1,13 @@
-"""Админка → База пользователей (/admin/users): поиск, строка пользователя, чипы колонки «Синхронизация»."""
+"""Админка → База пользователей (/admin/users): поиск, строка пользователя, чипы колонки «Синхронизация»,
+карточка пользователя → вкладка «Назначения» (индивидуальное назначение активити).
+
+Методы поиска по email и назначения активити — перенос src/ui/locators/admin_users_locators.py
+коллеги (репозиторий lms, feature/my-tests) в наш Page Object.
+"""
+import re
 from typing import Optional
 
-from playwright.sync_api import Page, Locator
+from playwright.sync_api import Page, Locator, expect
 from ui.pages.base_page import BasePage
 from utils.logger import logger
 
@@ -45,6 +51,87 @@ class AdminUsersPage(BasePage):
 
     def chip_icon_color(self, chip: Locator) -> str:
         return chip.locator(".v-icon").first.evaluate("e => getComputedStyle(e).color")
+
+    # ── Поиск по email и карточка пользователя ──────────────────────────
+
+    @property
+    def search_filter_dropdown(self) -> Locator:
+        return self.page.locator(
+            "xpath=//button[contains(@class,'main-header__btn-dropdown') and .//span[contains(@class,'v-btn__content')]]"
+        ).first
+
+    def switch_search_filter_to_email(self) -> None:
+        self.search_filter_dropdown.click(timeout=5000)
+        email_option = self.page.locator("xpath=//div[@role='menuitem' and .//*[@data-qa='detalization-button__email']]").first
+        expect(email_option).to_be_visible(timeout=15000)
+        email_option.click(timeout=5000)
+        expect(self.page.locator(
+            "xpath=//button[contains(@class,'main-header__btn-dropdown') and .//span[contains(normalize-space(),'Email')]]"
+        ).first).to_be_visible(timeout=15000)
+
+    def search_by_email(self, email: str) -> None:
+        """Переключает фильтр поиска на Email (если ещё не переключён) и ищет пользователя по нему."""
+        self.switch_search_filter_to_email()
+        box = self.page.locator('[data-qa="km-search"]').first
+        box.fill(email, timeout=5000)
+        self.page.keyboard.press("Enter")
+
+    def user_row_by_email(self, email: str) -> Locator:
+        return self.page.locator(f"xpath=//tr[.//a[contains(@href,'/admin/users/')][.//span[normalize-space()='{email}']]]")
+
+    def open_user_by_email(self, email: str) -> int:
+        row = self.user_row_by_email(email)
+        expect(row).to_be_visible(timeout=30000)
+        row.locator("a[href*='/admin/users/']").first.click(timeout=5000)
+        expect(self.page).to_have_url(re.compile(r".*/admin/users/\d+.*"), timeout=15000)
+        return int(self.page.url.rstrip("/").split("/")[-1])
+
+    def open_assignments_tab(self) -> None:
+        tab = self.page.locator("xpath=//a[contains(@href,'/assigment') and .//span[normalize-space()='Назначения']]")
+        expect(tab).to_be_visible(timeout=15000)
+        tab.click(timeout=5000)
+        expect(self.page).to_have_url(re.compile(r".*/admin/users/\d+/assigment.*"), timeout=15000)
+
+    def assignment_row(self, pz_name: str) -> Locator:
+        safe = pz_name.replace("'", "")
+        return self.page.locator(f"xpath=//tr[.//*[contains(normalize-space(),'{safe}')]]")
+
+    def add_activity_to_user(self, pz_name: str) -> None:
+        """Модалка «Добавить Активити» на вкладке «Назначения» карточки пользователя (индивидуальное назначение)."""
+        add_button = self.page.get_by_role("button", name="Добавить Активити")
+        expect(add_button).to_be_visible(timeout=15000)
+        add_button.click(timeout=5000)
+
+        modal = self.page.locator("xpath=//div[contains(@class,'v-dialog__content--active')]")
+        # Заголовок модалки используется только чтобы снять фокус с открытого комбобокса —
+        # точный текст («Добавить»/«Добавить активити») не важен и может отличаться.
+        modal_title = modal.locator("xpath=.//div[contains(@class,'v-card__title')]").first
+        expect(modal_title).to_be_visible(timeout=15000)
+
+        select_field = modal.locator(
+            "xpath=.//label[normalize-space()='Введите название или выберите из списка']/ancestor::div[contains(@class,'v-input')][1]"
+        )
+        expect(select_field).to_be_visible(timeout=15000)
+        # Без force=True: пока transition открытия модалки не осела, её scrim перехватывает клик.
+        select_field.click(timeout=15000)
+        self.page.keyboard.type(pz_name, delay=30)
+        # debounce поиска — без паузы результат иногда не успевает подгрузиться
+        self.page.wait_for_timeout(800)
+
+        safe = pz_name.replace("'", "")
+        option = self.page.locator(
+            "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
+            f"//div[contains(@class,'v-list-item') and .//div[contains(@class,'v-list-item__title') and contains(normalize-space(),'{safe}')]]"
+        ).first
+        expect(option).to_be_visible(timeout=15000)
+        option.click(timeout=5000)
+
+        submit_button = modal.get_by_role("button", name="Добавить")
+        expect(submit_button).to_be_enabled(timeout=15000)
+        modal_title.click(timeout=3000)
+        submit_button.click(timeout=5000)
+
+        expect(self.assignment_row(pz_name)).to_be_visible(timeout=30000)
 
     def tooltip_of(self, chip: Locator) -> Optional[str]:
         """Навести курсор на чип и вернуть текст всплывающей подсказки (v-tooltip)."""

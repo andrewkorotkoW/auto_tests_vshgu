@@ -112,8 +112,10 @@ class AdminProgramsPage(BasePage):
             "xpath=//div[contains(@class,'v-dialog__content--active')]//input[@type='text' and not(@disabled)]"
         )
         expect(select_field).to_be_visible(timeout=15000)
-        # force=True: поле открывается вместе с анимацией модалки, обычный клик может не успеть
-        select_field.click(timeout=5000, force=True)
+        # Без force=True: пока transition открытия модалки не осела, её scrim перехватывает
+        # клик поверх поля (v-dialog__content--active первое время держит pointer-events: none) —
+        # обычный click дожидается, пока цель реально начнёт принимать события.
+        select_field.click(timeout=15000)
 
         first_user = self.page.locator(
             "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
@@ -122,10 +124,13 @@ class AdminProgramsPage(BasePage):
         expect(first_user).to_be_visible(timeout=15000)
         first_user.click(timeout=5000)
 
+        # Клик по заголовку модалки — просто способ снять фокус с открытого v-select,
+        # чтобы кнопка подтверждения стала кликабельной; точный текст заголовка не важен
+        # и отличается у «Добавить Менеджера»/«Добавить внешнего менеджера».
         modal_title = self.page.locator(
-            "xpath=//div[contains(@class,'v-dialog__content--active')]"
-            "//div[contains(@class,'display-3') and normalize-space()='Добавить Менеджера']"
-        )
+            "xpath=//div[contains(@class,'v-dialog__content--active')]//div[contains(@class,'v-card__title')]"
+        ).first
+        expect(modal_title).to_be_visible(timeout=15000)
         modal_title.click(timeout=5000)
 
         confirm_button = self.page.locator(
@@ -144,42 +149,50 @@ class AdminProgramsPage(BasePage):
 
     def _select_first_dropdown_item(self, select_locator: Locator) -> None:
         expect(select_locator).to_be_visible(timeout=15000)
-        # force=True: Vuetify-комбобокс, стандартный клик иногда перехватывается overlay-подложкой
-        select_locator.click(timeout=5000, force=True)
-        dropdown_items = self.page.locator(
-            "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
-            "//div[contains(@class,'v-list-item__content')]"
-        )
+        # Без force=True: клик должен реально попасть в комбобокс, иначе (как было с
+        # get_by_role("textbox", name=...) — он матчил элемент, но клик по нему не открывал
+        # именно этот v-select) дропдаун для другого поля молча остаётся незаполненным.
+        select_locator.click(timeout=15000)
+        # Дропдаун ищем по id из aria-owns этого конкретного комбобокса, а не первый
+        # попавшийся "активный" v-menu на странице — после модалок «Добавить менеджера»
+        # их собственный v-menu иногда остаётся в DOM с классом ...active, и общий
+        # локатор без привязки к id стабильно попадал именно в этот фантомный список.
+        list_id = select_locator.get_attribute("aria-owns")
+        if list_id:
+            dropdown_items = self.page.locator(f"#{list_id} >> xpath=.//div[contains(@class,'v-list-item__content')]")
+        else:
+            dropdown_items = self.page.locator(
+                "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
+                "//div[contains(@class,'v-list-item__content')]"
+            )
         expect(dropdown_items.first).to_be_visible(timeout=15000)
         dropdown_items.first.click(timeout=5000)
 
-    def select_project(self) -> None:
-        self._select_first_dropdown_item(self.page.get_by_role("textbox", name="Проект"))
-
-    def select_academic_director(self) -> None:
+    def _select_by_label(self, label_text: str) -> None:
         self._select_first_dropdown_item(
             self.page.locator(
-                "xpath=//label[contains(normalize-space(),'Академический директор программы')]"
+                f"xpath=//label[contains(normalize-space(),'{label_text}')]"
                 "/ancestor::div[contains(@class,'v-input')][1]"
             )
         )
 
-    def fill_expert_name(self, text: str) -> None:
-        field = self.page.locator("xpath=//label[contains(text(),'Наименование для АИС')]/following::input[@type='text'][1]")
-        expect(field).to_be_visible(timeout=15000)
-        field.fill(text, timeout=5000)
+    def select_project(self) -> None:
+        self._select_by_label("Проект")
+
+    def select_academic_director(self) -> None:
+        self._select_by_label("Академический директор программы")
 
     def select_cost_program_group(self) -> None:
-        self._select_first_dropdown_item(self.page.get_by_role("textbox", name="Стоимостная группа"))
+        self._select_by_label("Стоимостная группа")
 
     def select_unit(self) -> None:
-        self._select_first_dropdown_item(self.page.get_by_role("textbox", name="Подразделение реализации"))
+        self._select_by_label("Подразделение реализации")
 
     def select_program_type(self) -> None:
-        self._select_first_dropdown_item(self.page.get_by_role("textbox", name="Вид программы"))
+        self._select_by_label("Вид программы")
 
     def select_program_form(self) -> None:
-        self._select_first_dropdown_item(self.page.get_by_role("textbox", name="Форма реализации"))
+        self._select_by_label("Форма реализации")
 
     def fill_total_load(self, value: str = "100") -> None:
         field = self.page.locator("xpath=//label[contains(text(),'Общий объем')]/following::input[@type='text'][1]")
@@ -202,7 +215,6 @@ class AdminProgramsPage(BasePage):
         place: str,
         date_from: str,
         date_to: str,
-        expert_name: str,
         total_load: str = "100",
     ) -> int:
         """Полный сценарий создания потока со всеми обязательными селектами.
@@ -213,7 +225,6 @@ class AdminProgramsPage(BasePage):
         self.add_external_manager()
         self.select_project()
         self.select_academic_director()
-        self.fill_expert_name(expert_name)
         self.select_cost_program_group()
         self.select_unit()
         self.select_program_type()
@@ -226,7 +237,8 @@ class AdminProgramsPage(BasePage):
     def open_schedule_tab(self) -> None:
         tab = self.page.locator("a.courses-list-tabs__item", has_text="Расписание")
         expect(tab).to_be_visible(timeout=15000)
-        tab.click(timeout=5000)
+        # force=True: после прямого goto() на URL потока иногда остаётся затемнение онбординг-тура
+        tab.click(timeout=5000, force=True)
 
     def create_module(self, name: str, place: str, start_date: str, finish_date: str) -> None:
         add_button = self.page.locator("xpath=//button[contains(@class,'v-btn--is-elevated')]")
@@ -288,9 +300,11 @@ class AdminProgramsPage(BasePage):
             "/ancestor::div[contains(@class,'v-input')][1]"
         )
         expect(select_field).to_be_visible(timeout=15000)
-        # force=True: комбобокс внутри модалки, добавления событий модалки перехватывают обычный клик
-        select_field.click(timeout=5000, force=True)
+        # Без force=True: пока transition открытия модалки не осела, её scrim перехватывает клик.
+        select_field.click(timeout=15000)
         self.page.keyboard.type(pz_name, delay=30)
+        # debounce поиска — без паузы результат иногда не успевает подгрузиться
+        self.page.wait_for_timeout(800)
 
         safe = pz_name.replace("'", "")
         activity_item = self.page.locator(
@@ -302,8 +316,8 @@ class AdminProgramsPage(BasePage):
 
         modal_title = self.page.locator(
             "xpath=//div[contains(@class,'v-dialog__content--active')]"
-            "//div[contains(@class,'display-3') and normalize-space()='Добавить']"
-        )
+            "//*[contains(@class,'v-card__title')]"
+        ).first
         expect(modal_title).to_be_visible(timeout=15000)
         modal_title.click(timeout=5000)
 
@@ -325,7 +339,8 @@ class AdminProgramsPage(BasePage):
     def open_listeners_tab(self) -> None:
         tab = self.page.locator("a.courses-list-tabs__item", has_text="Слушатели")
         expect(tab).to_be_visible(timeout=15000)
-        tab.click(timeout=5000)
+        # force=True: после прямого goto() на URL потока иногда остаётся затемнение онбординг-тура
+        tab.click(timeout=5000, force=True)
 
     def add_listener(self, user_full_name: str, user_id: Union[int, str]) -> None:
         add_button = self.page.get_by_role("button", name="Добавить Слушателей")
@@ -338,9 +353,11 @@ class AdminProgramsPage(BasePage):
             "//label[normalize-space()='Выберите Пользователя']/ancestor::div[contains(@class,'v-input')][1]"
         )
         expect(select_field).to_be_visible(timeout=15000)
-        # force=True: комбобокс модалки, ввод текста должен начаться сразу после клика по анимированному полю
-        select_field.click(timeout=5000, force=True)
+        # Без force=True: пока transition открытия модалки не осела, её scrim перехватывает клик.
+        select_field.click(timeout=15000)
         self.page.keyboard.type(user_full_name, delay=80)
+        # debounce поиска — без паузы результат иногда не успевает подгрузиться
+        self.page.wait_for_timeout(800)
 
         option = self.page.locator(
             "xpath=//div[contains(@class,'menuable__content__active')]"
@@ -350,7 +367,7 @@ class AdminProgramsPage(BasePage):
         option.click(timeout=5000)
 
         modal_title = self.page.locator(
-            "xpath=//div[contains(@class,'v-dialog__content--active')]//*[contains(@class,'display-3')]"
+            "xpath=//div[contains(@class,'v-dialog__content--active')]//*[contains(@class,'v-card__title')]"
         ).first
         expect(modal_title).to_be_visible(timeout=15000)
         modal_title.click(timeout=5000)
