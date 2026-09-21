@@ -1,5 +1,6 @@
 import os
 
+import allure
 import pytest
 from api.client import ApiClient
 from api.endpoints.users import UsersEndpoint
@@ -75,6 +76,28 @@ def pytest_collection_modifyitems(config, items):
 
         if item.get_closest_marker("ui") is not None:
             item.add_marker(pytest.mark.flaky(reruns=1))
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Скриншот Playwright-страницы при падении UI-теста, прикреплённый в allure."""
+    outcome = yield
+    report = outcome.get_result()
+    if report.when != "call" or not report.failed:
+        return
+
+    page = item.funcargs.get("page") or item.funcargs.get("admin_page") or item.funcargs.get("user_page")
+    if page is None:
+        return
+
+    try:
+        allure.attach(
+            page.screenshot(full_page=True),
+            name="failure_screenshot",
+            attachment_type=allure.attachment_type.PNG,
+        )
+    except Exception as exc:  # noqa: BLE001 — страница могла уже закрыться к моменту хука
+        logger.info(f"Не удалось сделать скриншот при падении: {exc}")
 
 
 @pytest.fixture(scope="session")
