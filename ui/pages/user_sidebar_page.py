@@ -14,6 +14,9 @@ SIDEBAR_BUTTONS = {
 OPTIONAL_EXTERNAL_BUTTONS = {
     "МИФ": "miflib.ru",
 }
+# Пункт меню пользователя (выпадающий список под ФИО в шапке) для синхронизированных с БУК
+BUK_MENU_LABEL = "БУК «Перспектива»"
+BUK_LINK_PART = "goto-lpd/buk"
 
 
 class UserSidebarPage(BasePage):
@@ -106,6 +109,46 @@ class UserSidebarPage(BasePage):
             except Exception:  # noqa: BLE001
                 continue
         return False
+
+    # ---- меню пользователя в шапке (ФИО → выпадающий список) ----
+    def open_user_menu(self) -> Locator:
+        """Открыть выпадающее меню под ФИО и вернуть его overlay."""
+        self.close_tour_dialog()
+        self.page.locator(".user-menu button").first.click()
+        menu = self.page.locator(".v-overlay--active:has-text('Мой профиль')").first
+        menu.wait_for(state="visible", timeout=10000)
+        return menu
+
+    def user_menu_items(self) -> list:
+        """Тексты пунктов открытого меню пользователя."""
+        menu = self.open_user_menu()
+        return [t.strip() for t in menu.locator("a, .v-list-item").all_inner_texts() if t.strip()]
+
+    def buk_menu_item(self) -> Locator:
+        """Пункт «АИС «БУК «Перспектива»»» в открытом меню пользователя (ссылка в новую вкладку)."""
+        return self.page.locator(f".v-overlay--active a:has-text('{BUK_MENU_LABEL}')").first
+
+    def close_menu(self) -> None:
+        self.page.keyboard.press("Escape")
+
+    def close_tour_dialog(self) -> None:
+        """Диалог «Интерактивное руководство» иногда остаётся с затемнением (например, на странице
+        404 туру некуда идти) и перекрывает шапку. Сначала штатно: Escape и клик по затемнению;
+        если не помогло — прячем overlay скриптом и пишем предупреждение, это обход, а не проверка."""
+        page = self.page
+        dialog = page.locator(".v-overlay--active:has-text('Интерактивное руководство')").first
+        if not dialog.count() or not dialog.is_visible(timeout=500):
+            return
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(300)
+        try:
+            page.locator(".v-overlay__scrim").first.click(position={"x": 5, "y": 5}, timeout=1000, force=True)
+        except Exception:  # noqa: BLE001
+            pass
+        page.wait_for_timeout(300)
+        if dialog.is_visible(timeout=500):
+            logger.warning("Диалог онбординга не закрывается штатно — скрываем overlay скриптом (обход)")
+            page.evaluate("() => document.querySelectorAll('.v-overlay--active').forEach(o => o.remove())")
 
     def go(self, label: str) -> None:
         """Перейти по кнопке меню, дождаться загрузки и пройти онбординг нового раздела."""
