@@ -105,15 +105,15 @@ class AdminUsersPage(BasePage):
         modal = self.page.locator("xpath=//div[contains(@class,'v-dialog__content--active')]")
         # Заголовок модалки используется только чтобы снять фокус с открытого комбобокса —
         # точный текст («Добавить»/«Добавить активити») не важен и может отличаться.
-        modal_title = modal.locator("xpath=.//div[contains(@class,'display-3')]").first
+        modal_title = modal.locator("xpath=.//div[contains(@class,'v-card__title')]").first
         expect(modal_title).to_be_visible(timeout=15000)
 
         select_field = modal.locator(
             "xpath=.//label[normalize-space()='Введите название или выберите из списка']/ancestor::div[contains(@class,'v-input')][1]"
         )
         expect(select_field).to_be_visible(timeout=15000)
-        # force=True: комбобокс модалки, обычный клик может перехватываться анимацией открытия
-        select_field.click(timeout=5000, force=True)
+        # Без force=True: пока transition открытия модалки не осела, её scrim перехватывает клик.
+        select_field.click(timeout=15000)
         self.page.keyboard.type(pz_name, delay=30)
         # debounce поиска — без паузы результат иногда не успевает подгрузиться
         self.page.wait_for_timeout(800)
