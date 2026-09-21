@@ -33,6 +33,7 @@ class Environment:
     cas_auth_token: str
     external_system_client_token: str
     lpd_jwt_token: str
+    buk_token: str = ""  # JWT интеграции БУК (<ENV>_BUK_TOKEN), без Bearer
 
 
 def _getenv_with_legacy(new_name: str, legacy_name: Optional[str], default: str) -> str:
@@ -71,6 +72,7 @@ def _build_environment(
             f"{prefix}_EXTERNAL_TOKEN", legacy.get("external_system_client_token"), ""
         ),
         lpd_jwt_token=_getenv_with_legacy(f"{prefix}_LPD_JWT", legacy.get("lpd_jwt_token"), ""),
+        buk_token=os.getenv(f"{prefix}_BUK_TOKEN", ""),
     )
 
 

@@ -190,3 +190,20 @@ docker compose run --rm tests --env prod -m smoke
 Внутри контейнера запускается тот же `scripts/run.sh`, UI-тесты идут в headless-режиме
 (`HEADLESS=1`), результаты остаются на хосте в `results/<env>/<timestamp>/`, кэш сессий —
 в `.cache/`. Локально без Docker `HEADLESS` не задан, и браузер открывается с окном, как раньше.
+
+## 8. Интеграция БУК (входящий REST)
+
+Тесты `tests/api/buk/` покрывают `POST/PUT/DELETE /api/v1/external/buk/users` по контракту
+asuo-buk-api-contracts (§ 2, § 4): автосопоставление по email, ручное по `user_id`,
+`rejected` для администраторов, `conflict` для связи 1:1, `DELETE` с идемпотентным повтором,
+перепривязка после разрыва, валидация и 403 без токена.
+
+Нужен JWT интеграции в `.env`: `<ENV>_BUK_TOKEN` (передаётся в `Authorization` как есть,
+без Bearer). Без токена тесты пропускаются (skip). Сопоставление на сервере асинхронное,
+`GET` в контракте нет, поэтому состояние читается повторным `PUT` с тем же телом
+(`ExternalBukEndpoint.wait_for_match` / `put_and_wait`), первый опрос — через 6 секунд.
+Все переданные `buk_user_id` снимаются `DELETE` в teardown фикстуры `external_buk_endpoint`.
+
+```bash
+pytest --env=stage tests/api/buk
+```

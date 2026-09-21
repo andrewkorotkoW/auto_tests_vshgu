@@ -1,3 +1,4 @@
+import uuid
 import os
 import random
 import string
@@ -1352,4 +1353,42 @@ def generate_scorm_payload(
                 "sub_files": []
             }
         }
+    }
+
+def generate_buk_user_payload(
+        email: str = None,
+        first_name: str = None,
+        last_name: str = None,
+        middle_name: str = None,
+        birth_date: str = "1990-10-10",
+        user_id: int = None,
+        buk_user_id: str = None,
+        from_user: dict = None,
+) -> dict:
+    """Элемент запроса POST/PUT /external/buk/users.
+
+    from_user — словарь из фикстуры created_user: email и ФИО берутся из него
+    (для автосопоставления должны совпасть с профилем АСУО).
+    """
+    if from_user:
+        email = email or from_user["email"]
+        first_name = first_name or from_user["name"]
+        last_name = last_name or from_user["surname"]
+        middle_name = middle_name or from_user["patronymic"]
+        dob = (from_user.get("attributes") or {}).get("date_of_birth")
+        if dob:
+            birth_date = str(dob)[:10]
+    if not email:
+        email = random_email()
+    if not (first_name and last_name and middle_name):
+        n, s, p = random_user_data()
+        first_name, last_name, middle_name = first_name or n, last_name or s, middle_name or p
+    return {
+        "buk_user_id": buk_user_id or f"buk-auto-{unique_suffix()}-{uuid.uuid4().hex[:6]}",
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "middle_name": middle_name,
+        "birth_date": birth_date,
+        "user_id": user_id,
     }

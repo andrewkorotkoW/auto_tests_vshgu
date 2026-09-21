@@ -676,3 +676,44 @@ def stage_api_client():
     yield client
 
 
+
+
+# ---------- Интеграция БУК (входящий REST /external/buk/users) ----------
+
+@pytest.fixture
+def external_buk_endpoint(env, env_session):
+    """Клиент входящего REST БУК: JWT в Authorization без Bearer (<ENV>_BUK_TOKEN).
+
+    Своя requests.Session, как у external_cas_endpoint, чтобы не трогать общую сессию логина.
+    Все buk_user_id, которые прошли через post_user/put_user, снимаются DELETE в teardown —
+    иначе email тестовых пользователей остаётся связанным и ломает повторные прогоны.
+    """
+    if not env.buk_token:
+        pytest.skip(f"Не задан {env.name.upper()}_BUK_TOKEN в .env — тесты БУК пропущены")
+    import requests
+    from api.client import ApiClient
+    from api.endpoints.external_buk import ExternalBukEndpoint
+
+    session = requests.Session()
+    session.cookies.update(env_session.cookies)
+    session.headers["Authorization"] = env.buk_token
+    client = ApiClient(session=session, base_url=env.api_base_url)
+    endpoint = ExternalBukEndpoint(client)
+
+    sent = []
+    orig_post, orig_put = endpoint.post_users, endpoint.put_users
+
+    def _track(users):
+        sent.extend(u.get("buk_user_id") for u in users if u.get("buk_user_id"))
+
+    endpoint.post_users = lambda users: (_track(users), orig_post(users))[1]
+    endpoint.put_users = lambda users: (_track(users), orig_put(users))[1]
+
+    yield endpoint
+
+    ids = list(dict.fromkeys(sent))
+    if ids:
+        try:
+            endpoint.delete_users(ids)
+        except Exception as exc:  # noqa: BLE001 — teardown не должен ронять прогон
+            logger.warning(f"BUK cleanup failed for {ids}: {exc}")
