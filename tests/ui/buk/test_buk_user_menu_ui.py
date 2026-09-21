@@ -69,6 +69,66 @@ class TestBukUserMenuUI:
             logger.info(f"Новая вкладка: {buk_tab.url}")
             allure.attach(buk_tab.url, "URL новой вкладки", allure.attachment_type.TEXT)
             assert buk_tab.url.startswith("https://"), buk_tab.url
+            assert "/consent" in buk_tab.url, "ожидали страницу согласия БУК"
+            buk_tab.screenshot(path=f"allure-results/buk_consent_{user['id']}.png")
+            allure.attach.file(f"allure-results/buk_consent_{user['id']}.png", "БУК: согласие с правилами",
+                               allure.attachment_type.PNG)
+
+            buk_tab.close()
+
+    @allure.title("Согласие с правилами в БУК → вход в кабинет БУК (сквозной SSO)")
+    @allure.severity(allure.severity_level.CRITICAL)
+    @pytest.mark.ui
+    @pytest.mark.xfail(
+        strict=True,
+        reason="Стенд БУК (21.09.2026): форма согласия шлёт POST на http://test-dp.ranepa.ru (mixed content, "
+               "в Chrome — предупреждение «данные передаются небезопасно»), в ответ отдаёт сырой JSON "
+               "{redirect_url}, а сам redirect_url (/asuo/auth?asuo=…) отвечает «Не удалось авторизовать "
+               "пользователя». Когда починят — тест станет XPASS и упадёт как strict: снять xfail.",
+    )
+    def test_buk_consent_leads_into_buk(self, page, env, buk_synced_user):
+        import json
+        user, payload = buk_synced_user
+        sidebar = _login(page, env, user)
+        sidebar.open_user_menu()
+        with page.expect_popup(timeout=15000) as popup_info:
+            sidebar.buk_menu_item().click()
+        buk_tab = popup_info.value
+        buk_tab.wait_for_load_state("domcontentloaded", timeout=20000)
+
+        with allure.step("1. Страница согласия БУК"):
+            assert "/consent" in buk_tab.url, buk_tab.url
+            assert buk_tab.locator("text=Согласие с правилами").first.is_visible(timeout=10000)
+            form_action = buk_tab.locator("form").first.get_attribute("action") or ""
+            allure.attach(form_action, "action формы согласия", allure.attachment_type.TEXT)
+            assert form_action.startswith("https://"), f"форма согласия отправляется по незащищённому адресу: {form_action}"
+
+        with allure.step("2. Галка «Даю согласие» → «Подтвердить»"):
+            buk_tab.locator("input[type=checkbox]").first.check(force=True)
+            buk_tab.locator("button:has-text('Подтвердить'), input[type=submit], a:has-text('Подтвердить')").first.click()
+            try:
+                buk_tab.wait_for_load_state("networkidle", timeout=30000)
+            except Exception:  # noqa: BLE001
+                pass
+            buk_tab.wait_for_timeout(1000)
+            logger.info(f"После подтверждения: {buk_tab.url}")
+            allure.attach(buk_tab.url, "URL после подтверждения", allure.attachment_type.TEXT)
+            assert not buk_tab.url.startswith("chrome-error://"), "браузер показал страницу ошибки после отправки согласия"
+            body = buk_tab.inner_text("body").strip()
+            if body.startswith("{"):  # бэкенд вернул JSON вместо редиректа — идём по redirect_url сами
+                data = json.loads(body)
+                allure.attach(body, "Ответ на согласие (JSON)", allure.attachment_type.JSON)
+                assert "redirect_url" in data, data
+                buk_tab.goto(data["redirect_url"], wait_until="networkidle")
+                buk_tab.wait_for_timeout(1500)
+
+        with allure.step("3. Мы внутри БУК, без ошибки авторизации"):
+            buk_tab.screenshot(path=f"allure-results/buk_inside_{user['id']}.png", full_page=True)
+            allure.attach.file(f"allure-results/buk_inside_{user['id']}.png", "БУК после согласия", allure.attachment_type.PNG)
+            text = buk_tab.inner_text("body")
+            assert "test-buk.ranepa.ru" in buk_tab.url and "/consent" not in buk_tab.url, buk_tab.url
+            assert "Не удалось авторизовать" not in text and '"error"' not in text, text[:300]
+            assert user["surname"] in text or "Выйти" in text or "Личный кабинет" in text, text[:300]
             buk_tab.close()
 
     @allure.title("Пользователь без синхронизации с БУК: пункта БУК в меню нет")
