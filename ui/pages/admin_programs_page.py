@@ -122,10 +122,13 @@ class AdminProgramsPage(BasePage):
         expect(first_user).to_be_visible(timeout=15000)
         first_user.click(timeout=5000)
 
+        # Клик по заголовку модалки — просто способ снять фокус с открытого v-select,
+        # чтобы кнопка подтверждения стала кликабельной; точный текст заголовка не важен
+        # и отличается у «Добавить Менеджера»/«Добавить внешнего менеджера».
         modal_title = self.page.locator(
-            "xpath=//div[contains(@class,'v-dialog__content--active')]"
-            "//div[contains(@class,'display-3') and normalize-space()='Добавить Менеджера']"
-        )
+            "xpath=//div[contains(@class,'v-dialog__content--active')]//div[contains(@class,'display-3')]"
+        ).first
+        expect(modal_title).to_be_visible(timeout=15000)
         modal_title.click(timeout=5000)
 
         confirm_button = self.page.locator(
@@ -226,7 +229,8 @@ class AdminProgramsPage(BasePage):
     def open_schedule_tab(self) -> None:
         tab = self.page.locator("a.courses-list-tabs__item", has_text="Расписание")
         expect(tab).to_be_visible(timeout=15000)
-        tab.click(timeout=5000)
+        # force=True: после прямого goto() на URL потока иногда остаётся затемнение онбординг-тура
+        tab.click(timeout=5000, force=True)
 
     def create_module(self, name: str, place: str, start_date: str, finish_date: str) -> None:
         add_button = self.page.locator("xpath=//button[contains(@class,'v-btn--is-elevated')]")
@@ -291,6 +295,8 @@ class AdminProgramsPage(BasePage):
         # force=True: комбобокс внутри модалки, добавления событий модалки перехватывают обычный клик
         select_field.click(timeout=5000, force=True)
         self.page.keyboard.type(pz_name, delay=30)
+        # debounce поиска — без паузы результат иногда не успевает подгрузиться
+        self.page.wait_for_timeout(800)
 
         safe = pz_name.replace("'", "")
         activity_item = self.page.locator(
@@ -325,7 +331,8 @@ class AdminProgramsPage(BasePage):
     def open_listeners_tab(self) -> None:
         tab = self.page.locator("a.courses-list-tabs__item", has_text="Слушатели")
         expect(tab).to_be_visible(timeout=15000)
-        tab.click(timeout=5000)
+        # force=True: после прямого goto() на URL потока иногда остаётся затемнение онбординг-тура
+        tab.click(timeout=5000, force=True)
 
     def add_listener(self, user_full_name: str, user_id: Union[int, str]) -> None:
         add_button = self.page.get_by_role("button", name="Добавить Слушателей")
@@ -341,6 +348,8 @@ class AdminProgramsPage(BasePage):
         # force=True: комбобокс модалки, ввод текста должен начаться сразу после клика по анимированному полю
         select_field.click(timeout=5000, force=True)
         self.page.keyboard.type(user_full_name, delay=80)
+        # debounce поиска — без паузы результат иногда не успевает подгрузиться
+        self.page.wait_for_timeout(800)
 
         option = self.page.locator(
             "xpath=//div[contains(@class,'menuable__content__active')]"

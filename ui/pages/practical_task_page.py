@@ -20,6 +20,14 @@ class PracticalTaskPage(BasePage):
     def open_programs_list(self, ui_base_url: str) -> None:
         self.page.goto(f"{ui_base_url.rstrip('/')}/programs")
 
+    def open_individual_education(self) -> None:
+        """Раздел «Индивидуальное обучение» — ПЗ, назначенные пользователю напрямую (не через поток).
+        На этом стенде это переключатель вкладки на странице «Моё обучение», а не отдельный
+        роут — URL после клика не меняется, поэтому проверяем только видимость самого переключателя."""
+        link = self.page.locator("text=Индивидуальное обучение").first
+        expect(link).to_be_visible(timeout=15000)
+        link.click(timeout=5000, force=True)
+
     def program_title(self, program_name: str) -> Locator:
         return self.page.locator(f"xpath=//a[contains(@class,'description__title')][.//*[normalize-space()='{program_name}']]")
 
