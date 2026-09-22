@@ -8,7 +8,7 @@ class LoginPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
 
-    def login(self, email: str, password: str, base_url: str = None):
+    def login(self, email: str, password: str, base_url: str = None, handle_onboarding: bool = True):
         self.page.goto(f"{base_url or settings.UI_BASE_URL}/auth/main")
         self.wait_for('input[name="email_or_login"]')
         self.fill('input[name="email_or_login"]', email)
@@ -16,8 +16,9 @@ class LoginPage(BasePage):
 
         self.click('button:has-text("Войти")')
         self.page.wait_for_load_state("networkidle")
-        self.handle_modal()
-        self.complete_training()
+        if handle_onboarding:
+            self.handle_modal()
+            self.complete_training()
 
     def handle_modal(self):
         """Обработать модальное окно после логина."""

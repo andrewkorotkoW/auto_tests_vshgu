@@ -18,6 +18,8 @@ LIST_ITEM_TITLE = "div.v-list-item__title"
 CONSENT_CHECKBOX_INPUT = "input[type='checkbox']"
 SUBMIT_BUTTON = "button:has-text('Отправить')"
 
+EMAIL_OPT_OUT_MODAL = "div.v-dialog:has-text('Вы отказались от получения информационных писем')"
+
 ONBOARDING_MODAL = "div.v-dialog:has-text('Интерактивное руководство')"
 START_BUTTON = "button:has-text('Пройти обучение')"
 NEXT_BUTTON = "button:has-text('Далее')"
@@ -91,6 +93,32 @@ class OnboardingPage:
         self.accept_consent()
         self.submit_registration_form()
 
+    def dismiss_email_opt_out_notice(self, timeout: int = 5000) -> None:
+        """После отправки анкеты регистрации иногда показывается информационное окно
+        «Вы отказались от получения информационных писем» — оно перекрывает модалку
+        «Интерактивное руководство» (та не рендерится, пока это окно не закрыто).
+        Не у всех пользователей — если не появилось за timeout, ничего не делаем."""
+        notice = self.page.locator(EMAIL_OPT_OUT_MODAL)
+        if notice.is_visible(timeout=timeout):
+            notice.locator("button:has-text('Понятно')").first.click(timeout=5000)
+            expect(notice).not_to_be_visible(timeout=10000)
+
+    def remove_tech_banner(self, timeout: int = 3000) -> None:
+        """Убрать со страницы оранжевую плашку «Технические работы», если она есть.
+
+        Пока плашка на экране, кнопка «Пройти обучение» остаётся визуально disabled
+        (класс v-btn--disabled) и клики по ней (в том числе force=True) не запускают
+        тур — воспроизведено вручную повторно. Штатное закрытие через её кнопку «×»
+        тоже ненадёжно на этом стенде (после клика плашка иногда остаётся в DOM), а
+        сама плашка не относится к предмету проверки онбординга, поэтому убираем её
+        скриптом — тот же обход, что и в ui/pages/user_sidebar_page.py::close_tour_dialog."""
+        banner = self.page.locator("div.tech-banner")
+        if banner.is_visible(timeout=timeout):
+            self.page.evaluate(
+                "() => document.querySelectorAll('div.tech-banner').forEach(el => el.remove())"
+            )
+            expect(banner).to_have_count(0, timeout=5000)
+
     # ── Вторая модалка: «Интерактивное руководство» ──────────────────────
 
     @property
@@ -121,12 +149,25 @@ class OnboardingPage:
             return "primary"
         return "repeat"
 
-    def start_onboarding_if_present(self, timeout: int = 3000) -> bool:
+    def start_onboarding_if_present(self, timeout: int = 3000, attempts: int = 5) -> bool:
+        """Кликает «Пройти обучение», если кнопка есть.
+
+        Вызывать после remove_tech_banner() — пока плашка «Технические работы» на
+        экране, кнопка остаётся Vuetify-disabled. Даже без плашки на develop клик не
+        всегда запускает тур с первого раза (воспроизведено вручную несколько раз,
+        без стабильной закономерности в числе попыток) — поэтому повторяем клик с
+        паузой, пока не появится «Далее»/«Завершить»."""
         start_button = self.page.locator(START_BUTTON)
-        if start_button.is_visible(timeout=timeout):
-            start_button.click(timeout=5000)
-            return True
-        return False
+        if not start_button.is_visible(timeout=timeout):
+            return False
+
+        next_or_finish = self.page.locator(NEXT_BUTTON).or_(self.page.locator(FINISH_BUTTON))
+        for _ in range(attempts):
+            start_button.click(timeout=5000, force=True)
+            if next_or_finish.first.is_visible(timeout=2500):
+                break
+            self.page.wait_for_timeout(800)
+        return True
 
     def complete_onboarding(self, max_steps: int = 20) -> None:
         """Проходит все слайды кликами «Далее» и завершает «Завершить»."""
@@ -147,11 +188,17 @@ class OnboardingPage:
 
     # ── Повторный онбординг: перезапуск и закрытие крестиком ────────────
 
-    def restart_onboarding(self) -> None:
+    def restart_onboarding(self, attempts: int = 5) -> None:
         expect(self.repeat_onboarding_button).to_be_visible(timeout=10000)
         # force=True: значок перезапуска — маленькая иконка в сайдбаре, иногда на доли
-        # секунды перекрыта соседней анимацией меню
-        self.repeat_onboarding_button.click(timeout=5000, force=True)
+        # секунды перекрыта соседней анимацией меню. Повтор клика — тот же тур-баг,
+        # что и в start_onboarding_if_present: первый клик иногда не открывает тур.
+        next_or_start = self.page.locator(NEXT_BUTTON).or_(self.page.locator(START_BUTTON))
+        for _ in range(attempts):
+            self.repeat_onboarding_button.click(timeout=5000, force=True)
+            if next_or_start.first.is_visible(timeout=2500):
+                return
+            self.page.wait_for_timeout(800)
 
     def close_onboarding(self) -> None:
         expect(self.close_onboarding_button).to_be_visible(timeout=10000)
