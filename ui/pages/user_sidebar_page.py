@@ -47,13 +47,13 @@ class UserSidebarPage(BasePage):
         page = self.page
         try:
             form = page.locator(".v-overlay--active:has-text('данные о себе'), .v-dialog:has-text('данные о себе')").first
-            if form.is_visible(timeout=2000):
-                for cb in form.locator("input[type=checkbox]").all():
-                    if not cb.is_checked():
-                        cb.check(force=True)
-                form.locator("button:has-text('Отправить')").first.click(force=True)
-                self.wait_hidden(form, timeout=10000)
-                logger.info("Анкета «данные о себе» отправлена")
+            form.wait_for(state="visible", timeout=5000)
+            for cb in form.locator("input[type=checkbox]").all():
+                if not cb.is_checked():
+                    cb.check(force=True)
+            form.locator("button:has-text('Отправить')").first.click(force=True)
+            self.wait_hidden(form, timeout=10000)
+            logger.info("Анкета «данные о себе» отправлена")
         except Exception as exc:  # noqa: BLE001
             logger.info(f"Анкета не закрылась/не появилась: {exc}")
 
@@ -65,9 +65,9 @@ class UserSidebarPage(BasePage):
         self.dismiss_anketa()
         try:
             accept = page.locator("button:has-text('Принимаю')").first
-            if accept.is_visible(timeout=1500):
-                accept.click(force=True)
-                logger.info("Cookie-баннер принят")
+            accept.wait_for(state="visible", timeout=3000)
+            accept.click(force=True)
+            logger.info("Cookie-баннер принят")
         except Exception:  # noqa: BLE001
             pass
         self.pass_onboarding()
@@ -84,9 +84,12 @@ class UserSidebarPage(BasePage):
         deadline = time.monotonic() + timeout_s
         try:
             start = page.locator("button:has-text('Пройти обучение')").first
-            if start.is_visible(timeout=2000):
+            try:
+                start.wait_for(state="visible", timeout=5000)
                 start.click(force=True)
                 logger.info("Онбординг: «Пройти обучение»")
+            except Exception:  # noqa: BLE001 — кнопки нет: тур уже начат или не появится
+                pass
             nxt = page.locator("[data-qa='onboarding-popup-next']").first
             while time.monotonic() < deadline:
                 try:
