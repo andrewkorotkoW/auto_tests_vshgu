@@ -35,7 +35,9 @@ def run(ctx) -> None:
 
     for role_key, (title, role_id) in ROLES.items():
         for i in range(ctx.count):
-            email = random_email(domain=f"{role_key}.autotest.com")
+            # domain без "_" — сервер валидирует email по формату, role_key вида
+            # "content_manager" в домене даёт 422 "Электронная почта имеет ошибочный формат"
+            email = random_email(domain=f"{role_key.replace('_', '-')}.autotest.com")
             payload = generate_user_payload(email=email, password=DEFAULT_PASSWORD)
             logger.info(f"Пользователь [{title}] {i + 1}/{ctx.count}: {email}")
             user = users_ep.create(payload)
