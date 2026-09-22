@@ -3,6 +3,9 @@ import pytest
 from utils.logger import logger
 from api.helpers.data_generator import get_next_lpd_id
 
+# БУК и LPD есть только на stage — на других окружениях эти тесты пропускаются (см. conftest, маркер env)
+pytestmark = pytest.mark.env("stage")
+
 
 @allure.feature("E2E Flow")
 @allure.story("Program → Stream → Module → User → LPD → Assign → Detach")

@@ -8,6 +8,9 @@ from ui.pages.admin_users_page import AdminUsersPage, BUK_SYNCED_TOOLTIP
 from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
+# БУК и LPD есть только на stage — на других окружениях эти тесты пропускаются (см. conftest, маркер env)
+pytestmark = pytest.mark.env("stage")
+
 GREEN = "rgb(126, 211, 33)"
 
 

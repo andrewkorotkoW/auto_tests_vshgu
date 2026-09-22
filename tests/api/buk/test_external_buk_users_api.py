@@ -7,6 +7,9 @@ from api.helpers.data_generator import generate_buk_user_payload
 from api.helpers.expectations import expect_status
 from utils.logger import logger
 
+# БУК и LPD есть только на stage — на других окружениях эти тесты пропускаются (см. conftest, маркер env)
+pytestmark = pytest.mark.env("stage")
+
 
 def _attach(title: str, data) -> None:
     allure.attach(json.dumps(data, indent=2, ensure_ascii=False), title, allure.attachment_type.JSON)

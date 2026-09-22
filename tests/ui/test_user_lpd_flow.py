@@ -4,6 +4,9 @@ from ui.pages.login_page import LoginPage
 from ui.pages.lpd_page import LpdPage
 from utils.logger import logger
 
+# БУК и LPD есть только на stage — на других окружениях эти тесты пропускаются (см. conftest, маркер env)
+pytestmark = pytest.mark.env("stage")
+
 
 @allure.feature("UI Tests")
 @allure.story("User LPD Flow (Individual)")

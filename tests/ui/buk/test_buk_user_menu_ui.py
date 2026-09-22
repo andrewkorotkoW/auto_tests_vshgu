@@ -6,6 +6,9 @@ from ui.pages.login_page import LoginPage
 from ui.pages.user_sidebar_page import UserSidebarPage, BUK_MENU_LABEL, BUK_LINK_PART
 from utils.logger import logger
 
+# БУК и LPD есть только на stage — на других окружениях эти тесты пропускаются (см. conftest, маркер env)
+pytestmark = pytest.mark.env("stage")
+
 
 def _shot(page, name, title):
     page.screenshot(path=f"allure-results/{name}.png")
