@@ -206,13 +206,21 @@ class Manifest:
         self.env = env
         self.scenario = scenario
         self.created: list[dict] = []
+        self.skipped: list[dict] = []
 
     def record(self, entity: str, id_, note: str) -> None:
         self.created.append({"entity": entity, "id": id_, "how_to_delete": note})
         logger.info(f"  + {entity} id={id_} ({note})")
 
+    def skip(self, entity: str, reason: str) -> None:
+        """Шаг сознательно не выполнен (нет API-пути / нет модуля на окружении /
+        LPD доступен только на stage и т.п.) — не создаёт сущность для удаления,
+        но должен быть виден и в логе, и в итоговом отчёте/манифесте."""
+        self.skipped.append({"entity": entity, "reason": reason})
+        logger.info(f"  - {entity} пропущено: {reason}")
+
     def to_dict(self) -> dict:
-        return {"env": self.env, "scenario": self.scenario, "created": self.created}
+        return {"env": self.env, "scenario": self.scenario, "created": self.created, "skipped": self.skipped}
 
     def save(self, path) -> Path:
         path = Path(path)
@@ -225,6 +233,7 @@ class Manifest:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         manifest = cls(data.get("env", "develop"), data.get("scenario", "?"))
         manifest.created = data.get("created", [])
+        manifest.skipped = data.get("skipped", [])
         return manifest
 
 

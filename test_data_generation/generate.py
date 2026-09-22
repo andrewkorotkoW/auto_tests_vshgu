@@ -21,12 +21,28 @@ from config.environments import ENVIRONMENTS  # noqa: E402
 from utils.logger import logger  # noqa: E402
 
 from lib import Ctx, Manifest, build_clients  # noqa: E402
-from scenarios import cas, program_full, users  # noqa: E402
+from scenarios import (  # noqa: E402
+    activities,
+    banner_and_partners,
+    buk,
+    cas,
+    certificates,
+    demo,
+    learner_progress,
+    program_full,
+    users,
+)
 
 SCENARIOS = {
     "cas": cas,
     "users": users,
     "program_full": program_full,
+    "activities": activities,
+    "learner_progress": learner_progress,
+    "buk": buk,
+    "certificates": certificates,
+    "banner_and_partners": banner_and_partners,
+    "demo": demo,
 }
 
 MANIFESTS_DIR = Path(__file__).resolve().parent / "manifests"
@@ -77,6 +93,11 @@ def run_scenario(args) -> int:
     for entry in manifest.created:
         print(f"{entry['entity']:22} {str(entry['id']):30} {entry['how_to_delete']}")
 
+    if manifest.skipped:
+        print("\nОсознанно пропущено:")
+        for entry in manifest.skipped:
+            print(f"  {entry['entity']:22} {entry['reason']}")
+
     if args.dry_run:
         print("\ndry-run: манифест не сохраняется — сетевых вызовов не было, удалять нечего.")
         return 0
@@ -87,15 +108,29 @@ def run_scenario(args) -> int:
     return 0
 
 
-def _cleanup_handlers(api_client, cas_client):
+def _cleanup_handlers(api_client, cas_client, env):
     """entity -> функция(id) -> bool|None. None означает «нет DELETE-метода»."""
+    from api.endpoints.alpina import AlpinaEndpoint
+    from api.endpoints.aos import AosEndpoint
     from api.endpoints.certificates import CertificatesEndpoint
+    from api.endpoints.external_buk import ExternalBukEndpoint
     from api.endpoints.external_cas import ExternalCasEndpoint
+    from api.endpoints.external_content import ExternalContentEndpoint
+    from api.endpoints.homework import HomeworkEndpoint
+    from api.endpoints.homework_pass_fail import HomeworkPassFailEndpoint
+    from api.endpoints.homework_ten_point import HomeworkTenPointEndpoint
+    from api.endpoints.info_banner import InfoBannerEndpoint
+    from api.endpoints.knowledge_base import KnowledgeBaseEndpoint
+    from api.endpoints.lpd import LpdEndpoint
+    from api.endpoints.mif import MifEndpoint
     from api.endpoints.modules import ModulesEndpoint
     from api.endpoints.omt_cas import OmtCasEndpoint
+    from api.endpoints.polls import PollsEndpoint
     from api.endpoints.programs import ProgramsEndpoint
     from api.endpoints.schedule_items import ScheduleItemsEndpoint
     from api.endpoints.streams import StreamsEndpoint
+    from api.endpoints.tests import TestsEndpoint
+    from api.endpoints.tincan import TincanEndpoint
     from api.endpoints.users import UsersEndpoint
 
     users_ep = UsersEndpoint(api_client)
@@ -106,6 +141,31 @@ def _cleanup_handlers(api_client, cas_client):
     certificates_ep = CertificatesEndpoint(api_client)
     omt_ep = OmtCasEndpoint(api_client)
     ext_ep = ExternalCasEndpoint(cas_client)
+    tincan_ep = TincanEndpoint(api_client)
+    ext_content_ep = ExternalContentEndpoint(api_client)
+    hw_ep = HomeworkEndpoint(api_client)
+    hw10_ep = HomeworkTenPointEndpoint(api_client)
+    hwpf_ep = HomeworkPassFailEndpoint(api_client)
+    tests_ep = TestsEndpoint(api_client)
+    polls_ep = PollsEndpoint(api_client)
+    aos_ep = AosEndpoint(api_client)
+    lpd_ep = LpdEndpoint(api_client)
+    kb_ep = KnowledgeBaseEndpoint(api_client)
+    banner_ep = InfoBannerEndpoint(api_client)
+    alpina_ep = AlpinaEndpoint(api_client)
+    mif_ep = MifEndpoint(api_client)
+
+    def _delete_buk_user(buk_user_id):
+        if not env.buk_token:
+            raise RuntimeError(f"нет модуля на этом окружении ({env.name.upper()}_BUK_TOKEN не задан в .env)")
+        import requests
+        from api.client import ApiClient
+
+        session = requests.Session()
+        session.headers["Authorization"] = env.buk_token
+        buk_client = ApiClient(session=session, base_url=env.api_base_url)
+        ExternalBukEndpoint(buk_client).delete_user(buk_user_id)
+        return True
 
     return {
         "cas_tenant_org_location": lambda id_: omt_ep.delete_tenant_org_location(id_),
@@ -124,6 +184,21 @@ def _cleanup_handlers(api_client, cas_client):
         "certificate_template": lambda id_: certificates_ep.delete_templates([id_]),
         "stream_assignment": None,
         "certificate_assignment": None,
+        "tincan": lambda id_: tincan_ep.mass_delete([id_]),
+        "scorm": lambda id_: tincan_ep.mass_delete([id_]),
+        "external_content": lambda id_: ext_content_ep.delete(id_),
+        "homework_five_point": lambda id_: hw_ep.mass_delete([id_]),
+        "homework_ten_point": lambda id_: hw10_ep.mass_delete([id_]),
+        "homework_pass_fail": lambda id_: hwpf_ep.mass_delete([id_]),
+        "test": lambda id_: tests_ep.mass_delete([id_]),
+        "poll": lambda id_: polls_ep.mass_delete([id_]),
+        "aos": lambda id_: aos_ep.mass_delete([id_]),
+        "lpd": lambda id_: lpd_ep.mass_delete([id_]),
+        "knowledge_base_material": lambda id_: kb_ep.delete_materials([id_]),
+        "buk_user": _delete_buk_user,
+        "info_banner": lambda id_: banner_ep.toggle(is_active=False),
+        "alpina_access": lambda id_: bool(alpina_ep.set_status(id_, status=False)),
+        "mif_access": lambda id_: bool(mif_ep.set_access(id_, access=False)),
     }
 
 
@@ -140,7 +215,13 @@ def run_cleanup(args) -> int:
         return 0
 
     api_client, cas_client, _ = build_clients(env, dry_run=False)
-    handlers = _cleanup_handlers(api_client, cas_client)
+    handlers = _cleanup_handlers(api_client, cas_client, env)
+
+    if manifest.skipped:
+        print("Ранее осознанно пропущено (нечего удалять):")
+        for entry in manifest.skipped:
+            print(f"  {entry['entity']:22} {entry['reason']}")
+        print()
 
     print(f"{'сущность':22} {'id':30} результат")
     ok, failed, skipped = 0, 0, 0
