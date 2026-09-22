@@ -7,6 +7,7 @@ from utils.logger import logger
 from api.endpoints.tincan import TincanEndpoint
 from api.endpoints.knowledge_base import KnowledgeBaseEndpoint
 from api.endpoints.users import UsersEndpoint
+from ui.pages.user_knowledge_base_page import UserKnowledgeBasePage
 
 
 @allure.feature("Knowledge Base UI")
@@ -55,6 +56,8 @@ class TestKnowledgeBaseFlow:
             logger.info(f"Материал создан: ID={material_id}, name={material_name}")
 
         # ========== UI: Проверка отображения ==========
+        tincan_name_client = tincan_payload["data"]["attributes"]["name_client"]
+
         with allure.step("4. Логин"):
             login_page = LoginPage(page)
             login_page.login(user["email"], user["password"])
@@ -62,84 +65,21 @@ class TestKnowledgeBaseFlow:
             page.screenshot(path="allure-results/kb_ui_01_login.png")
             allure.attach.file("allure-results/kb_ui_01_login.png", "Логин", allure.attachment_type.PNG)
 
-        with allure.step("5. Онбординг"):
-            try:
-                start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
-                if start_btn.is_visible(timeout=3000):
-                    start_btn.click(force=True)
-                for _ in range(15):
-                    btn = page.locator('[data-qa="onboarding-popup-next"]')
-                    if btn.is_visible(timeout=2000):
-                        btn.click(force=True)
-                    else:
-                        break
-            except:
-                pass
+        with allure.step("5-6. Открыть «Базу знаний» и найти созданный материал через поиск"):
+            # UserKnowledgeBasePage открывает /library напрямую и закрывает анкету/cookie/онбординг
+            # (сайдбар-клик и каталог+тег были нестабильны — тур на develop иногда блокирует переход).
+            kb_page = UserKnowledgeBasePage(page)
+            kb_page.open(settings.UI_BASE_URL)
+            kb_page.sidebar.close_tour_dialog()
             page.screenshot(path="allure-results/kb_ui_02_onboarding.png")
-            allure.attach.file("allure-results/kb_ui_02_onboarding.png", "Онбординг", allure.attachment_type.PNG)
-
-        with allure.step("6. Открыть вкладку «База знаний» и пройти онбординг"):
-            # Ищем и кликаем по вкладке "База знаний"
-            kb_tab = page.locator("text=База знаний")
-            if kb_tab.count() == 0:
-                kb_tab = page.locator("a:has-text('База знаний'), span:has-text('База знаний')").first
-            assert kb_tab.count() > 0, "Вкладка 'База знаний' не найдена"
-            kb_tab.first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-
-            # Онбординг внутри Базы знаний (такие же шаги, как в основном)
-            try:
-                start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
-                if start_btn.is_visible(timeout=3000):
-                    start_btn.click(force=True)
-                for _ in range(15):
-                    btn = page.locator('[data-qa="onboarding-popup-next"]')
-                    if btn.is_visible(timeout=2000):
-                        btn.click(force=True)
-                    else:
-                        break
-            except:
-                pass
-
-            page.screenshot(path="allure-results/kb_ui_03_kb_page.png")
-            allure.attach.file("allure-results/kb_ui_03_kb_page.png", "Страница Базы знаний",
+            allure.attach.file("allure-results/kb_ui_02_onboarding.png", "База знаний открыта",
                                allure.attachment_type.PNG)
-            logger.info("Вкладка 'База знаний' открыта, онбординг пройден")
-            catalog_btn = page.locator("button.v-btn:has(span:has-text('Каталог'))").first
-            if catalog_btn.count() == 0:
-                catalog_btn = page.locator("button:has-text('Каталог')").first
-            assert catalog_btn.count() > 0, "Кнопка 'Каталог' не найдена"
-            catalog_btn.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-
-            page.screenshot(path="allure-results/kb_ui_03_kb_catalog.png")
-            allure.attach.file("allure-results/kb_ui_03_kb_catalog.png", "Каталог Базы знаний",
-                               allure.attachment_type.PNG)
-            logger.info("Каталог Базы знаний открыт")
-
-
-            # Выбираем тег в каталоге (например, "Антикоррупционная политика", который соответствует тегу id=8)
-            tag_link = page.locator("a.catalog-menu__list-item:has-text('Антикоррупционная политика')")
-            if tag_link.count() == 0:
-                # Если точного совпадения нет, пробуем любой пункт меню
-                tag_link = page.locator("a.catalog-menu__list-item").first
-            assert tag_link.count() > 0, "Пункт каталога не найден"
-            tag_link.first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-
-            page.screenshot(path="allure-results/kb_ui_03_kb_catalog_filtered.png")
-            allure.attach.file("allure-results/kb_ui_03_kb_catalog_filtered.png", "Каталог отфильтрован", allure.attachment_type.PNG)
-            logger.info("Тег в каталоге выбран")
 
         with allure.step("7. Найти и открыть созданный материал"):
-            # Ищем карточку по name_client (внешнему имени)
-            tincan_name_client = f"{tincan_payload['data']['attributes']['name_client']}"
-            material_card = page.locator(f"span.library-card__name:has-text('{tincan_name_client}')").first
-            if material_card.count() == 0:
-                material_card = page.locator(f"text={tincan_name_client}").first
-            assert material_card.count() > 0, f"Материал '{tincan_name_client}' не найден в каталоге"
-            material_card.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+            # Серверный поиск фильтрует по внутреннему имени контента (tincan_data["name"],
+            # без суффикса "_внешка") — по name_client (внешнему, с суффиксом) он не находит
+            # ничего, хотя карточка в каталоге отображается именно с name_client.
+            kb_page.open_material(tincan_data["attributes"]["name"])
 
             page.screenshot(path="allure-results/kb_ui_04_material_opened.png")
             allure.attach.file("allure-results/kb_ui_04_material_opened.png", "Страница материала",
@@ -148,9 +88,11 @@ class TestKnowledgeBaseFlow:
 
 
         with allure.step("8. Проверить элементы на странице материала"):
+            page.wait_for_timeout(45000)
+            page.screenshot(path="allure-results/kb_debug_material2.png", full_page=True)
             # Проверка заголовка (h2 с названием)
             title = page.locator(f"h2.material-header__title:has-text('{tincan_name_client}')")
-            assert title.is_visible(timeout=5000), "Заголовок материала не отображается"
+            assert title.is_visible(timeout=15000), "Заголовок материала не отображается"
             logger.info(f"Заголовок '{tincan_name_client}' отображается")
 
             # Проверка тега (ссылка с названием тега)

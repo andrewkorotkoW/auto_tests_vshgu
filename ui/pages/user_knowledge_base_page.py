@@ -1,4 +1,6 @@
 """Пользовательская страница «База знаний» (/library): поиск и открытие материала."""
+from urllib.parse import unquote
+
 from playwright.sync_api import Page, expect
 
 from ui.pages.base_page import BasePage
@@ -26,11 +28,28 @@ class UserKnowledgeBasePage(BasePage):
         self.wait_loaded()
 
     def search(self, query: str) -> None:
+        """Заполнить поле поиска и нажать Enter.
+
+        На каталоге с большим числом материалов взаимодействие с поиском нестабильно:
+        fill() иногда не долетает до модели (после Enter filter="" в URL), а иногда
+        срабатывает какой-то отложенный watcher и перетирает уже применённый фильтр
+        обратно на пустой. Печатаем посимвольно и повторяем весь цикл ввод+Enter,
+        пока URL действительно не отразит наш запрос."""
         field = self.page.get_by_placeholder("Поиск")
         expect(field).to_be_visible(timeout=15000)
-        field.fill(query, timeout=5000)
-        field.press("Enter")
-        self.wait_loaded()
+        for _ in range(5):
+            field.click(timeout=5000)
+            field.fill("", timeout=5000)
+            field.press_sequentially(query, timeout=10000)
+            if field.input_value() != query:
+                self.page.wait_for_timeout(500)
+                continue
+            self.page.keyboard.press("Enter")
+            self.wait_loaded()
+            self.page.wait_for_timeout(1000)
+            if query in unquote(self.page.url):
+                return
+        raise AssertionError(f"Поиск не применил фильтр '{query}': url={self.page.url}")
 
     def material_card(self, name: str):
         card = self.page.locator(f"span.library-card__name:has-text('{name}')").first
