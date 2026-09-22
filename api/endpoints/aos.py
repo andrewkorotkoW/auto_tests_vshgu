@@ -38,11 +38,18 @@ class AosEndpoint:
         return success
 
     def mass_delete(self, content_ids: list) -> bool:
-        payload = {"data": {"attributes": {"content_ids": content_ids}}}
-        resp = self.client.delete("/activities/mass-delete", json=payload)
+        """Массовое удаление АОС.
+
+        АОС (type=feedback) хранится в модели TestContent, а не Activity —
+        /activities/mass-delete отдаёт 404 «No query results for model ... Activity»,
+        рабочий эндпоинт тот же, что и у тестов/опросов: DELETE /tests с contents_ids
+        (см. TestsEndpoint.mass_delete/PollsEndpoint.mass_delete).
+        """
+        payload = {"contents_ids": content_ids}
+        resp = self.client.delete("/tests", json=payload)
         success = resp.status_code in (200, 204)
         if success:
             logger.info(f"AOS mass deleted: {content_ids}")
         else:
-            logger.warning(f"AOS mass delete failed: {resp.status_code}")
+            logger.warning(f"AOS mass delete failed: {resp.status_code} {resp.text[:200]}")
         return success

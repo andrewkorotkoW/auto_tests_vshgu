@@ -8,6 +8,8 @@ env("stage")); на develop шаг помечается пропущенным �
 в api/endpoints/knowledge_base.py нет метода создания достижения, поэтому шаг тоже
 только помечается, без выдумывания несуществующего эндпоинта.
 """
+from datetime import datetime, timedelta
+
 from api.endpoints.aos import AosEndpoint
 from api.endpoints.assignments import AssignmentsEndpoint
 from api.endpoints.external_content import ExternalContentEndpoint
@@ -109,9 +111,25 @@ def run(ctx) -> None:
         ctx.manifest.record("scorm", scorm["id"], "tincan.mass_delete([id])")
         assign(scorm["id"], "SCORM-курс")
 
-        logger.info(f"4. Внешний контент{suffix}...")
+        logger.info(f"4. Внешний контент{suffix} (нужна активация перед назначением в модуль, "
+                    "иначе mass-addition отдаёт 500 «Не может быть назначен внешний контент», "
+                    "см. tests/api/create_activity/external_content/test_external_content_api.py)...")
         external = ext_content_ep.create(generate_external_content_payload(name=ctx.name(f"External{suffix}")))
         ctx.manifest.record("external_content", external["id"], "external_content.delete(content_id)")
+        ext_content_ep.activate(external["id"], {
+            "data": {
+                "id": external["id"],
+                "type": "content",
+                "attributes": {
+                    "name": external["attributes"]["name"],
+                    "content_type": "external_content",
+                    "external_type": "simulator",
+                    "cover_uuid": external["attributes"].get("cover_uuid", ""),
+                    "description": external["attributes"]["description"],
+                    "is_active": True,
+                },
+            },
+        })
         assign(external["id"], "Внешний контент")
 
         logger.info(f"5. Домашнее задание (5-балльное){suffix}...")
@@ -143,8 +161,15 @@ def run(ctx) -> None:
 
         logger.info(f"10. Элемент расписания + АОС{suffix} (АОС привязывается к schedule_item, "
                     "а не назначается в модуль mass-addition)...")
+        # При count>1 несколько очных элементов расписания в одном модуле с одинаковым
+        # временем по умолчанию дают 422 «Дата очного курса не может пересекаться с
+        # другими курсами в модуле» — сдвигаем время на i часов.
+        now = datetime.now() + timedelta(hours=2 * i)
+        slot_from = now.strftime("%Y-%m-%dT%H:%M")
+        slot_to = (now + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M")
         item = schedule_ep.create(program["id"], stream["id"], module["id"],
-                                   generate_schedule_item_payload(name=ctx.name(f"ItemForAos{suffix}")))
+                                   generate_schedule_item_payload(name=ctx.name(f"ItemForAos{suffix}"),
+                                                                   date_time_from=slot_from, date_time_to=slot_to))
         ctx.manifest.record("schedule_item", [program["id"], stream["id"], module["id"], item["id"]],
                              "schedule_items.delete(program_id, stream_id, module_id, item_id)")
         aos = aos_ep.create(generate_aos_payload(name=ctx.name(f"AOS{suffix}"), schedule_item_ids=[item["id"]]))
