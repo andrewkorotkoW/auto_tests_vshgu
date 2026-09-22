@@ -47,31 +47,23 @@ class TestCreateArticleAndVerifyInUserUi:
                 material_id = kb_page.save_material_and_get_id()
                 logger.info(f"Статья создана: ID={material_id}, name={article_name}")
 
-            with allure.step("5. Проверить, что статья появилась в списке материалов админки"):
+            with allure.step("5. Опубликовать статью (по умолчанию создаётся скрытой — is_visible=false)"):
+                KnowledgeBaseEndpoint(api_client).toggle_visibility(material_id, is_visible=True)
+
+            with allure.step("6. Проверить, что статья появилась в списке материалов админки"):
                 kb_page.expect_material_created(article_name)
 
-            with allure.step("6. Открыть «Базу знаний» под пользователем"):
+            with allure.step("7. Открыть «Базу знаний» под пользователем"):
                 user_kb_page = UserKnowledgeBasePage(user_page)
                 user_kb_page.open(env.ui_base_url)
 
-            with allure.step("7. Найти созданную статью через поиск и открыть её"):
-                user_kb_page.search(article_name)
-                user_page.wait_for_timeout(3000)
-                for attempt in range(6):
-                    found = user_kb_page.material_card(article_name).count() > 0
-                    if found:
-                        break
-                    logger.info(f"Материал ещё не найден поиском, попытка {attempt + 1}/6, повтор через 5с")
-                    user_page.wait_for_timeout(5000)
-                    user_kb_page.search(article_name)
-                    user_page.wait_for_timeout(3000)
-                user_page.screenshot(path="/tmp/kb_debug_search.png", full_page=True)
+            with allure.step("8. Найти созданную статью через поиск и открыть её"):
                 user_kb_page.open_material(article_name)
 
-            with allure.step("8. Проверить заголовок статьи на странице материала"):
+            with allure.step("9. Проверить заголовок статьи на странице материала"):
                 user_kb_page.expect_material_title_visible(article_name)
         finally:
-            with allure.step("9. Удалить статью через API"):
+            with allure.step("10. Удалить статью через API"):
                 if material_id is not None:
                     KnowledgeBaseEndpoint(api_client).delete_materials([material_id])
                     logger.info(f"Статья удалена: ID={material_id}")
