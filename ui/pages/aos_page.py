@@ -1,5 +1,6 @@
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from ui.pages.base_page import BasePage
+from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
 
@@ -7,39 +8,48 @@ class AosPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
 
+    def _click_program_card(self, program_name: str):
+        """Открыть карточку программы в «Моё обучение». Карточка сама по себе не кликабельна —
+        заголовок текстовый, переход выполняется кнопкой «Перейти к программе» внутри карточки."""
+        card_title = self.page.locator(f"text={program_name}").first
+        expect(card_title).to_be_visible(timeout=15000)
+        goto_btn = self.page.locator("button:has-text('Перейти к программе'), a:has-text('Перейти к программе')").first
+        if goto_btn.count() > 0:
+            self.click_and_wait(goto_btn, force=True)
+        else:
+            self.click_and_wait(card_title, force=True)
+
     def open_program(self, program_name: str):
         """Открыть программу без запуска АОС."""
-        self.click_and_wait(self.page.locator(f"span:has-text('{program_name}')").first)
+        self._click_program_card(program_name)
         self.complete_program_onboarding()
 
     def start_aos(self, program_name: str):
         # Открываем программу
-        self.click_and_wait(self.page.locator(f"span:has-text('{program_name}')").first)
+        self._click_program_card(program_name)
         self.complete_program_onboarding()
 
+        # Тур может показаться заново на странице программы — без повторного вызова
+        # затемнение перехватывает клик по вкладке
+        UserSidebarPage(self.page).dismiss_popups()
+
         # Кликаем по вкладке «Анкета обратной связи»
-        self.click_and_wait(self.page.locator("span:has-text('Анкета обратной связи')").first)
+        aos_tab = self.page.locator("span:has-text('Анкета обратной связи')").first
+        self.click_and_wait(aos_tab, force=True)
 
         # Запускаем анкету
         start_btn = self.page.locator("span:has-text('Начать')").first
-        self.click_and_wait(start_btn)
-        start_btn.click()
+        self.click_and_wait(start_btn, force=True)
+
+        # Перед первым вопросом показывается «Вступительный слайд» с отдельной кнопкой «Начать»
+        intro_start_btn = self.page.locator("button:has-text('Начать')").first
+        if intro_start_btn.is_visible(timeout=5000):
+            self.click_and_wait(intro_start_btn, force=True)
 
     def complete_program_onboarding(self):
-        """Пройти онбординг после клика по программе."""
-        try:
-            for _ in range(25):
-                btn = self.page.locator('[data-qa="onboarding-popup-next"]')
-                if btn.is_visible(timeout=3000):
-                    btn.click(force=True)
-                else:
-                    break
-            if self.page.locator("text=Завершить").first.is_visible(timeout=2000):
-                self.page.locator("text=Завершить").first.click(force=True)
-                self.wait_loaded()
-            logger.info("✅ Онбординг программы пройден")
-        except Exception as e:
-            logger.info(f"Онбординг программы: {e}")
+        """Пройти онбординг после клика по программе (см. UserSidebarPage.pass_onboarding —
+        учитывает затемнение, которое переживает исчезновение кнопки «Далее»)."""
+        UserSidebarPage(self.page).pass_onboarding()
 
     def answer_first_option(self):
         """Выбрать первый вариант ответа."""
@@ -85,5 +95,4 @@ class AosPage(BasePage):
     def launch_questionnaire(self):
         """Запустить анкету, если программа уже открыта (или мы на странице плеера)."""
         start_btn = self.page.locator("span:has-text('Начать')").first
-        self.click_and_wait(start_btn)
-        start_btn.click()
+        self.click_and_wait(start_btn, force=True)
