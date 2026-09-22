@@ -10,8 +10,12 @@ class UserKnowledgeBasePage(BasePage):
         super().__init__(page)
         self.sidebar = UserSidebarPage(page)
 
-    def open(self) -> None:
-        self.sidebar.open("/library")
+    def open(self, ui_base_url: str) -> None:
+        # UserSidebarPage.open() строит URL относительно текущего page.url — не подходит
+        # для свежей страницы (about:blank), поэтому здесь переходим напрямую.
+        self.page.goto(f"{ui_base_url.rstrip('/')}/library")
+        self.wait_loaded()
+        self.sidebar.dismiss_popups()
 
     def open_catalog(self) -> None:
         catalog_btn = self.page.locator("button.v-btn:has(span:has-text('Каталог'))").first
@@ -21,6 +25,13 @@ class UserKnowledgeBasePage(BasePage):
         catalog_btn.click(timeout=5000)
         self.wait_loaded()
 
+    def search(self, query: str) -> None:
+        field = self.page.get_by_placeholder("Поиск")
+        expect(field).to_be_visible(timeout=15000)
+        field.fill(query, timeout=5000)
+        field.press("Enter")
+        self.wait_loaded()
+
     def material_card(self, name: str):
         card = self.page.locator(f"span.library-card__name:has-text('{name}')").first
         if card.count() == 0:
@@ -28,6 +39,7 @@ class UserKnowledgeBasePage(BasePage):
         return card
 
     def open_material(self, name: str) -> None:
+        self.search(name)
         card = self.material_card(name)
         expect(card).to_be_visible(timeout=15000)
         card.click(timeout=5000)

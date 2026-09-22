@@ -52,9 +52,20 @@ class TestCreateArticleAndVerifyInUserUi:
 
             with allure.step("6. Открыть «Базу знаний» под пользователем"):
                 user_kb_page = UserKnowledgeBasePage(user_page)
-                user_kb_page.open()
+                user_kb_page.open(env.ui_base_url)
 
-            with allure.step("7. Найти созданную статью и открыть её"):
+            with allure.step("7. Найти созданную статью через поиск и открыть её"):
+                user_kb_page.search(article_name)
+                user_page.wait_for_timeout(3000)
+                for attempt in range(6):
+                    found = user_kb_page.material_card(article_name).count() > 0
+                    if found:
+                        break
+                    logger.info(f"Материал ещё не найден поиском, попытка {attempt + 1}/6, повтор через 5с")
+                    user_page.wait_for_timeout(5000)
+                    user_kb_page.search(article_name)
+                    user_page.wait_for_timeout(3000)
+                user_page.screenshot(path="/tmp/kb_debug_search.png", full_page=True)
                 user_kb_page.open_material(article_name)
 
             with allure.step("8. Проверить заголовок статьи на странице материала"):
