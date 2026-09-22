@@ -29,18 +29,20 @@ class TestAssignTemplate:
             file_id = tincan_ep.upload_certificate_file()
             template = created_template(
                 file_id=file_id,
-                template_type="activity",   # или program_stream, зависит от цели
+                template_type="program_stream",   # шаблон для программы; "activity" — для индивидуальных траекторий
                 name=f"Автотест_шаблон_назначение_{int(time.time() * 1000)}"
             )
             logger.info(f"Шаблон создан: ID={template['id']}")
 
-        with allure.step("3. Назначить шаблон на модуль"):
+        with allure.step("3. Назначить шаблон на программу"):
             result = cert_ep.assign_template(
                 template_id=template["id"],
-                content_ids=[program["id"]]
+                # /certificates/template/assign ждёт content_id потока (сущность «контент»),
+                # а не id потока и не id программы — с ними сервер отвечает 422 content_ids.0
+                content_ids=[stream["attributes"]["content_id"]]
 
             )
             # Проверяем, что ответ содержит статус success или data
             assert result is not None, "Ответ назначения пуст"
-            logger.info("Шаблон назначен на модуль")
+            logger.info("Шаблон назначен на программу")
             allure.attach(str(result), "Assign Result", allure.attachment_type.JSON)
