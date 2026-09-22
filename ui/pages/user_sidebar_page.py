@@ -40,10 +40,10 @@ class UserSidebarPage(BasePage):
         self.wait_loaded()
         self.dismiss_popups()
 
-    def dismiss_popups(self) -> None:
-        """Закрыть то, что перекрывает страницу после входа: анкета «заполните данные о себе»
-        (чекбокс согласия + «Отправить»), cookie-баннер («Принимаю»), онбординг.
-        Всё опционально: чего нет — пропускаем."""
+    def dismiss_anketa(self) -> None:
+        """Закрыть анкету «заполните данные о себе» (чекбокс согласия + «Отправить»),
+        которая блокирует страницу сразу после первого входа. Опционально: если анкеты
+        нет (уже заполнена ранее), молча пропускаем."""
         page = self.page
         try:
             form = page.locator(".v-overlay--active:has-text('данные о себе'), .v-dialog:has-text('данные о себе')").first
@@ -56,6 +56,13 @@ class UserSidebarPage(BasePage):
                 logger.info("Анкета «данные о себе» отправлена")
         except Exception as exc:  # noqa: BLE001
             logger.info(f"Анкета не закрылась/не появилась: {exc}")
+
+    def dismiss_popups(self) -> None:
+        """Закрыть то, что перекрывает страницу после входа: анкета «заполните данные о себе»
+        (чекбокс согласия + «Отправить»), cookie-баннер («Принимаю»), онбординг.
+        Всё опционально: чего нет — пропускаем."""
+        page = self.page
+        self.dismiss_anketa()
         try:
             accept = page.locator("button:has-text('Принимаю')").first
             if accept.is_visible(timeout=1500):
