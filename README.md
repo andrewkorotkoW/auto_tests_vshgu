@@ -54,6 +54,10 @@ cp .env.example .env
 `.env` **не должен** попадать в git — он в `.gitignore`; в README и коммиты не должны идти
 реальные значения кук/токенов/паролей, только имена переменных из `.env.example`.
 
+Тесты БУК (`tests/api/buk`, `tests/ui/buk`) и LPD (`tests/api/create_activity/lpd`, `tests/ui/test_user_lpd_*`,
+`tests/api/programs/test_assign_activities_api.py`) помечены `env("stage")`: БУК и LPD есть только на stage,
+на develop и prod они пропускаются автоматически.
+
 ## 3. Запуск
 
 Выбор окружения — флагом `--env` (добавлен в `pytest_addoption` в корневом `conftest.py`):
