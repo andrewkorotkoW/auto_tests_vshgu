@@ -1,5 +1,6 @@
 from playwright.sync_api import Page, expect
 from ui.pages.base_page import BasePage
+from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
 
@@ -26,13 +27,14 @@ class AdminPage(BasePage):
     def go_to_admin(self):
         """Перейти в Админку из меню пользователя."""
         self.close_tech_banner()
+        UserSidebarPage(self.page).dismiss_popups()
         admin_item = self.page.locator("div.v-list-item-title:has-text('Админка')").first
         self.click_and_wait(self.page.locator("[data-onboarding-step='user-menu']").first, wait_for=admin_item, force=True)
         self.click_and_wait(admin_item, force=True)
 
     def open_activity_base(self):
         """Открыть Базу Активити."""
-        self.click_and_wait(self.page.locator("div.v-list-item__title:has-text('База Активити')").first, force=True)
+        self.click_and_wait(self.page.locator("div.v-list-item-title:has-text('База Активити')").first, force=True)
 
     def search_activity(self, name: str):
         """Поиск активити по названию."""

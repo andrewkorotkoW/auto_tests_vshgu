@@ -1,8 +1,8 @@
 import allure
 import pytest
-from ui.pages.login_page import LoginPage
-from ui.pages.admin_page import AdminPage
-from config.settings import settings
+from playwright.sync_api import expect
+from ui.pages.admin_activities_page import AdminActivitiesPage
+from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 from api.helpers.expectations import expect_status
 
@@ -15,19 +15,7 @@ class TestAdminCheckActivityStatus:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    @pytest.mark.xfail(
-        reason=(
-            "Известный дефект бэкенда develop (qa_analysis/cases/DEVELOP_full_2026-09-19/"
-            "report.md, п.5, тот же класс, что в "
-            "tests/ui/game_session/user/test_activity_launch_flow.py): "
-            "POST /external/activities/{id} возвращает 500 "
-            "\"Attempt to read property 'external_type' on null\" в "
-            "ExternalSystemController.php:92. Падение происходит на шаге подготовки данных "
-            "через API, до какого-либо UI-взаимодействия — не локатор/ожидание."
-        ),
-        strict=False,
-    )
-    def test_admin_check_activity_status(self, page, api_client, external_system_client):
+    def test_admin_check_activity_status(self, admin_page, env, api_client, external_system_client):
         from api.helpers.data_generator import generate_external_content_payload
         from api.endpoints.tincan import TincanEndpoint
         from api.endpoints.external_content import ExternalContentEndpoint
@@ -67,27 +55,29 @@ class TestAdminCheckActivityStatus:
             logger.info("Игровая сессия активирована")
 
         # ========== UI ==========
-        with allure.step("4. Логин под админом"):
-            login_page = LoginPage(page)
-            login_page.login(settings.TEST_USER_EMAIL, settings.TEST_USER_PASSWORD)
-            page.screenshot(path="allure-results/admin_01_login.png")
-            allure.attach.file("allure-results/admin_01_login.png", "Логин", allure.attachment_type.PNG)
-
-        with allure.step("5. Перейти в Базу Активити"):
-            admin_page = AdminPage(page)
-            admin_page.go_to_admin()
-            admin_page.open_activity_base()
-            page.screenshot(path="allure-results/admin_02_base.png")
+        # admin_page — уже авторизованная под администратором страница (storage_state,
+        # см. conftest._authenticated_page), поэтому логин через форму и клик по «Админка»
+        # в меню пользователя (ui/pages/admin_page.py.go_to_admin — ненадёжен на develop,
+        # см. фикс в этом же коммите) не нужны.
+        with allure.step("4. Открыть «Базу Активити»"):
+            UserSidebarPage(admin_page).dismiss_popups()
+            activities_page = AdminActivitiesPage(admin_page)
+            activities_page.open_list(env.ui_base_url)
+            admin_page.screenshot(path="allure-results/admin_02_base.png")
             allure.attach.file("allure-results/admin_02_base.png", "База Активити", allure.attachment_type.PNG)
 
-        with allure.step("6. Найти активити и проверить статус"):
-            admin_page.search_activity(content_name)
-            admin_page.click_activity(content_name)
-            admin_page.check_activity_status()
-            page.screenshot(path="allure-results/admin_03_status.png")
+        with allure.step("5. Найти активити и проверить статус"):
+            activities_page.expect_created(content_name)
+            activities_page.row_by_name(content_name).locator("a[href*='/admin/activities/']").first.click()
+            # Иконка статуса — inline SVG-кнопка (не icon-font i.mdi-check, как было раньше):
+            # круглая v-btn--round со светло-зелёным фоном, применяемым чуть позже отрисовки
+            # самой кнопки — поэтому expect(...).to_be_visible (с поллингом), а не is_visible().
+            status_icon = admin_page.locator("button.v-btn--round[style*='213, 239, 209']")
+            expect(status_icon).to_be_visible(timeout=10000)
+            admin_page.screenshot(path="allure-results/admin_03_status.png")
             allure.attach.file("allure-results/admin_03_status.png", "Статус активен", allure.attachment_type.PNG)
             logger.info("Статус активити подтверждён")
 
-        with allure.step("7. Очистка"):
+        with allure.step("6. Очистка"):
             ec_ep.delete(content_id)
             logger.info(f"Контент удалён: ID={content_id}")
