@@ -77,8 +77,8 @@ class TestCreateGroupForStream:
                 group_id = groups_page.open_group(group_name)
                 logger.info(f"Группа создана: id={group_id}")
 
-            with allure.step(f"5. Добавить ПЗ '{homework['name_client']}' в группу"):
-                groups_page.add_practical_task(homework["name_client"])
+            with allure.step(f"5. Добавить ПЗ '{homework['name']}' в группу"):
+                groups_page.add_practical_task(homework["name"])
 
             with allure.step("6. Перейти на вкладку «Слушатели» группы"):
                 groups_page.open_listeners_tab()

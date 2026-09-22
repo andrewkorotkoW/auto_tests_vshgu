@@ -57,7 +57,7 @@ class AdminStreamGroupsPage(BasePage):
         return match.group(1) if match else ""
 
     def add_practical_task(self, pz_name: str) -> None:
-        add_button = self.page.get_by_role("button", name="Добавить")
+        add_button = self.page.get_by_role("main").get_by_role("button", name="Добавить")
         expect(add_button).to_be_visible(timeout=15000)
         add_button.click(timeout=5000)
 
@@ -83,7 +83,7 @@ class AdminStreamGroupsPage(BasePage):
         expect(self.page).to_have_url(re.compile(r".*/group/\d+/listeners.*"), timeout=30000)
 
     def add_listener(self, email: str) -> None:
-        add_button = self.page.get_by_role("button", name="Добавить")
+        add_button = self.page.get_by_role("main").get_by_role("button", name="Добавить")
         expect(add_button).to_be_visible(timeout=15000)
         add_button.click(timeout=5000)
 
