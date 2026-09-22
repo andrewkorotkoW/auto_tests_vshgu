@@ -27,3 +27,7 @@ results/
 
 *.log
 utils/.env
+
+# Манифесты реальных прогонов test_data_generation/generate.py (созданные id на develop/stage) —
+# только рабочие артефакты, в репозитории не нужны.
+test_data_generation/manifests/*.json
