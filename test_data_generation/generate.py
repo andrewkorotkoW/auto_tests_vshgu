@@ -115,7 +115,9 @@ def _cleanup_handlers(api_client, cas_client):
         "cas_user": lambda id_: users_ep.delete(id_),
         "cas_assignment": lambda id_: ext_ep.dismiss_assignments(id_[0], [id_[1]]) is not None,
         "user": lambda id_: users_ep.delete(id_),
-        "program": lambda id_: programs_ep.delete(id_),
+        # DELETE /programs/{id} отдаёт 405 (Supported methods: GET, HEAD, PUT) — рабочий способ
+        # удалить одну программу это mass-delete с одним id.
+        "program": lambda id_: programs_ep.mass_delete([id_]),
         "stream": lambda id_: streams_ep.delete(*id_),
         "module": lambda id_: modules_ep.delete(*id_),
         "schedule_item": lambda id_: schedule_ep.delete(*id_),

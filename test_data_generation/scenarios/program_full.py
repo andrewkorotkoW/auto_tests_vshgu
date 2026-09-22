@@ -52,11 +52,12 @@ def run(ctx) -> None:
     program = programs_ep.create(generate_program_payload(
         name=ctx.name("Program"), tenant_organization_id=tenant_organization_id,
     ))
-    ctx.manifest.record("program", program["id"], "programs.delete(id) / programs.mass_delete([id])")
+    # DELETE /programs/{id} не поддержан (405) — удаляется только через mass_delete([id]).
+    ctx.manifest.record("program", program["id"], "programs.mass_delete([id])")
 
     logger.info("3. Поток (даты по умолчанию + менеджер)...")
     stream_payload = generate_stream_payload(name=ctx.name("Stream"))
-    stream_payload["data"]["attributes"]["managers_ids"] = [manager["id"]]
+    stream_payload["data"]["attributes"]["managers_ids"] = [{"id": manager["id"], "is_visible": True}]
     stream = streams_ep.create(program["id"], stream_payload)
     ctx.manifest.record("stream", [program["id"], stream["id"]], "streams.delete(program_id, stream_id)")
 
