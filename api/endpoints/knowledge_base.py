@@ -47,3 +47,9 @@ class KnowledgeBaseEndpoint:
     def delete(self, material_id: int) -> bool:
         """Удаление одного материала."""
         return self.delete_materials([material_id])
+
+    def list_tags(self) -> list:
+        """Список тегов базы знаний."""
+        resp = self.client.get("/knowledge-base/admin/tags")
+        expect_status(resp, 200)
+        return resp.json()["data"]["tags"]

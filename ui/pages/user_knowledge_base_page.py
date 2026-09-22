@@ -58,9 +58,22 @@ class UserKnowledgeBasePage(BasePage):
         return card
 
     def open_material(self, name: str) -> None:
-        self.search(name)
-        card = self.material_card(name)
-        expect(card).to_be_visible(timeout=15000)
+        """Открыть материал по имени.
+
+        Только что созданный материал не сразу попадает в поисковый индекс —
+        повторяем поиск, если карточка не появилась с первой попытки."""
+        card = None
+        attempts = 3
+        for attempt in range(attempts):
+            self.search(name)
+            card = self.material_card(name)
+            try:
+                expect(card).to_be_visible(timeout=15000)
+                break
+            except AssertionError:
+                if attempt == attempts - 1:
+                    raise
+                self.page.wait_for_timeout(3000)
         card.click(timeout=5000)
         self.wait_loaded()
 
