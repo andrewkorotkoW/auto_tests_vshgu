@@ -126,6 +126,20 @@ class AdminKnowledgeBasePage(BasePage):
         save_button.click(timeout=5000)
         expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/materials.*"), timeout=20000)
 
+    def save_material_and_get_id(self) -> int:
+        """Сохранить материал и вернуть его ID из ответа POST-запроса (для teardown через API —
+        в форме админки ID материала нигде не отображается)."""
+        save_button = self.page.locator("button.confirm__btn-ok")
+        expect(save_button).to_be_visible(timeout=10000)
+        expect(save_button).to_be_enabled(timeout=10000)
+        with self.page.expect_response(
+            lambda resp: "/knowledge-base/admin/materials" in resp.url and resp.request.method == "POST"
+        ) as resp_info:
+            save_button.click(timeout=5000)
+        material_id = resp_info.value.json()["data"]["id"]
+        expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/materials.*"), timeout=20000)
+        return material_id
+
     def expect_material_created(self, name: str) -> None:
         self.page.reload()
         expect(self.page.get_by_text(name, exact=True)).to_be_visible(timeout=15000)
