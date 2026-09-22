@@ -207,3 +207,118 @@ asuo-buk-api-contracts (§ 2, § 4): автосопоставление по ema
 ```bash
 pytest --env=stage tests/api/buk
 ```
+
+## 9. Перенесено из ветки коллеги
+
+Из ветки `feature/my-tests` коллеги Игоря Захарова (репозиторий `/Users/andreykorotkow/Projects/lms`)
+перенесены три блока UI-функциональности, которых в нашем слое не было: практические задания
+в админке (создание, прохождение слушателем, проверка, индивидуальное и групповое назначение),
+онбординг (первичный и повторный) и база знаний/достижения. Перенос — не копирование файлов:
+локаторы коллеги превращены в Page Object'ы на `expect()` (без `is_visible()`-опросов,
+`networkidle`/`sleep`), подготовка данных — через наши API-фикстуры с teardown вместо JSON-файлов
+на диске.
+
+### Источник → приёмник
+
+Page Object'ы и хелперы:
+
+| Источник (`lms`, `feature/my-tests`) | Приёмник |
+| --- | --- |
+| `tests/ui/admin/practical_tasks/helpers/create_practical_task.py`, `src/ui/locators/admin_activities_locators.py` | `ui/pages/admin_activities_page.py` |
+| `src/ui/locators/admin_programs_locators.py`, `tests/ui/admin/practical_tasks/helpers/{module_schedule,stream_listeners,navigation}.py` | `ui/pages/admin_programs_page.py` |
+| `src/ui/locators/admin_stream_groups_locators.py` | `ui/pages/admin_stream_groups_page.py` |
+| `src/ui/locators/admin_users_locators.py` | `ui/pages/admin_users_page.py` (поиск по email, карточка → вкладка «Назначения») |
+| `src/ui/locators/user_programs_locators.py` | `ui/pages/practical_task_page.py` |
+| `src/ui/locators/reviewer_homeworks_locators.py` | `ui/pages/reviewer_page.py` |
+| `src/ui/pages/onboarding_page.py`, `src/ui/locators/onboarding_locators.py` | `ui/pages/onboarding_page.py` |
+| `src/ui/locators/{library,support,personal_education}_locators.py` | `tests/ui/onboarding/locators.py` (плоские константы, единственный потребитель — тесты онбординга) |
+| `tests/ui/knowledge_base_achievements/test_01_admin_create_achievement_material_count.py`, `test_02_admin_create_article_material.py` (действия были прямо в тестах, отдельного locators-файла не было) | `ui/pages/admin_knowledge_base_page.py` |
+| `tests/api/helpers/user_prepare_api.py` | `api/helpers/user_prepare_api.py` (под наш `ApiClient`/`config.environments.login`/`expect_status`) |
+| — (новая инфраструктура под перенос) | `conftest.py` — хук `pytest_runtest_makereport` (скриншот страницы в allure при падении UI-теста); `pytest.ini` — маркеры `practical_tasks`/`groups`/`onboarding`/`knowledge_base`/`reviewer` |
+
+Тесты, блок «Практические задания»:
+
+| Источник (`lms`, `feature/my-tests`) | Приёмник |
+| --- | --- |
+| `tests/ui/admin/practical_tasks/test_01_create_practical_task.py` | `tests/ui/practical_tasks/test_create_practical_task.py` |
+| `tests/ui/admin/practical_tasks/test_02_create_program_stream_module.py` | `tests/ui/practical_tasks/test_create_program_stream_module.py` |
+| `tests/ui/admin/practical_tasks/test_03_add_practical_task_to_module.py` | `tests/ui/practical_tasks/test_add_practical_task_to_schedule.py` |
+| `tests/ui/admin/practical_tasks/test_04_add_user_to_stream.py` | `tests/ui/practical_tasks/test_add_listener_to_stream.py` |
+| `tests/ui/admin/practical_tasks/test_05_complete_practical_task.py` | `tests/ui/practical_tasks/test_complete_practical_task.py` |
+| `tests/ui/admin/practical_tasks/test_06_review_practical_task.py` | `tests/ui/practical_tasks/test_review_practical_task.py` |
+| `tests/ui/admin/practical_tasks/personal_assignment/test_10_assign_personal_practical_task.py`, `test_11_create_user_and_assign_personal_practical_task.py` | `tests/ui/practical_tasks/personal_assignment/test_assign_from_user_card.py` |
+| `tests/ui/user/personal_practical_tasks/test_12_complete_personal_practical_task.py`, `tests/ui/reviewer/personal_practical_tasks/test_13_review_personal_practical_task.py` | `tests/ui/practical_tasks/personal_assignment/test_complete_and_review_personal_assignment.py` |
+| `tests/ui/admin/practical_tasks/groups/test_14_create_group_for_stream.py` | `tests/ui/practical_tasks/groups/test_create_group_for_stream.py` |
+| `tests/ui/user/group_practical_tasks/test_15_complete_group_practical_task.py`, `test_15_1_edit_group_practical_task_by_second_user.py`, `tests/ui/reviewer/group_practical_tasks/test_16_review_group_practical_task.py` | `tests/ui/practical_tasks/groups/test_group_practical_task_flow.py` |
+
+Тесты, блок «Онбординг»:
+
+| Источник (`lms`, `feature/my-tests`) | Приёмник |
+| --- | --- |
+| `tests/ui/onboarding/test_00_my_learning_page_first_time_onboarding.py`, `test_01_knowledge_base_first_time_onboarding.py`, `test_02_support_page_after_onboarding.py`, `test_03_personal_education_first_time_onboarding.py` | `tests/ui/onboarding/test_primary_onboarding.py` |
+| `tests/ui/onboarding/test_04_repeat_onboarding_close_button.py`, `test_05_knowledge_base_repeat_onboarding.py`, `test_06_personal_education_repeat_onboarding.py`, `test_07_support_repeat_onboarding.py` | `tests/ui/onboarding/test_repeat_onboarding.py` |
+| `tests/ui/onboarding/conftest.py` (как справочник по составу фикстур, не дословно — см. докстринг файла) | `tests/ui/onboarding/conftest.py` |
+
+Тесты, блок «База знаний»:
+
+| Источник (`lms`, `feature/my-tests`) | Приёмник |
+| --- | --- |
+| `tests/ui/knowledge_base_achievements/test_01_admin_create_achievement_material_count.py` | `tests/ui/knowledge_base/test_create_achievement.py` |
+| `tests/ui/knowledge_base_achievements/test_02_admin_create_article_material.py` | `tests/ui/knowledge_base/test_create_article_and_verify_in_user_ui.py` |
+
+### Новые маркеры
+
+- `practical_tasks` — создание/прохождение/проверка практических заданий, включая индивидуальное
+  назначение (`tests/ui/practical_tasks/`, в т.ч. `personal_assignment/`).
+- `groups` — группы потока и групповые практические задания (`tests/ui/practical_tasks/groups/`).
+- `onboarding` — первичный и повторный онбординг (`tests/ui/onboarding/`).
+- `knowledge_base` — база знаний: достижения и статьи (`tests/ui/knowledge_base/`).
+- `reviewer` — зарезервирован под сценарии роли «Проверяющий»; на момент переноса ни один тест
+  им не помечен, роль проверяющего пока покрыта тестами с маркером `practical_tasks`
+  (`test_review_practical_task.py`, `personal_assignment/test_complete_and_review_personal_assignment.py`).
+
+```bash
+pytest --env=develop -m practical_tasks
+pytest --env=develop -m groups
+pytest --env=develop -m onboarding
+pytest --env=develop -m knowledge_base
+```
+
+### Итог прогона на develop
+
+Всего перенесено 20 тестов: 8 зелёных, 12 помечены `xfail(strict=False)` — во всех 12 причина
+в дефектах стенда develop, а не в переносе:
+
+- `test_create_program_stream_module` — после «Сохранить» форма потока остаётся на
+  `/streams/create` с текстом «обязательно для заполнения» под всеми пятью select-полями, хотя
+  клик по каждому и выбор пункта проходят без исключений.
+- `test_complete_practical_task` — после API-назначения программа не появляется в «Моё обучение»
+  слушателя (видны только 2 демо-карточки).
+- `test_review_practical_task` — тот же дефект, что в `test_complete_practical_task`: подготовка
+  ответа слушателя перед проверкой зависит от появления программы в «Моё обучение».
+- `personal_assignment/test_complete_and_review_personal_assignment` — тот же класс дефекта:
+  индивидуально назначенное ПЗ не появляется в разделе «Индивидуальное обучение» слушателя.
+- 4 теста `test_primary_onboarding.py` — модалка «Интерактивное руководство» после клика
+  «Пройти обучение» не всегда переходит к слайду «Далее» (до 5 повторных кликов не помогают).
+- 4 теста `test_repeat_onboarding.py` — кнопка перезапуска онбординга не открывает модалку тура
+  повторно; тот же класс проблемы, что и в первичном онбординге.
+
+Зелёные: `test_create_practical_task`, `test_add_practical_task_to_schedule`,
+`test_add_listener_to_stream`, `personal_assignment/test_assign_from_user_card`,
+`groups/test_create_group_for_stream`, `groups/test_group_practical_task_flow`,
+`test_create_achievement`, `test_create_article_and_verify_in_user_ui`.
+
+### Что не переносилось
+
+- JSON-контексты на диске (`chain_context.py`, `group_context.py`, `personal_pz_context.py`) —
+  у коллеги данные между шагами сценария передавались через файлы; у нас то же состояние живёт
+  в API/UI-фикстурах с teardown (`created_user`, `created_program` и т.п.), без файлов на диске.
+- Скриншоты и `.docx`/`.xlsx` коллеги из git — заменены на свои маленькие (<2 КБ) файлы в
+  `test_data/`, чтобы не тащить чужие бинарники в наш git.
+- `test_99_cleanup_practical_tasks_chain.py` — ручная очистка по `chain_context.py`; у нас каждый
+  тест убирает за собой сам через API-teardown фикстур, отдельный cleanup-тест не нужен.
+- Дублирующийся хук `pytest_runtest_makereport` — у коллеги он объявлен в нескольких
+  `conftest.py`; у нас один, в корневом `conftest.py`.
+- `headless=False`/`slow_mo` в коде — у коллеги браузер жёстко запускался видимым с искусственной
+  задержкой ~700 мс на шаг; у нас headless берётся из окружения (`HEADLESS` в Docker, см. раздел 7),
+  захардкоженной паузы нет.
