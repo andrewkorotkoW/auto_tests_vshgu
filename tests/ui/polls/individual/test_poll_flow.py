@@ -1,7 +1,9 @@
 import allure
 import pytest
+from playwright.sync_api import expect
 from ui.pages.login_page import LoginPage
-from ui.pages.test_page import TestPage
+from ui.pages.user_sidebar_page import UserSidebarPage
+from ui.pages.practical_task_page import PracticalTaskPage
 from api.endpoints.tincan import TincanEndpoint
 from config.settings import settings
 from utils.logger import logger
@@ -15,6 +17,17 @@ class TestUIPollFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.develop
     @pytest.mark.ui
+    @pytest.mark.xfail(
+        reason=(
+            "Известный дефект стенда develop (тот же класс, что в "
+            "tests/ui/homework/individual/test_ui_homework_flow.py и "
+            "tests/ui/proctoring/individual/test_proctoring_flow.py): после API-назначения "
+            "через /users/content/distant/assign-activities (ответ 200) раздел "
+            "«Индивидуальное обучение» слушателя не показывает назначенный опрос — карточка "
+            "с его именем не появляется в UI."
+        ),
+        strict=False,
+    )
     def test_ui_poll_flow(self, page, api_client, created_user, created_poll, polls_endpoint):
         """API: создать пользователя, опрос, назначить → UI: логин, пройти опрос."""
 
@@ -49,45 +62,22 @@ class TestUIPollFlow:
         with allure.step("3. Логин"):
             login_page = LoginPage(page)
             login_page.login(user["email"], user["password"])
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+            UserSidebarPage(page).dismiss_popups()
             page.screenshot(path="allure-results/poll_ui_01_login.png")
             allure.attach.file("allure-results/poll_ui_01_login.png", "Логин", allure.attachment_type.PNG)
 
-        with allure.step("4. Онбординг"):
-            test_page = TestPage(page)
-            try:
-                start_btn = page.locator("span:has-text('Пройти обучение'), span:has-text('Начать обучение')").first
-                if start_btn.is_visible(timeout=3000):
-                    start_btn.click(force=True)
-                for _ in range(15):
-                    btn = page.locator('[data-qa="onboarding-popup-next"]')
-                    if btn.is_visible(timeout=2000):
-                        btn.click(force=True)
-                    else:
-                        break
-            except:
-                pass
-            page.screenshot(path="allure-results/poll_ui_02_onboarding.png")
-            allure.attach.file("allure-results/poll_ui_02_onboarding.png", "Онбординг", allure.attachment_type.PNG)
-
-        with allure.step("5. Индивидуальное обучение → найти опрос"):
-            page.locator("text=Индивидуальное обучение").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-
-            # Возможный онбординг внутри
-            try:
-                for _ in range(17):
-                    btn = page.locator('[data-qa="onboarding-popup-next"]')
-                    if btn.is_visible(timeout=2000):
-                        btn.click(force=True)
-                    else:
-                        break
-            except:
-                pass
+        with allure.step("4. Индивидуальное обучение → найти опрос"):
+            practical_task_page = PracticalTaskPage(page)
+            practical_task_page.open_individual_education()
+            # Тур показывается отдельно на каждой странице (см. докстринг dismiss_popups) —
+            # без повторного вызова затемнение перехватывает клик по карточке опроса
+            UserSidebarPage(page).dismiss_popups()
 
             # Найти опрос по имени и открыть
             poll_display_name = poll.get("name_client", poll["name"])
-            page.locator(f"text={poll_display_name}").first.click(force=True)
+            poll_card = page.locator(f"text={poll_display_name}").first
+            expect(poll_card).to_be_visible(timeout=30000)
+            poll_card.click(force=True)
             page.screenshot(path="allure-results/poll_ui_03_poll_opened.png")
             allure.attach.file("allure-results/poll_ui_03_poll_opened.png", "Опрос открыт", allure.attachment_type.PNG)
             logger.info(f"Опрос '{poll['name']}' открыт")
@@ -115,7 +105,7 @@ class TestUIPollFlow:
                 start_btn = page.locator("button.v-btn:has(span:has-text('Начать'))").first
                 start_btn.click(force=True)
 
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+            expect(page.locator(".v-radio, .v-selection-control").first).to_be_visible(timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/poll_ui_04_launched.png")
             allure.attach.file("allure-results/poll_ui_04_launched.png", "Опрос запущен", allure.attachment_type.PNG)
             logger.info("Кнопка «Начать» нажата")

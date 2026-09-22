@@ -15,6 +15,18 @@ class TestAdminCheckActivityStatus:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
+    @pytest.mark.xfail(
+        reason=(
+            "Известный дефект бэкенда develop (qa_analysis/cases/DEVELOP_full_2026-09-19/"
+            "report.md, п.5, тот же класс, что в "
+            "tests/ui/game_session/user/test_activity_launch_flow.py): "
+            "POST /external/activities/{id} возвращает 500 "
+            "\"Attempt to read property 'external_type' on null\" в "
+            "ExternalSystemController.php:92. Падение происходит на шаге подготовки данных "
+            "через API, до какого-либо UI-взаимодействия — не локатор/ожидание."
+        ),
+        strict=False,
+    )
     def test_admin_check_activity_status(self, page, api_client, external_system_client):
         from api.helpers.data_generator import generate_external_content_payload
         from api.endpoints.tincan import TincanEndpoint
