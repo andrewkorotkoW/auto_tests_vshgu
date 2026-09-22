@@ -64,19 +64,18 @@ def run(ctx) -> None:
                          "external_cas.delete_stream(program_id, stream_id)")
 
     logger.info("4. Синхронизация программы и потока (при создании через external API синхронизация "
-                "уже произошла — 400 «не синхронизирован» здесь ожидаем и не считаем ошибкой)...")
-    for label, sync_call in (
-        ("программа", lambda: ext_ep.sync_program(program_id)),
-        ("поток", lambda: ext_ep.sync_stream(program_id, stream_id)),
+                "уже произошла — 400 «должен(-на) быть не синхронизирован(-а)» здесь ожидаем и не считаем "
+                "ошибкой)... Вызываем напрямую через request_tolerant, а не ext_ep.sync_program/sync_stream: "
+                "их проверка «уже синхронизирован» сравнивает с resp.text, где кириллица экранирована "
+                "(\\uXXXX), поэтому не срабатывает и метод просто падает на этом самом 400."
+                )
+    for label, path in (
+        ("программа", f"/external/cas/sync/programs/{program_id}"),
+        ("поток", f"/external/cas/sync/programs/{program_id}/streams/{stream_id}"),
     ):
-        try:
-            sync_call()
-            logger.info(f"   {label}: синхронизирована")
-        except AssertionError as exc:
-            if "не синхронизирован" in str(exc):
-                logger.info(f"   {label}: уже синхронизирована")
-            else:
-                raise
+        resp = request_tolerant(ctx.cas_client, "post", path,
+                                 conflict_substr="синхронизирован", conflict_statuses=(400,))
+        logger.info(f"   {label}: {'синхронизирована' if resp.status_code != 400 else 'уже синхронизирована'}")
 
     logger.info("5. Модуль в потоке CAS (админ-API)...")
     module = modules_ep.create(program_id, stream_id, generate_module_payload(

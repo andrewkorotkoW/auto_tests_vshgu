@@ -51,16 +51,15 @@ def _id(resp, *keys):
     raise RuntimeError(f"в ответе нет id: {data}")
 
 
-def is_conflict(resp, substr: str = "уже существует") -> bool:
-    """422 с текстом substr в теле — по образцу generate_cas_data.py (tenant-org-locations):
-    сущность уже создана кем-то другим/раньше, это не ошибка сценария."""
-    if resp.status_code != 422:
+def is_conflict(resp, substr: str = "уже существует", statuses=(422,)) -> bool:
+    """Ответ с кодом из statuses и текстом substr в decoded-теле (не resp.text — сервер
+    отдаёт кириллицу в \\uXXXX, поэтому сравнение идёт через _msg()/resp.json(), как в
+    generate_cas_data.py: 422 «уже существует» для tenant-org-locations, 400 «должен(а)
+    быть не синхронизирован(а)» для повторной синхронизации CAS — в обоих случаях
+    сущность/состояние уже есть, это не ошибка сценария."""
+    if resp.status_code not in statuses:
         return False
-    try:
-        message = resp.json().get("message", "")
-    except ValueError:
-        message = resp.text
-    return substr in message
+    return substr in _msg(resp)
 
 
 class DryRunResponse:
@@ -182,15 +181,17 @@ class ResilientClient:
 
 
 def request_tolerant(client, method: str, endpoint: str, json: dict = None,
-                      ok_statuses=(200, 201), conflict_substr: str = "уже существует"):
-    """Обёртка для прямых POST/PUT-вызовов, для которых ещё нет метода в api/endpoints/*:
-    успех — ok_statuses, 422 с conflict_substr в теле — тоже успех (не ошибка сценария,
-    см. is_conflict), иначе RuntimeError с читаемым сообщением. Retry на 5xx уже сделан
-    в ResilientClient, если client им обёрнут."""
+                      ok_statuses=(200, 201), conflict_substr: str = "уже существует",
+                      conflict_statuses=(422,)):
+    """Обёртка для прямых POST/PUT-вызовов, для которых ещё нет метода в api/endpoints/*
+    (или для которых есть метод, но его собственная проверка «это не ошибка» сравнивает
+    с resp.text, а не с decoded-телом, и поэтому не срабатывает на escaped-кириллице):
+    успех — ok_statuses, конфликт (см. is_conflict) — тоже успех, иначе RuntimeError
+    с читаемым сообщением. Retry на 5xx уже сделан в ResilientClient, если client им обёрнут."""
     resp = getattr(client, method)(endpoint, json=json)
     if resp.status_code in ok_statuses:
         return resp
-    if is_conflict(resp, conflict_substr):
+    if is_conflict(resp, conflict_substr, statuses=conflict_statuses):
         logger.info(f"{method.upper()} {endpoint}: {conflict_substr} — считаем успехом")
         return resp
     raise RuntimeError(f"{method.upper()} {endpoint} -> {resp.status_code}: {_msg(resp)}")
