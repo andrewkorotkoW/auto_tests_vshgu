@@ -19,10 +19,13 @@ class AdminKnowledgeBasePage(BasePage):
 
     # ── Достижение ───────────────────────────────────────────────────────
 
-    def open_achievements_create_form(self) -> None:
-        self.page.locator('a[href="/admin/knowledge-base"]').click(timeout=5000)
-        self.page.locator('a[href="/admin/knowledge-base/achievements/created"]').click(timeout=5000)
-        self.page.locator('a[href="/admin/knowledge-base/achievements/new"]').click(timeout=5000)
+    def open_achievements_create_form(self, ui_base_url: str) -> None:
+        # В сайдбаре админки нет пункта "База знаний" (раздел не связан с основной
+        # навигацией) — попасть в «Достижения» можно только прямой навигацией.
+        self.page.goto(f"{ui_base_url.rstrip('/')}/admin/knowledge-base/achievements/created")
+        create_link = self.page.locator('a[href="/admin/knowledge-base/achievements/new"]')
+        expect(create_link).to_be_visible(timeout=15000)
+        create_link.click(timeout=5000)
         expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/achievements/new"), timeout=15000)
 
     def fill_achievement_name(self, name: str) -> None:
@@ -74,13 +77,14 @@ class AdminKnowledgeBasePage(BasePage):
     def create_achievement_with_material_count_icon(
         self,
         *,
+        ui_base_url: str,
         name: str,
         description: str,
         icon_path: Union[str, Path],
         material_type: str = "Статья",
         count: str = "1",
     ) -> None:
-        self.open_achievements_create_form()
+        self.open_achievements_create_form(ui_base_url)
         self.fill_achievement_name(name)
         self.fill_achievement_description(description)
         self.upload_achievement_icon(icon_path)
@@ -121,6 +125,20 @@ class AdminKnowledgeBasePage(BasePage):
         expect(save_button).to_be_enabled(timeout=10000)
         save_button.click(timeout=5000)
         expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/materials.*"), timeout=20000)
+
+    def save_material_and_get_id(self) -> int:
+        """Сохранить материал и вернуть его ID из ответа POST-запроса (для teardown через API —
+        в форме админки ID материала нигде не отображается)."""
+        save_button = self.page.locator("button.confirm__btn-ok")
+        expect(save_button).to_be_visible(timeout=10000)
+        expect(save_button).to_be_enabled(timeout=10000)
+        with self.page.expect_response(
+            lambda resp: "/knowledge-base/admin/materials" in resp.url and resp.request.method == "POST"
+        ) as resp_info:
+            save_button.click(timeout=5000)
+        material_id = resp_info.value.json()["data"]["id"]
+        expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/materials.*"), timeout=20000)
+        return material_id
 
     def expect_material_created(self, name: str) -> None:
         self.page.reload()
