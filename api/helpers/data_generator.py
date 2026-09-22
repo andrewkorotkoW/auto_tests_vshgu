@@ -864,9 +864,17 @@ def generate_question_payload(
     text: str = None,
     time: int = 2,
     weight: int = 1,
-    answers: list = None
+    answers: list = None,
+    group_id: int = None,
+    group_name: str = None
 ) -> dict:
-    """Генерация payload для вопроса теста."""
+    """Генерация payload для вопроса теста/опроса/АОС.
+
+    Для опросов и АОС PUT /tests/questions/store требует привязку вопроса
+    к группе (422 «должен быть привязан к группе» без неё) — для обычных
+    тестов поле необязательно, но и там принимается без ошибок, поэтому
+    заполняется всегда. group_id=None создаёт новую группу на бэкенде.
+    """
     import uuid
     if not text:
         text = f"Вопрос #{order}"
@@ -893,7 +901,8 @@ def generate_question_payload(
             "time": time,
             "weight": weight
         },
-        "answers": answers
+        "answers": answers,
+        "group": {"id": group_id, "name": group_name or f"Группа {order}"}
     }
 
 def generate_poll_payload(

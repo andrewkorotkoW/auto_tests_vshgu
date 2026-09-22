@@ -40,15 +40,25 @@ class HomeworkEndpoint:
         return success
 
     def examine(self, homework_id: int, answer_id: int, grade: str = "5",
-                status: int = 2, teacher_comment: str = "Это итоговая оценка") -> Dict:
-        """Проверка домашнего задания преподавателем."""
+                status="accepted", teacher_comment: str = "Это итоговая оценка",
+                deadline: str = "") -> Dict:
+        """Проверка домашнего задания преподавателем.
+
+        status — строковый код API ("accepted" или "sent_back"), числовой enum
+        (0-5) устарел и API его больше не принимает (422 «Статус ошибочно»).
+        Legacy-значение 2 (историческое «принято») транслируется в "accepted"
+        для обратной совместимости вызовов. Для status="sent_back" API требует
+        непустой deadline.
+        """
+        if status == 2:
+            status = "accepted"
         url = f"{self.client.base_url}/homework/{homework_id}/answers/{answer_id}/examination"
         payload = {
             "data": {
                 "attributes": {
                     "grade": grade,
-                    "status": status,  # число, не строка
-                    "deadline": "",
+                    "status": status,
+                    "deadline": deadline,
                     "teacher_comment": teacher_comment
                 }
             }
