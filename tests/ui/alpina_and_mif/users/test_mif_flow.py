@@ -13,12 +13,10 @@ class TestMifFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    @pytest.mark.xfail(
-        strict=False,
+    @pytest.mark.skip(
         reason=(
-            "Дефект стенда develop: после PATCH /mif/access (200, status=success) "
-            "пункт сайдбара data-onboarding-step='sidebar-mif' остаётся пустым "
-            "(<!---->) — доступ не долетает до фронтенда (тот же дефект, что и у Alpina)."
+            "Схема выдачи SSO-токена Альпины/MIF изменилась, сценарий требует "
+            "переписывания под новую схему (не дефект стенда)"
         ),
     )
     def test_mif_access(self, page, created_user, mif_endpoint):

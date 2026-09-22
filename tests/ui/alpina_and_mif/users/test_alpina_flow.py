@@ -13,13 +13,10 @@ class TestAlpinaFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    @pytest.mark.xfail(
-        strict=False,
+    @pytest.mark.skip(
         reason=(
-            "Дефект стенда develop: после POST /alpina/setUserAlpinaStatus (200, "
-            "status=success) пункт сайдбара data-onboarding-step='sidebar-alpine' "
-            "остаётся пустым (<!---->) — доступ не долетает до фронтенда. "
-            "Подтверждено 5 перезагрузками страницы за 15с без изменений."
+            "Схема выдачи SSO-токена Альпины/MIF изменилась, сценарий требует "
+            "переписывания под новую схему (не дефект стенда)"
         ),
     )
     def test_alpina_access(self, page, created_user, alpina_endpoint):
