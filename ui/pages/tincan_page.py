@@ -1,5 +1,6 @@
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 from ui.pages.base_page import BasePage
+from ui.pages.user_sidebar_page import UserSidebarPage
 from config.settings import settings
 from utils.logger import logger
 
@@ -8,8 +9,19 @@ class TincanPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
 
+    def _click_program_card(self, program_name: str):
+        """Открыть карточку программы в «Моё обучение». Заголовок текстовый, переход —
+        отдельной кнопкой «Перейти к программе» внутри карточки (см. AosPage)."""
+        card_title = self.page.locator(f"text={program_name}").first
+        expect(card_title).to_be_visible(timeout=15000)
+        goto_btn = self.page.locator("button:has-text('Перейти к программе'), a:has-text('Перейти к программе')").first
+        if goto_btn.count() > 0:
+            self.click_and_wait(goto_btn, force=True)
+        else:
+            self.click_and_wait(card_title, force=True)
+
     def start_tincan(self, program_name: str):
-        self.click_and_wait(self.page.locator(f"span:has-text('{program_name}')").first)
+        self._click_program_card(program_name)
         self.complete_program_onboarding()
 
         # ===== ПРОВЕРКИ (до Начать) =====
@@ -41,18 +53,9 @@ class TincanPage(BasePage):
         self.page = course_page
 
     def complete_program_onboarding(self):
-        try:
-            for _ in range(25):
-                btn = self.page.locator('[data-qa="onboarding-popup-next"]')
-                if btn.is_visible(timeout=2000):
-                    btn.click(force=True)
-                else:
-                    break
-            if self.page.locator("text=Завершить").first.is_visible(timeout=2000):
-                self.page.locator("text=Завершить").first.click(force=True)
-            logger.info("Онбординг пройден")
-        except Exception as e:
-            logger.info(f"Онбординг: {e}")
+        """См. UserSidebarPage.pass_onboarding — учитывает затемнение, которое переживает
+        исчезновение кнопки «Далее»."""
+        UserSidebarPage(self.page).pass_onboarding()
 
     def answer_first_radio(self):
         """Выбрать первый radio-ответ."""
@@ -74,15 +77,20 @@ class TincanPage(BasePage):
 
     def open_program(self, program_name: str):
         """Открыть программу и проверить данные курса."""
-        self.click_and_wait(self.page.locator(f"span:has-text('{program_name}')").first)
+        self._click_program_card(program_name)
         self.complete_program_onboarding()
         return self.page
 
     def start_tincan_individual(self):
         """Открыть курс через инд. обучение."""
-        self.click_and_wait("text=Индивидуальное обучение")
+        individual_education = self.page.locator("text=Индивидуальное обучение").first
+        expect(individual_education).to_be_visible(timeout=settings.UI_TIMEOUT)
+        individual_education.click(force=True)
         self.complete_program_onboarding()
-        self.click_and_wait(self.page.locator("span:has-text('Tincan'), span:has-text('Автотест')").first)
+        UserSidebarPage(self.page).dismiss_popups()
+        course_card = self.page.locator("span:has-text('Tincan'), span:has-text('Автотест')").first
+        expect(course_card).to_be_visible(timeout=30000)
+        course_card.click(force=True)
         self.complete_program_onboarding()
 
         # Проверки
