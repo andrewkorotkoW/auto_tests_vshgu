@@ -6,7 +6,7 @@
 """
 import re
 from pathlib import Path
-from typing import Union
+from typing import Iterable, Union
 
 from playwright.sync_api import Page, Locator, Download, expect
 from ui.pages.base_page import BasePage
@@ -26,52 +26,61 @@ class ReviewerPage(BasePage):
 
     # ── Поток ────────────────────────────────────────────────────────────
 
-    def homework_row(self, user_full_name: str, program_name: str, stream_name: str, pz_name: str) -> Locator:
+    @staticmethod
+    def _name_predicate(pz_names: Union[str, Iterable[str]]) -> str:
+        """Карточка/строка ПЗ в разных таблицах отображается то под клиентским именем
+        (name_client), то под админским (name, без суффикса «_внешка_...») — см.
+        group_pz_row_not_found_fix. Принимаем одно или несколько возможных имён и матчим
+        строку, если совпало любое из них."""
+        names = [pz_names] if isinstance(pz_names, str) else list(pz_names)
+        return " or ".join(f"normalize-space()='{name}'" for name in names)
+
+    def homework_row(self, user_full_name: str, program_name: str, stream_name: str, pz_name: Union[str, Iterable[str]]) -> Locator:
         return self.page.locator(
             "xpath=//tr[contains(@class,'vs-table__row')"
             f" and .//*[normalize-space()='{user_full_name}']"
             f" and .//*[normalize-space()='{program_name}']"
             f" and .//*[normalize-space()='{stream_name}']"
-            f" and .//*[normalize-space()='{pz_name}']]"
+            f" and .//*[{self._name_predicate(pz_name)}]]"
         )
 
-    def open_review(self, user_full_name: str, program_name: str, stream_name: str, pz_name: str) -> None:
+    def open_review(self, user_full_name: str, program_name: str, stream_name: str, pz_name: Union[str, Iterable[str]]) -> None:
         row = self.homework_row(user_full_name, program_name, stream_name, pz_name)
         expect(row).to_be_visible(timeout=30000)
         row.get_by_role("link", name="Проверить").click(timeout=5000)
         expect(self.page).to_have_url(re.compile(r".*/homeworks/\d+/answer/\d+.*"), timeout=15000)
 
-    def expect_answered(self, user_full_name: str, program_name: str, stream_name: str, pz_name: str, grade: str) -> None:
+    def expect_answered(self, user_full_name: str, program_name: str, stream_name: str, pz_name: Union[str, Iterable[str]], grade: str) -> None:
         row = self.page.locator(
             "xpath=//tr[contains(@class,'vs-table__row')"
             f" and .//*[normalize-space()='{user_full_name}']"
             f" and .//*[normalize-space()='{program_name}']"
             f" and .//*[normalize-space()='{stream_name}']"
-            f" and .//*[normalize-space()='{pz_name}']"
+            f" and .//*[{self._name_predicate(pz_name)}]"
             f" and .//*[normalize-space()='{grade}']]"
         )
         expect(row).to_be_visible(timeout=30000)
 
     # ── Индивидуальное назначение ────────────────────────────────────────
 
-    def personal_homework_row(self, user_full_name: str, pz_name: str) -> Locator:
+    def personal_homework_row(self, user_full_name: str, pz_name: Union[str, Iterable[str]]) -> Locator:
         return self.page.locator(
             "xpath=//tr[contains(@class,'vs-table__row')"
             f" and .//*[normalize-space()='{user_full_name}']"
-            f" and .//*[normalize-space()='{pz_name}']]"
+            f" and .//*[{self._name_predicate(pz_name)}]]"
         )
 
-    def open_personal_review(self, user_full_name: str, pz_name: str) -> None:
+    def open_personal_review(self, user_full_name: str, pz_name: Union[str, Iterable[str]]) -> None:
         row = self.personal_homework_row(user_full_name, pz_name)
         expect(row).to_be_visible(timeout=30000)
         row.get_by_role("link", name="Проверить").click(timeout=5000)
         expect(self.page).to_have_url(re.compile(r".*/homeworks/\d+/answer/\d+.*"), timeout=15000)
 
-    def expect_personal_answered(self, user_full_name: str, pz_name: str, grade: str) -> None:
+    def expect_personal_answered(self, user_full_name: str, pz_name: Union[str, Iterable[str]], grade: str) -> None:
         row = self.page.locator(
             "xpath=//tr[contains(@class,'vs-table__row')"
             f" and .//*[normalize-space()='{user_full_name}']"
-            f" and .//*[normalize-space()='{pz_name}']"
+            f" and .//*[{self._name_predicate(pz_name)}]"
             f" and .//*[normalize-space()='{grade}']]"
         )
         expect(row).to_be_visible(timeout=30000)
