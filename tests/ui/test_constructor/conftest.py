@@ -19,7 +19,10 @@ from api.helpers.data_generator import (
     generate_test_payload,
     unique_suffix,
 )
+from ui.pages.login_page import LoginPage
 from ui.pages.test_constructor_admin_page import ConstructorAdminPage
+from ui.pages.test_constructor_player_page import ConstructorPlayerPage
+from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
 
@@ -33,6 +36,32 @@ def constructor_admin_page(admin_page):
     """ConstructorAdminPage поверх уже авторизованной страницы админа (см. admin_page
     в корневом conftest.py — авторизация через storage_state, без ручного логина)."""
     return ConstructorAdminPage(admin_page)
+
+
+@pytest.fixture
+def constructor_player_page(user_page):
+    """ConstructorPlayerPage поверх уже авторизованной страницы общего env-пользователя
+    (см. user_page в корневом conftest.py) — годится там, где не важно, какой именно
+    слушатель проходит тест/опрос (тест/опрос открывается напрямую по content_id, без
+    индивидуального назначения). Если сценарию нужен свой ID слушателя (назначение
+    теста/потока конкретному пользователю, статистика по ФИО) — используйте
+    constructor_listener_page."""
+    return ConstructorPlayerPage(user_page)
+
+
+@pytest.fixture
+def constructor_listener_page(page, prepared_user):
+    """Страница и данные свежесозданного слушателя (в отличие от constructor_player_page
+    поверх общего env-пользователя user_page) — нужна там, где сценарий требует именно
+    того пользователя, которого мы назначили на тест/поток (assignments_endpoint/
+    polls_endpoint.assign_activities). prepared_user снимает блокирующую модалку
+    «данные о себе» через API; логин и закрытие тура/cookie-баннера — тем же способом,
+    что и в tests/ui/aos/user/test_user_aos_flow.py (LoginPage.login +
+    UserSidebarPage.dismiss_popups)."""
+    user = prepared_user()
+    LoginPage(page).login(user["email"], user["password"])
+    UserSidebarPage(page).dismiss_popups()
+    return ConstructorPlayerPage(page), user
 
 
 @pytest.fixture
@@ -130,6 +159,50 @@ def constructor_poll_question(polls_endpoint):
         return polls_endpoint.create_question(content_id, payload)["data"]
 
     return _create
+
+
+@pytest.fixture
+def constructor_sequence_answers():
+    """Собрать question_sequence (см. generate_constructor_question_payload) для
+    вопроса с последовательностью: каждому варианту ответа (answers, в том же
+    порядке) — своя целевая группа перехода (target_group_ids). Чистый билдер
+    данных без API-вызовов, удалять после теста нечего."""
+
+    def _build(answers: list, target_group_ids: list) -> list:
+        assert len(answers) == len(target_group_ids), "На каждый ответ нужна своя целевая группа"
+        return [
+            {
+                "source_id": answer["id"],
+                "source_type": "answer",
+                "target_type": "group",
+                "target_group_id": target_group_id,
+            }
+            for answer, target_group_id in zip(answers, target_group_ids)
+        ]
+
+    return _build
+
+
+@pytest.fixture
+def sequence_questions_activated(polls_endpoint):
+    """Включить последовательность вопросов по ответам (settings.sequence_questions)
+    для уже созданного опроса/АОС — обёртка над PollsEndpoint.set_sequence_questions."""
+
+    def _activate(poll_data: dict, is_valid: bool = True):
+        return polls_endpoint.set_sequence_questions(poll_data, is_active=True, is_valid=is_valid)
+
+    return _activate
+
+
+@pytest.fixture
+def extra_questions_activated(tests_endpoint):
+    """Включить доп. вопросы после неправильного ответа (settings.extra_questions)
+    для уже созданного теста — обёртка над TestsEndpoint.set_extra_questions_active."""
+
+    def _activate(test_data: dict):
+        return tests_endpoint.set_extra_questions_active(test_data, is_active=True)
+
+    return _activate
 
 
 @pytest.fixture
