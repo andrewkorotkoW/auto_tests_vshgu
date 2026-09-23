@@ -1,5 +1,5 @@
 """Боковое меню пользователя (после входа) и всплывающие окна, которые мешают кликам."""
-from playwright.sync_api import Page, Locator
+from playwright.sync_api import Page, Locator, expect
 from ui.pages.base_page import BasePage
 from utils.logger import logger
 
@@ -158,3 +158,26 @@ class UserSidebarPage(BasePage):
 
     def is_404(self) -> bool:
         return self.page.locator("text=Ошибка 404").first.is_visible(timeout=500)
+
+    # ---- «Индивидуальное обучение»: контент, назначенный слушателю напрямую ----
+    def open_individual_tab(self, tab_name: str) -> None:
+        """Открыть вкладку раздела «Индивидуальное обучение» (Курсы и тесты / ЛПД /
+        Мои материалы / Игровая сессия / Расписание).
+
+        Путь: /education -> клик по баннеру «Индивидуальное обучение»
+        (a.individual-education-banner__link) -> /education/personal/schedule, где
+        отдельно от общего онбординга стартует тур раздела («1 из 8», кнопка
+        data-qa=onboarding-popup-next) -> клик по вкладке. Без прохождения этого
+        тура затемнение перехватывает клик по вкладке."""
+        self.open("/education")
+        banner = self.page.locator("text=Индивидуальное обучение").first
+        expect(banner).to_be_visible(timeout=15000)
+        banner.click(force=True)
+        self.wait_loaded()
+        self.dismiss_popups()
+
+        tab = self.page.locator(f"xpath=//span[normalize-space()='{tab_name}']").first
+        expect(tab).to_be_visible(timeout=15000)
+        tab.click(force=True)
+        self.wait_loaded()
+        self.dismiss_popups()
