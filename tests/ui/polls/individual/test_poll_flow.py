@@ -3,7 +3,6 @@ import pytest
 from playwright.sync_api import expect
 from ui.pages.login_page import LoginPage
 from ui.pages.user_sidebar_page import UserSidebarPage
-from ui.pages.practical_task_page import PracticalTaskPage
 from api.endpoints.tincan import TincanEndpoint
 from config.settings import settings
 from utils.logger import logger
@@ -17,23 +16,12 @@ class TestUIPollFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.develop
     @pytest.mark.ui
-    @pytest.mark.xfail(
-        reason=(
-            "Известный дефект стенда develop (тот же класс, что в "
-            "tests/ui/homework/individual/test_ui_homework_flow.py и "
-            "tests/ui/proctoring/individual/test_proctoring_flow.py): после API-назначения "
-            "через /users/content/distant/assign-activities (ответ 200) раздел "
-            "«Индивидуальное обучение» слушателя не показывает назначенный опрос — карточка "
-            "с его именем не появляется в UI."
-        ),
-        strict=False,
-    )
-    def test_ui_poll_flow(self, page, api_client, created_user, created_poll, polls_endpoint):
+    def test_ui_poll_flow(self, page, api_client, prepared_user, created_poll, polls_endpoint):
         """API: создать пользователя, опрос, назначить → UI: логин, пройти опрос."""
 
         # ========== API ==========
         with allure.step("1. Создать пользователя"):
-            user = created_user()
+            user = prepared_user()
             logger.info(f"Пользователь создан: ID={user['id']}, email={user['email']}")
 
             # В начале теста добавь импорт
@@ -67,14 +55,12 @@ class TestUIPollFlow:
             allure.attach.file("allure-results/poll_ui_01_login.png", "Логин", allure.attachment_type.PNG)
 
         with allure.step("4. Индивидуальное обучение → найти опрос"):
-            practical_task_page = PracticalTaskPage(page)
-            practical_task_page.open_individual_education()
-            # Тур показывается отдельно на каждой странице (см. докстринг dismiss_popups) —
-            # без повторного вызова затемнение перехватывает клик по карточке опроса
-            UserSidebarPage(page).dismiss_popups()
+            # «Индивидуальное обучение» -> тур раздела -> вкладка «Курсы и тесты», где
+            # отображается назначенный опрос (карточка ищется по name_client ИЛИ name)
+            UserSidebarPage(page).open_individual_tab("Курсы и тесты")
 
             # Найти опрос по имени и открыть
-            poll_display_name = poll.get("name_client", poll["name"])
+            poll_display_name = poll.get("name_client") or poll["name"]
             poll_card = page.locator(f"text={poll_display_name}").first
             expect(poll_card).to_be_visible(timeout=30000)
             poll_card.click(force=True)
@@ -82,12 +68,11 @@ class TestUIPollFlow:
             allure.attach.file("allure-results/poll_ui_03_poll_opened.png", "Опрос открыт", allure.attachment_type.PNG)
             logger.info(f"Опрос '{poll['name']}' открыт")
 
-        with allure.step("6. Запустить опрос"):
-            # Ждём появления кнопки
+        with allure.step("6. Запустить опрос — открывается плеер в новой вкладке"):
+            # Клик по «Начать» на карточке открывает плеер опроса в новой вкладке
+            # (в отличие от homework/proctoring, которые остаются в той же вкладке)
             page.wait_for_selector("button.v-btn:has(span:has-text('Начать'))", timeout=15000)
-
-            # Пробуем кликнуть через JavaScript по самой кнопке
-            try:
+            with page.context.expect_page(timeout=15000) as new_page_info:
                 page.evaluate("""
                     () => {
                         const buttons = document.querySelectorAll('button.v-btn');
@@ -99,46 +84,38 @@ class TestUIPollFlow:
                         }
                     }
                 """)
-                logger.info("Клик по кнопке «Начать» выполнен через JS")
-            except:
-                # Запасной вариант — force click
-                start_btn = page.locator("button.v-btn:has(span:has-text('Начать'))").first
-                start_btn.click(force=True)
+            poll_page = new_page_info.value
+            poll_page.wait_for_load_state("networkidle")
+            logger.info(f"Плеер опроса открыт в новой вкладке: {poll_page.url}")
 
-            expect(page.locator(".v-radio, .v-selection-control").first).to_be_visible(timeout=settings.UI_TIMEOUT)
-            page.screenshot(path="allure-results/poll_ui_04_launched.png")
+            # Вступительный слайд плеера — отдельная кнопка «Начать» (реальный клик,
+            # не force/JS: force-клик по ней не запускает переход к первому вопросу)
+            intro_start = poll_page.locator("button:has-text('Начать')").first
+            expect(intro_start).to_be_visible(timeout=15000)
+            intro_start.click(timeout=10000)
+            poll_page.wait_for_timeout(1500)
+            poll_page.screenshot(path="allure-results/poll_ui_04_launched.png")
             allure.attach.file("allure-results/poll_ui_04_launched.png", "Опрос запущен", allure.attachment_type.PNG)
-            logger.info("Кнопка «Начать» нажата")
-
+            logger.info("Вступительный слайд пройден")
 
             with allure.step("7. Пройти опрос (ответить на вопросы)"):
                 for i in range(3):
-                    # Ищем все видимые радио-обёртки
-                    radio_wrappers = page.locator(".v-radio")
+                    radio_wrappers = poll_page.locator(".v-selection-control")
                     if radio_wrappers.count() == 0:
-                        radio_wrappers = page.locator(".v-selection-control")
-
-                    if radio_wrappers.count() > 0:
-                        # Кликаем по первой доступной радио-кнопке (обёртке)
-                        radio_wrappers.first.click(force=True)
-                    else:
-                        # Запасной вариант: ищем чекбоксы
-                        try:
-                            checkbox = page.locator("input[type='checkbox']").first
-                            if checkbox.is_visible(timeout=1000):
-                                checkbox.check(force=True)
-                        except:
-                            pass
-
-                    # Нажать "Далее" или "Ответить"
-                    next_btn = page.locator(
-                        "button:has-text('Далее'), span:has-text('Далее'), button:has-text('Ответить')").first
-                    if next_btn.is_visible(timeout=3000):
-                        next_btn.click(force=True)
-                    else:
                         break
+                    radio_wrappers.first.click(timeout=5000)
 
-                page.screenshot(path="allure-results/poll_ui_05_answered.png")
+                    answer_btn = poll_page.locator("button:has-text('Ответить')").first
+                    if answer_btn.count() > 0:
+                        answer_btn.click(timeout=5000)
+                    poll_page.wait_for_timeout(1000)
+
+                    next_btn = poll_page.locator("button:has-text('Далее')").first
+                    if next_btn.count() > 0 and next_btn.is_visible(timeout=2000):
+                        next_btn.click(timeout=5000)
+                    poll_page.wait_for_timeout(1000)
+
+                poll_page.screenshot(path="allure-results/poll_ui_05_answered.png")
                 allure.attach.file("allure-results/poll_ui_05_answered.png", "Ответы даны", allure.attachment_type.PNG)
 
         # ========== Очистка ==========

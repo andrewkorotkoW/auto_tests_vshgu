@@ -207,6 +207,23 @@ def created_user(api_client, users_endpoint):
 
 
 @pytest.fixture
+def prepared_user(env, created_user):
+    """Пользователь, готовый к UI-сценариям слушателя: created_user + согласие на ПД,
+    отключение рекламной рассылки и закрытие onboarding-историй через API
+    (api.helpers.user_prepare_api.prepare_user_for_tests_via_api) — без этого при
+    первом входе в браузере виснет модалка «Пожалуйста, заполните некоторые данные
+    о себе», перекрывающая всю страницу."""
+    from api.helpers.user_prepare_api import prepare_user_for_tests_via_api
+
+    def _create(**kwargs):
+        user = created_user(**kwargs)
+        prepare_user_for_tests_via_api(env, user["email"], user["password"])
+        return user
+
+    yield _create
+
+
+@pytest.fixture
 def created_program(api_client, programs_endpoint):
     program_ids = []
 
