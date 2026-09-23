@@ -1,5 +1,8 @@
+import re
+
 import allure
 import pytest
+from playwright.sync_api import expect
 from ui.pages.login_page import LoginPage
 from ui.pages.activity_page import ActivityPage
 from utils.logger import logger
@@ -14,16 +17,6 @@ class TestActivityLaunchFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    @pytest.mark.xfail(
-        reason=(
-            "Известный дефект бэкенда develop (qa_analysis/cases/DEVELOP_full_2026-09-19/"
-            "report.md, п.5): POST /external/activities/{id} возвращает 500 "
-            "\"Attempt to read property 'external_type' on null\" в "
-            "ExternalSystemController.php:92. Падение происходит на шаге подготовки данных "
-            "через API, до какого-либо UI-взаимодействия — не локатор/ожидание."
-        ),
-        strict=False,
-    )
     def test_activity_launch(self, page, api_client, created_user, created_program,
                               created_stream, created_module, assignments_endpoint,
                               external_system_client):
@@ -89,8 +82,12 @@ class TestActivityLaunchFlow:
         with allure.step("11. Открыть программу и запустить активити"):
             activity_page = ActivityPage(page)
             activity_page.start_external_activity(program["name"])
+            # Итог прохождения: клик по «Начать» переводит на подстраницу игровой сессии
+            # модуля (.../module/{id}/external) — раньше тест не проверял результат запуска
+            # вообще, поэтому мог годами оставаться зелёным при сломанной кнопке.
+            expect(page).to_have_url(re.compile(r".*/module/\d+/external.*"), timeout=15000)
             page.screenshot(path="allure-results/launch_02_started.png")
-            logger.info("Активити запущена")
+            logger.info(f"Активити запущена, URL={page.url}")
 
         with allure.step("12. Очистка"):
             ec_ep.delete(content_id)

@@ -1,8 +1,6 @@
 import allure
 import pytest
-from ui.pages.login_page import LoginPage
-from ui.pages.admin_page import AdminPage
-from config.settings import settings
+from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
 
@@ -14,8 +12,9 @@ class TestAdminCasUsers:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    def test_admin_check_cas_user(self, page, omt_cas_endpoint, external_cas_endpoint):
+    def test_admin_check_cas_user(self, admin_page, env, api_client, omt_cas_endpoint, external_cas_endpoint):
         from api.helpers.data_generator import generate_cas_payload, generate_external_cas_user_payload
+        from api.endpoints.users import UsersEndpoint
 
         # ========== API ==========
         with allure.step("1. Создать связь CAS"):
@@ -34,69 +33,63 @@ class TestAdminCasUsers:
             logger.info(f"CAS пользователь: ID={user_id}, ФИО={user_fio}")
 
         # ========== UI ==========
-        with allure.step("3. Логин под админом"):
-            login_page = LoginPage(page)
-            login_page.login(settings.TEST_USER_EMAIL, settings.TEST_USER_PASSWORD)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+        # admin_page — уже авторизованная под администратором страница (storage_state),
+        # логин через форму под settings.TEST_USER_EMAIL и клик по «Админка» в меню
+        # пользователя (ui/pages/admin_page.py.go_to_admin) не нужны.
+        with allure.step("3. Открыть «Базу Пользователей»"):
+            UserSidebarPage(admin_page).dismiss_popups()
+            admin_page.goto(f"{env.ui_base_url}/admin/users")
+            admin_page.wait_for_load_state("networkidle")
 
-        with allure.step("4. Перейти в Базу Пользователей"):
-            admin_page = AdminPage(page)
-            admin_page.go_to_admin()
-            page.locator("div.v-list-item__title:has-text('База Пользователей')").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-
-        with allure.step("5. Найти пользователя по ФИО"):
-            page.locator('[data-qa="km-search"]').fill(user_fio)
-            page.locator(f"text={user_fio}").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-            page.screenshot(path="allure-results/cas_admin_user.png")
+        with allure.step("4. Найти пользователя по ФИО"):
+            admin_page.locator('[data-qa="km-search"]').fill(user_fio)
+            admin_page.locator(f"text={user_fio}").first.click(force=True)
+            admin_page.wait_for_load_state("networkidle")
+            admin_page.screenshot(path="allure-results/cas_admin_user.png")
             allure.attach.file("allure-results/cas_admin_user.png", "Пользователь КАС", allure.attachment_type.PNG)
 
-        with allure.step("6. Проверить тип регистрации — КАС"):
-            assert page.locator("text=КАС").first.is_visible(timeout=5000), "Тип регистрации не КАС!"
+        with allure.step("5. Проверить тип регистрации — КАС"):
+            assert admin_page.locator("text=КАС").first.is_visible(timeout=5000), "Тип регистрации не КАС!"
             logger.info("Тип регистрации: КАС подтверждён")
 
-        with allure.step("7. Проверить статус синхронизации"):
-            # Проверить текст "Синхронизирован"
-            synced_chip = page.locator("span.v-chip__content:has-text('Синхронизирован')")
+        with allure.step("6. Проверить статус синхронизации"):
+            synced_chip = admin_page.locator("span.v-chip__content:has-text('Синхронизирован')")
             assert synced_chip.first.is_visible(timeout=5000), "Статус 'Синхронизирован' не отображается!"
 
-            # Проверить заголовок "Синхронизация с КАС"
-            assert page.locator("text=Синхронизация с КАС").first.is_visible(timeout=3000), "Заголовок не отображается!"
+            assert admin_page.locator("text=Синхронизация с КАС").first.is_visible(timeout=3000), "Заголовок не отображается!"
 
             logger.info("Синхронизация с КАС подтверждена")
-            page.screenshot(path="allure-results/cas_admin_user_synced.png")
+            admin_page.screenshot(path="allure-results/cas_admin_user_synced.png")
             allure.attach.file("allure-results/cas_admin_user_synced.png", "Синхронизация КАС",
                                allure.attachment_type.PNG)
 
-        with allure.step("7.1. Снять синхронизацию (API)"):
+        with allure.step("6.1. Снять синхронизацию (API)"):
             external_cas_endpoint.delete_user(user_id)
             logger.info("Синхронизация снята")
 
-        with allure.step("7.2. Обновить страницу и проверить отсутствие синхронизации"):
-            page.reload()
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+        with allure.step("6.2. Обновить страницу и проверить отсутствие синхронизации"):
+            admin_page.reload()
+            admin_page.wait_for_load_state("networkidle")
             # Повторный поиск
-            page.locator('[data-qa="km-search"]').fill(user_fio)
-            page.locator(f"text={user_fio}").first.click(force=True)
+            admin_page.locator('[data-qa="km-search"]').fill(user_fio)
+            admin_page.locator(f"text={user_fio}").first.click(force=True)
+            admin_page.wait_for_load_state("networkidle")
 
-            assert not page.locator("span.v-chip__content:has-text('Синхронизирован')").first.is_visible(
+            assert not admin_page.locator("span.v-chip__content:has-text('Синхронизирован')").first.is_visible(
                 timeout=5000), "Синхронизация не снята!"
-            page.screenshot(path="allure-results/cas_admin_user_unsynced.png")
+            admin_page.screenshot(path="allure-results/cas_admin_user_unsynced.png")
             allure.attach.file("allure-results/cas_admin_user_unsynced.png", "Синхронизация снята",
                                allure.attachment_type.PNG)
             logger.info("Синхронизация снята — статус исчез")
 
         # ========== CLEANUP ==========
-        with allure.step("8. Очистка"):
+        with allure.step("7. Очистка"):
             # Снять синхронизацию (если ещё не снята)
             external_cas_endpoint.delete_user(user_id)
-            # Удалить обычного пользователя
-            from api.endpoints.users import UsersEndpoint
-            from api.client import ApiClient
-            from config.settings import settings
-            main_client = ApiClient(cookie=settings.DEVELOP_COOKIE)
-            UsersEndpoint(main_client).delete(user_id)
+            # Удалить обычного пользователя через уже авторизованную фикстуру api_client
+            # (не отдельный ApiClient(cookie=settings.DEVELOP_COOKIE) — эта кука в .env
+            # не проходит логин и раньше давала 401 при попытке использовать её напрямую).
+            UsersEndpoint(api_client).delete(user_id)
             logger.info(f"Пользователь удалён: ID={user_id}")
             # Удалить связь CAS
             omt_cas_endpoint.delete_tenant_org_location(cas_id)
