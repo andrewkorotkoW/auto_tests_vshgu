@@ -103,6 +103,25 @@ class OnboardingPage:
             notice.locator("button:has-text('Понятно')").first.click(timeout=5000)
             expect(notice).not_to_be_visible(timeout=10000)
 
+    def dismiss_cookie_banner(self, timeout: int = 5000) -> None:
+        """Закрыть fixed-баннер cookie («Принимаю») внизу экрана — он физически
+        перекрывает иконку перезапуска онбординга в сайдбаре (div.v-alert--fixed),
+        клик по ней тогда не долетает вообще ни разу (воспроизведено вручную:
+        hover зависает на «subtree intercepts pointer events» на самом баннере).
+        Не у всех пользователей показывается — если не появился, ничего не делаем.
+
+        Клик через JS (element.click()), а не Locator.click(force=True): в той же
+        точке экрана периодически всплывает toast-уведомление «Подборка "Новинки"
+        обновилась...» (vs-snackbar) — воспроизведено отладкой (document.elementFromPoint
+        в момент клика возвращал именно снекбар, а не кнопку под ним). force=True всё
+        равно диспатчит реальное mouse-событие по координатам и перехватывается тем, что
+        физически сверху; программный .click() вызывает обработчик Vue напрямую, минуя
+        hit-test по координатам."""
+        accept = self.page.locator("div.cookie-banner button:has-text('Принимаю')").first
+        if accept.is_visible(timeout=timeout):
+            accept.evaluate("el => el.click()")
+            expect(accept).not_to_be_visible(timeout=10000)
+
     def remove_tech_banner(self, timeout: int = 3000) -> None:
         """Убрать со страницы оранжевую плашку «Технические работы», если она есть.
 
@@ -170,21 +189,44 @@ class OnboardingPage:
         return True
 
     def complete_onboarding(self, max_steps: int = 20) -> None:
-        """Проходит все слайды кликами «Далее» и завершает «Завершить»."""
+        """Проходит все слайды кликами «Далее» и завершает «Завершить».
+
+        Между слайдами кнопка «Далее» на доли секунды пропадает (перерисовка), а
+        последний слайд тура вообще не содержит «Далее» (только «Назад»/«Завершить») —
+        воспроизведено вручную и в автотестах: раздельные короткие/длинные проверки
+        видимости next/finish создают гонку и роняют тест. Кликаем через
+        Locator.click(timeout=...) — у него встроено ожидание актуальности элемента,
+        оно переживает короткий флик; если клик всё же не дождался (значит «Далее»
+        пропало насовсем — дошли до последнего слайда), проверяем «Завершить»."""
         next_button = self.page.locator(NEXT_BUTTON)
         finish_button = self.page.locator(FINISH_BUTTON)
 
         for _ in range(max_steps):
-            if finish_button.is_visible(timeout=2000):
+            if finish_button.is_visible(timeout=1000):
                 break
-            expect(next_button).to_be_visible(timeout=10000)
-            next_button.click(timeout=5000)
+            try:
+                next_button.click(timeout=8000)
+            except PlaywrightTimeoutError:
+                if finish_button.is_visible(timeout=1000):
+                    break
+                raise
         else:
             raise AssertionError(f"Онбординг не завершился после {max_steps} слайдов")
 
-        expect(finish_button).to_be_visible(timeout=5000)
         finish_button.click(timeout=5000)
-        expect(self.onboarding_modal).not_to_be_visible(timeout=15000)
+        expect(finish_button).not_to_be_visible(timeout=15000)
+        self.wait_overlay_gone()
+
+    def wait_overlay_gone(self, timeout: int = 8000) -> None:
+        """Ждём, пока исчезнет затемняющий scrim тура: после «Завершить»/закрытия крестиком
+        модалка уходит с задержкой/анимацией, а scrim ещё какое-то время перехватывает клики
+        по странице — в том числе клики с force=True (реальное события мыши физически
+        достаётся scrim, а не элементу под ним, Playwright лишь пропускает свои проверки).
+        Не критично, если scrim не пропал за timeout — просто продолжаем."""
+        try:
+            self.page.locator(".v-overlay__scrim").first.wait_for(state="hidden", timeout=timeout)
+        except PlaywrightTimeoutError:
+            pass
 
     # ── Повторный онбординг: перезапуск и закрытие крестиком ────────────
 
@@ -201,7 +243,26 @@ class OnboardingPage:
             self.page.wait_for_timeout(800)
 
     def close_onboarding(self) -> None:
-        expect(self.close_onboarding_button).to_be_visible(timeout=10000)
-        self.close_onboarding_button.click(timeout=5000, force=True)
-        expect(self.page.locator(NEXT_BUTTON)).not_to_be_visible(timeout=10000)
+        """Закрывает тур на 2-м слайде.
+
+        Есть два вида виджета тура на этом стенде: модалка «Моё обучение» —
+        v-dialog с крестиком (CLOSE_ONBOARDING_BUTTON), и попап разделов
+        (библиотека/техподдержка/индивидуальное обучение) — div.onboarding-popup,
+        привязанный к элементу страницы (highlight-box), у него в разметке только
+        «Назад»/«Далее», крестика нет (проверено вручную и в DOM: data-qa
+        только onboarding-popup-prev/next/steps/content). Для него закрытие —
+        клик по затемнению вокруг подсветки (.v-overlay__scrim), Escape на этот
+        попап не действует (проверено: «Далее» остаётся видимой после Escape) —
+        тот же обход через scrim, что и UserSidebarPage.close_tour_dialog использует
+        для зависшего тура."""
+        next_button = self.page.locator(NEXT_BUTTON)
+        close_button = self.close_onboarding_button
+        try:
+            close_button.wait_for(state="visible", timeout=5000)
+            close_button.click(timeout=5000, force=True)
+        except PlaywrightTimeoutError:
+            scrim = self.page.locator(".v-overlay__scrim").first
+            scrim.click(position={"x": 5, "y": 5}, timeout=5000, force=True)
+        expect(next_button).not_to_be_visible(timeout=10000)
         expect(self.onboarding_modal).not_to_be_visible(timeout=10000)
+        self.wait_overlay_gone()

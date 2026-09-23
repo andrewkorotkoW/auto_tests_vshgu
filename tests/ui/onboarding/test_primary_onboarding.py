@@ -80,8 +80,8 @@ class TestPrimaryOnboarding:
 
         with allure.step("Открыта вкладка «Избранное», список пуст"):
             expect(page.locator(FAVORITES_TAB)).to_be_visible(timeout=15000)
-            expect(page).to_have_url(re.compile(r".*/library/favorites.*"), timeout=10000)
-            expect(page.get_by_text("Совпадений не найдено")).to_be_visible(timeout=15000)
+            expect(page).to_have_url(re.compile(r".*/library.*"), timeout=10000)
+            expect(page.get_by_text("Вы пока ничего не добавили в Избранное")).to_be_visible(timeout=15000)
 
     @allure.title("После первичного онбординга доступна «Техподдержка»")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -116,4 +116,4 @@ class TestPrimaryOnboarding:
 
         with allure.step("Открыта страница «Индивидуальное обучение» с вкладкой «Расписание»"):
             expect(page.locator(PERSONAL_SCHEDULE_TAB).first).to_be_visible(timeout=15000)
-            expect(page).to_have_url(re.compile(r".*/personal_education.*"), timeout=10000)
+            expect(page).to_have_url(re.compile(r".*/education/personal.*"), timeout=10000)

@@ -16,6 +16,7 @@ import allure
 import pytest
 
 from api.endpoints.assignments import AssignmentsEndpoint
+from api.helpers.user_prepare_api import prepare_user_for_tests_via_api
 from ui.pages.login_page import LoginPage
 from ui.pages.practical_task_page import PracticalTaskPage
 from ui.pages.reviewer_page import ReviewerPage
@@ -39,18 +40,6 @@ class TestCompleteAndReviewPersonalAssignment:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
-    @pytest.mark.xfail(
-        reason=(
-            "Дефект стенда develop, тот же класс, что и в test_complete_practical_task.py: "
-            "после API-назначения (POST /users/content/distant/assign-activities, "
-            "assignments.assign_to_individual — успешный ответ 200) раздел «Индивидуальное "
-            "обучение» слушателя показывает «У вас нет программ» — назначенное ПЗ не "
-            "появляется в UI. Подтверждено скриншотом падения на шаге 3 "
-            "(open_practical_task): онбординг корректно закрыт, cookie-баннер виден, но "
-            "секция с карточками пуста."
-        ),
-        strict=False,
-    )
     def test_complete_and_review_personal_assignment(
         self, page, env, api_client, tincan_endpoint, homework_endpoint,
         created_user, created_homework,
@@ -61,9 +50,17 @@ class TestCompleteAndReviewPersonalAssignment:
             with allure.step("1. Подготовить слушателя, проверяющего, ПЗ и индивидуальное назначение через API"):
                 user = created_user()
                 reviewer = created_user()
+                # Без этого «Индивидуальное обучение» показывает «У вас нет программ» вместо
+                # реально назначенного ПЗ (тот же класс дефекта, что и в
+                # test_complete_practical_task.py — стенду нужно закрытое согласие на ПД
+                # и онбординг-истории через API, а не через UI-тур при логине).
+                prepare_user_for_tests_via_api(env, user["email"], user["password"])
 
                 cover_uuid = tincan_endpoint.upload_cover(str(TEST_DATA_DIR / "practical_task_cover.png"))
-                archive_uuid = tincan_endpoint.upload_archive(str(TEST_DATA_DIR / "practical_task_main_document.docx"))
+                # upload_archive() шлёт файл на /upload/course_archive (только zip/rar) —
+                # для «Основного документа» ПЗ стенд принимает файлы через
+                # /upload/schedule_item_files, тот же эндпоинт, что и upload_sub_file.
+                archive_uuid = tincan_endpoint.upload_sub_file(str(TEST_DATA_DIR / "practical_task_main_document.docx"))
                 sub_file_uuid = tincan_endpoint.upload_sub_file(str(TEST_DATA_DIR / "practical_task_additional_document.xlsx"))
 
                 homework = created_homework(
@@ -83,16 +80,22 @@ class TestCompleteAndReviewPersonalAssignment:
                 logger.info(f"Слушатель: {user['id']}, проверяющий: {reviewer['id']}, ПЗ: {homework_id}")
 
             with allure.step(f"2. Авторизоваться слушателем '{user['email']}'"):
-                LoginPage(page).login(user["email"], user["password"], base_url=env.ui_base_url)
+                LoginPage(page).login(
+                    user["email"], user["password"], base_url=env.ui_base_url, handle_onboarding=False
+                )
                 UserSidebarPage(page).dismiss_popups()
 
             with allure.step("3. Открыть «Индивидуальное обучение» → карточку ПЗ"):
                 task_page = PracticalTaskPage(page)
+                print("DEBUG URL BEFORE:", page.url)
                 task_page.open_individual_education()
                 # Онбординг-тур показывается отдельно на каждой странице (см. докстринг
                 # dismiss_popups) — «Моё обучение»/«Индивидуальное обучение» не исключение,
                 # без повторного вызова его затемнение перехватывает клик по карточке ПЗ
                 UserSidebarPage(page).dismiss_popups()
+                page.wait_for_load_state("networkidle")
+                print("DEBUG URL AFTER:", page.url)
+                print("DEBUG BODY:", page.locator("body").inner_text()[:4000])
                 # На разделе «Индивидуальное обучение» карточки ПЗ показаны сразу,
                 # без вкладки «Курсы и тесты» (та есть только у программ-потоков)
                 task_page.open_practical_task(homework["name_client"])
