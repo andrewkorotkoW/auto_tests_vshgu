@@ -34,14 +34,6 @@ from tests.ui.onboarding.locators import (
 
 pytestmark = [pytest.mark.ui, pytest.mark.onboarding]
 
-REPEAT_TOUR_STAND_DEFECT_REASON = (
-    "Дефект стенда develop: клик по кнопке перезапуска онбординга (restart_onboarding, "
-    "force=True) не открывает модалку тура повторно — «Далее» не появляется ни с первой, "
-    "ни со следующих попыток (до 5 кликов с паузами). Воспроизведено многократно; тот же "
-    "класс проблемы, что и с кнопкой «Пройти обучение» в первичном онбординге "
-    "(см. test_primary_onboarding.py)."
-)
-
 
 def _restart_close_restart_complete(page: Page, onboarding: OnboardingPage) -> None:
     """Общий сценарий повторного онбординга для всех 4 разделов: перезапуск кнопкой,
@@ -73,7 +65,6 @@ class TestRepeatOnboarding:
 
     @allure.title("Повторный онбординг раздела «Моё обучение»: закрыть крестиком, перезапустить, пройти")
     @allure.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.xfail(reason=REPEAT_TOUR_STAND_DEFECT_REASON, strict=False)
     def test_repeat_onboarding_my_learning(self, repeat_onboarding_page: Page):
         page = repeat_onboarding_page
         onboarding = OnboardingPage(page)
@@ -89,7 +80,6 @@ class TestRepeatOnboarding:
 
     @allure.title("Повторный онбординг раздела «База знаний»: закрыть крестиком, перезапустить, пройти")
     @allure.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.xfail(reason=REPEAT_TOUR_STAND_DEFECT_REASON, strict=False)
     def test_repeat_onboarding_knowledge_base(self, repeat_onboarding_page: Page):
         page = repeat_onboarding_page
         onboarding = OnboardingPage(page)
@@ -109,7 +99,6 @@ class TestRepeatOnboarding:
 
     @allure.title("Повторный онбординг раздела «Техподдержка»: закрыть крестиком, перезапустить, пройти")
     @allure.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.xfail(reason=REPEAT_TOUR_STAND_DEFECT_REASON, strict=False)
     def test_repeat_onboarding_support(self, repeat_onboarding_page: Page):
         page = repeat_onboarding_page
         onboarding = OnboardingPage(page)
@@ -128,7 +117,6 @@ class TestRepeatOnboarding:
 
     @allure.title("Повторный онбординг раздела «Индивидуальное обучение»: закрыть крестиком, перезапустить, пройти")
     @allure.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.xfail(reason=REPEAT_TOUR_STAND_DEFECT_REASON, strict=False)
     def test_repeat_onboarding_personal_education(self, repeat_onboarding_page: Page):
         page = repeat_onboarding_page
         onboarding = OnboardingPage(page)
@@ -138,10 +126,10 @@ class TestRepeatOnboarding:
             expect(personal_link).to_be_visible(timeout=15000)
             personal_link.click(timeout=5000, force=True)
             expect(page.locator(PERSONAL_SCHEDULE_TAB).first).to_be_visible(timeout=15000)
-            expect(page).to_have_url(re.compile(r".*/personal_education.*"), timeout=10000)
+            expect(page).to_have_url(re.compile(r".*/education/personal.*"), timeout=10000)
 
         _restart_close_restart_complete(page, onboarding)
 
         with allure.step("После прохождения онбординг закрыт, остались на «Индивидуальное обучение»"):
             expect(page.locator(NEXT_BUTTON)).not_to_be_visible(timeout=10000)
-            expect(page).to_have_url(re.compile(r".*/personal_education.*"), timeout=10000)
+            expect(page).to_have_url(re.compile(r".*/education/personal.*"), timeout=10000)

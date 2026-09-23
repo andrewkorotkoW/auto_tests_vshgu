@@ -86,5 +86,6 @@ def repeat_onboarding_page(page: Page, env, created_user) -> Page:
     if onboarding.registration_modal.is_visible(timeout=5000):
         onboarding.fill_registration_form()
     onboarding.dismiss_email_opt_out_notice()
+    onboarding.dismiss_cookie_banner()
     onboarding.remove_tech_banner()
     return page

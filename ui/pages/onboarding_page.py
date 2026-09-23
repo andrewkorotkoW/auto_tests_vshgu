@@ -103,6 +103,17 @@ class OnboardingPage:
             notice.locator("button:has-text('Понятно')").first.click(timeout=5000)
             expect(notice).not_to_be_visible(timeout=10000)
 
+    def dismiss_cookie_banner(self, timeout: int = 5000) -> None:
+        """Закрыть fixed-баннер cookie («Принимаю») внизу экрана — он физически
+        перекрывает иконку перезапуска онбординга в сайдбаре (div.v-alert--fixed),
+        клик по ней тогда не долетает вообще ни разу (воспроизведено вручную:
+        hover зависает на «subtree intercepts pointer events» на самом баннере).
+        Не у всех пользователей показывается — если не появился, ничего не делаем."""
+        accept = self.page.locator("div.cookie-banner button:has-text('Принимаю')").first
+        if accept.is_visible(timeout=timeout):
+            accept.click(timeout=5000, force=True)
+            expect(accept).not_to_be_visible(timeout=10000)
+
     def remove_tech_banner(self, timeout: int = 3000) -> None:
         """Убрать со страницы оранжевую плашку «Технические работы», если она есть.
 
