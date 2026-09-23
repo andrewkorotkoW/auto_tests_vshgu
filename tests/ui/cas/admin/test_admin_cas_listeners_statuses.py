@@ -1,8 +1,7 @@
 import allure
 import pytest
-from ui.pages.login_page import LoginPage
-from ui.pages.admin_page import AdminPage
-from config.settings import settings
+from playwright.sync_api import expect
+from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
 
@@ -14,11 +13,12 @@ class TestAdminCasListenersStatuses:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    def test_admin_cas_listeners_statuses(self, page, omt_cas_endpoint, external_cas_endpoint):
+    def test_admin_cas_listeners_statuses(self, admin_page, env, api_client, omt_cas_endpoint, external_cas_endpoint):
         from api.helpers.data_generator import (
             generate_cas_payload, generate_external_cas_program_payload,
             generate_external_cas_stream_payload, generate_external_cas_user_payload
         )
+        from api.endpoints.users import UsersEndpoint
 
         # ========== API ==========
         with allure.step("1. Создать связь CAS"):
@@ -34,7 +34,6 @@ class TestAdminCasListenersStatuses:
                 )
             )
             program_id = data.get("program_id")
-            program_name = data.get("name")
             stream_data = external_cas_endpoint.create_stream(program_id, generate_external_cas_stream_payload())
             stream_id = stream_data.get("stream_id")
 
@@ -81,41 +80,33 @@ class TestAdminCasListenersStatuses:
             )
 
         # ========== UI ==========
-        with allure.step("4. Логин и переход к Слушателям"):
-            login_page = LoginPage(page)
-            login_page.login(settings.TEST_USER_EMAIL, settings.TEST_USER_PASSWORD)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-
-            admin_page = AdminPage(page)
-            admin_page.go_to_admin()
-            page.locator('[data-qa="km-search"]').fill(program_name)
-            page.locator(f"text={program_name}").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-            page.locator("span.v-btn__content:has-text('Потоки')").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-            page.locator(f"text={stream_data.get('name', 'А-')}").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-            # Закрыть модалку кликом вверх
-            page.locator("body").click(position={"x": 500, "y": 10})
-            page.locator("span.v-btn__content:has-text('Слушатели')").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+        # admin_page — уже авторизованная под администратором страница (storage_state),
+        # логин через форму под settings.TEST_USER_EMAIL и клик по «Админка» в меню
+        # пользователя (ui/pages/admin_page.py.go_to_admin) не нужны.
+        with allure.step("4. Перейти к Слушателям"):
+            UserSidebarPage(admin_page).dismiss_popups()
+            # Клик по вкладке «Слушатели» не переключает SPA-контент на develop (баг стенда
+            # либо особенность роутинга) — вкладки страницы потока адресуются query-параметром
+            # ?i=<index> (0=Общая информация, ..., 4=Слушатели), так и открываем напрямую.
+            admin_page.goto(f"{env.ui_base_url}/admin/programs/{program_id}/streams/{stream_id}?i=4")
+            admin_page.wait_for_load_state("networkidle")
 
         with allure.step("5. Проверить статусы"):
-            page.screenshot(path="allure-results/cas_admin_listeners.png")
+            admin_page.screenshot(path="allure-results/cas_admin_listeners.png")
             allure.attach.file("allure-results/cas_admin_listeners.png", "Слушатели", allure.attachment_type.PNG)
 
-            assert page.locator("button.mdi-star-check").first.is_visible(
-                timeout=5000), "Статус 'Зачислен' не отображается"
-            assert page.locator("button.mdi-cancel").first.is_visible(timeout=3000), "Статус 'Отчислен' не отображается"
+            # Иконки статусов — инлайн SVG-кнопки (не icon-font mdi-*, как было раньше):
+            # зелёная (success--text) — «Зачислен», красная (error--text) — «Отчислен».
+            # expect() поллит — таблица слушателей дорисовывается асинхронно после ?i=4.
+            expect(admin_page.locator("button.v-icon.success--text").first).to_be_visible(timeout=10000)
+            expect(admin_page.locator("button.v-icon.error--text").first).to_be_visible(timeout=5000)
             logger.info("Все статусы отображаются корректно")
 
         with allure.step("6. Очистка"):
-            from api.endpoints.users import UsersEndpoint
-            from api.client import ApiClient
-            from config.settings import settings
-
-            main_client = ApiClient(cookie=settings.DEVELOP_COOKIE)
-            users_ep = UsersEndpoint(main_client)
+            # api_client — уже авторизованная фикстура вместо отдельного ApiClient(cookie=
+            # settings.DEVELOP_COOKIE): эта ручная кука в .env не проходит логин и раньше
+            # давала 401 при попытке использовать её напрямую.
+            users_ep = UsersEndpoint(api_client)
             for uid in [user1.get("user_id"), user2.get("user_id"), user3.get("user_id")]:
                 external_cas_endpoint.delete_user(uid)
                 users_ep.delete(uid)
