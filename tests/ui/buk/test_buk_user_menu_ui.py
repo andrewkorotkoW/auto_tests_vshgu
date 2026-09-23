@@ -84,10 +84,11 @@ class TestBukUserMenuUI:
     @pytest.mark.ui
     @pytest.mark.xfail(
         strict=True,
-        reason="Стенд БУК (21.09.2026): форма согласия шлёт POST на http://test-dp.ranepa.ru (mixed content, "
-               "в Chrome — предупреждение «данные передаются небезопасно»), в ответ отдаёт сырой JSON "
-               "{redirect_url}, а сам redirect_url (/asuo/auth?asuo=…) отвечает «Не удалось авторизовать "
-               "пользователя». Когда починят — тест станет XPASS и упадёт как strict: снять xfail.",
+        reason="Стенд БУК (23.09.2026, после починки формы согласия): http-action убран, но на «Подтвердить» "
+               "test-dp отвечает JSON {'error': 'Не удалось авторизовать пользователя'} без redirect_url. "
+               "Вероятная причина: пользователь создан только в АСУО и заведён в связь через наш REST от имени БУК, "
+               "в самом БУК его нет — сквозной вход проверяется в сессии B с реальным человеком от команды БУК. "
+               "Когда заработает — тест станет XPASS и упадёт как strict: снять xfail.",
     )
     def test_buk_consent_leads_into_buk(self, page, env, buk_synced_user):
         import json
@@ -104,7 +105,8 @@ class TestBukUserMenuUI:
             assert buk_tab.locator("text=Согласие с правилами").first.is_visible(timeout=10000)
             form_action = buk_tab.locator("form").first.get_attribute("action") or ""
             allure.attach(form_action, "action формы согласия", allure.attachment_type.TEXT)
-            assert form_action.startswith("https://"), f"форма согласия отправляется по незащищённому адресу: {form_action}"
+            # пустой action = отправка на тот же https-домен; запрещён только явный http://
+            assert not form_action.startswith("http://"), f"форма согласия отправляется по незащищённому адресу: {form_action}"
 
         with allure.step("2. Галка «Даю согласие» → «Подтвердить»"):
             buk_tab.locator("input[type=checkbox]").first.check(force=True)
