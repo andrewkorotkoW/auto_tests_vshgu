@@ -1,5 +1,6 @@
 import allure
 import pytest
+from playwright.sync_api import expect
 from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
@@ -33,7 +34,6 @@ class TestAdminCasListenersStatuses:
                 )
             )
             program_id = data.get("program_id")
-            program_name = data.get("name")
             stream_data = external_cas_endpoint.create_stream(program_id, generate_external_cas_stream_payload())
             stream_id = stream_data.get("stream_id")
 
@@ -85,28 +85,21 @@ class TestAdminCasListenersStatuses:
         # пользователя (ui/pages/admin_page.py.go_to_admin) не нужны.
         with allure.step("4. Перейти к Слушателям"):
             UserSidebarPage(admin_page).dismiss_popups()
-            admin_page.goto(f"{env.ui_base_url}/admin/programs")
-            admin_page.wait_for_load_state("networkidle")
-            admin_page.locator('[data-qa="km-search"]').fill(program_name)
-            admin_page.locator(f"text={program_name}").first.click(force=True)
-            admin_page.wait_for_load_state("networkidle")
-            admin_page.locator("span.v-btn__content:has-text('Потоки')").first.click(force=True)
-            admin_page.wait_for_load_state("networkidle")
-            admin_page.locator(f"text={stream_data.get('name', 'А-')}").first.click(force=True)
-            admin_page.wait_for_load_state("networkidle")
-            # Закрыть модалку кликом вверх
-            admin_page.locator("body").click(position={"x": 500, "y": 10})
-            admin_page.screenshot(path="cas_listeners_debug.png", full_page=True)
-            admin_page.locator("span.v-btn__content:has-text('Слушатели')").first.click(force=True)
+            # Клик по вкладке «Слушатели» не переключает SPA-контент на develop (баг стенда
+            # либо особенность роутинга) — вкладки страницы потока адресуются query-параметром
+            # ?i=<index> (0=Общая информация, ..., 4=Слушатели), так и открываем напрямую.
+            admin_page.goto(f"{env.ui_base_url}/admin/programs/{program_id}/streams/{stream_id}?i=4")
             admin_page.wait_for_load_state("networkidle")
 
         with allure.step("5. Проверить статусы"):
             admin_page.screenshot(path="allure-results/cas_admin_listeners.png")
             allure.attach.file("allure-results/cas_admin_listeners.png", "Слушатели", allure.attachment_type.PNG)
 
-            assert admin_page.locator("button.mdi-star-check").first.is_visible(
-                timeout=5000), "Статус 'Зачислен' не отображается"
-            assert admin_page.locator("button.mdi-cancel").first.is_visible(timeout=3000), "Статус 'Отчислен' не отображается"
+            # Иконки статусов — инлайн SVG-кнопки (не icon-font mdi-*, как было раньше):
+            # зелёная (success--text) — «Зачислен», красная (error--text) — «Отчислен».
+            # expect() поллит — таблица слушателей дорисовывается асинхронно после ?i=4.
+            expect(admin_page.locator("button.v-icon.success--text").first).to_be_visible(timeout=10000)
+            expect(admin_page.locator("button.v-icon.error--text").first).to_be_visible(timeout=5000)
             logger.info("Все статусы отображаются корректно")
 
         with allure.step("6. Очистка"):

@@ -1,8 +1,7 @@
 import allure
 import pytest
-from ui.pages.login_page import LoginPage
-from ui.pages.admin_page import AdminPage
-from config.settings import settings
+from playwright.sync_api import expect
+from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
 
@@ -14,7 +13,7 @@ class TestAdminCasFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    def test_admin_check_cas_program(self, page, api_client, omt_cas_endpoint, external_cas_endpoint):
+    def test_admin_check_cas_program(self, admin_page, env, api_client, omt_cas_endpoint, external_cas_endpoint):
         from api.helpers.data_generator import generate_cas_payload, generate_external_cas_program_payload, generate_external_cas_stream_payload
 
         # ========== API ==========
@@ -30,7 +29,6 @@ class TestAdminCasFlow:
             )
             data = external_cas_endpoint.create_program(program_payload)
             program_id = data.get("program_id")
-            program_name = data.get("name")
 
         with allure.step("3. Создать поток"):
             stream_payload = generate_external_cas_stream_payload()
@@ -38,71 +36,62 @@ class TestAdminCasFlow:
             stream_id = stream_data.get("stream_id")
 
         # ========== UI ==========
-        with allure.step("4. Логин под админом"):
-            login_page = LoginPage(page)
-            login_page.login(settings.TEST_USER_EMAIL, settings.TEST_USER_PASSWORD)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+        # admin_page — уже авторизованная под администратором страница (storage_state),
+        # логин через форму под settings.TEST_USER_EMAIL и клик по «Админка» в меню
+        # пользователя (ui/pages/admin_page.py.go_to_admin) не нужны. Вкладки открываем
+        # прямыми URL с ?i=<index> (0=Потоки, 1=Описание у программы) вместо клика по
+        # span-кнопке вкладки — на develop такой клик не переключает SPA-контент.
+        program_url = f"{env.ui_base_url}/admin/programs/{program_id}"
+        stream_url = f"{env.ui_base_url}/admin/programs/{program_id}/streams/{stream_id}"
+        with allure.step("4. Открыть программу → Описание"):
+            UserSidebarPage(admin_page).dismiss_popups()
+            admin_page.goto(f"{program_url}?i=1")
+            admin_page.wait_for_load_state("networkidle")
+            admin_page.screenshot(path="allure-results/cas_admin_program.png")
 
-        with allure.step("5. Перейти в Админку → Программы"):
-            admin_page = AdminPage(page)
-            admin_page.go_to_admin()
-            # Перейти к программам (нужен селектор)
-            page.locator("text=Программы").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-
-        with allure.step("6. Найти программу → Описание"):
-            page.locator('[data-qa="km-search"]').fill(program_name)
-            page.locator(f"text={program_name}").first.click(force=True)  # клик по программе
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-            page.locator("span.v-btn__content:has-text('Описание')").first.click(force=True)  # внутри Описание
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-            page.screenshot(path="allure-results/cas_admin_program.png")
-
-        with allure.step("7. Проверить синхронизацию (зелёная кнопка mdi-check)"):
-            assert page.locator("button i.mdi-check").first.is_visible(timeout=5000), "Программа не синхронизирована!"
+        with allure.step("5. Проверить синхронизацию (зелёная круглая кнопка)"):
+            # expect() поллит, а не проверяет один раз сразу после networkidle: контент
+            # вкладки «Описание» дорисовывается асинхронно уже после networkidle (SPA).
+            expect(admin_page.locator("button.v-btn--round[style*='213, 239, 209']").first).to_be_visible(timeout=10000)
             logger.info("Программа синхронизирована")
-            page.screenshot(path="allure-results/cas_admin_program_synced.png")
+            admin_page.screenshot(path="allure-results/cas_admin_program_synced.png")
             allure.attach.file("allure-results/cas_admin_program_synced.png", "Программа синхронизирована",
                                allure.attachment_type.PNG)
 
-        with allure.step("8. Перейти в Потоки"):
-            page.locator("span.v-btn__content:has-text('Потоки')").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-            # Клик по названию потока
-            page.locator(f"text={stream_data.get('name', 'А-')}").first.click(force=True)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
-            # Модалка "Понятно"
-            page.locator("button.confirm__btn-ok:has-text('Понятно')").first.click(force=True)
+        with allure.step("6. Открыть поток"):
+            admin_page.goto(stream_url)
+            admin_page.wait_for_load_state("networkidle")
 
-        with allure.step("9. Проверить синхронизацию потока"):
-            assert page.locator("button i.mdi-check").first.is_visible(timeout=5000), "Поток не синхронизирован!"
+        with allure.step("7. Проверить синхронизацию потока"):
+            expect(admin_page.locator("button.v-btn--round[style*='213, 239, 209']").first).to_be_visible(timeout=10000)
             logger.info("Поток синхронизирован")
-            page.screenshot(path="allure-results/cas_admin_stream_synced.png")
+            admin_page.screenshot(path="allure-results/cas_admin_stream_synced.png")
             allure.attach.file("allure-results/cas_admin_stream_synced.png", "Поток синхронизирован",
                                allure.attachment_type.PNG)
 
-        with allure.step("10. Снять синхронизацию программы (API)"):
+        with allure.step("8. Снять синхронизацию программы (API)"):
             external_cas_endpoint.delete_program(program_id)
             logger.info("Синхронизация программы снята")
 
-        with allure.step("11. Обновить страницу и проверить отсутствие синхронизации"):
-            page.reload()
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+        with allure.step("9. Обновить страницу программы и проверить отсутствие синхронизации"):
+            admin_page.goto(f"{program_url}?i=1")
+            admin_page.wait_for_load_state("networkidle")
+            expect(admin_page.locator("button.v-btn--round[style*='213, 239, 209']")).to_have_count(0, timeout=10000)
             logger.info("Синхронизация снята — зелёная кнопка отсутствует")
-            page.screenshot(path="allure-results/cas_admin_unsynced.png")
+            admin_page.screenshot(path="allure-results/cas_admin_unsynced.png")
             allure.attach.file("allure-results/cas_admin_unsynced.png", "Синхронизация снята",
                                allure.attachment_type.PNG)
 
-        with allure.step("12. Проверить отсутствие синхронизации потока"):
-            page.locator("span.v-btn__content:has-text('Потоки')").first.click(force=True)
-            assert not page.locator("button i.mdi-check").first.is_visible(
-                timeout=5000), "Синхронизация потока не снята!"
-            page.screenshot(path="allure-results/cas_admin_stream_unsynced.png")
+        with allure.step("10. Проверить отсутствие синхронизации потока"):
+            admin_page.goto(stream_url)
+            admin_page.wait_for_load_state("networkidle")
+            expect(admin_page.locator("button.v-btn--round[style*='213, 239, 209']")).to_have_count(0, timeout=10000)
+            admin_page.screenshot(path="allure-results/cas_admin_stream_unsynced.png")
             allure.attach.file("allure-results/cas_admin_stream_unsynced.png", "Поток не синхронизирован",
                                allure.attachment_type.PNG)
 
         # ========== CLEANUP ==========
-        with allure.step("13. Очистка"):
+        with allure.step("11. Очистка"):
             external_cas_endpoint.delete_stream(program_id, stream_id)
             external_cas_endpoint.delete_program(program_id)
             from api.endpoints.programs import ProgramsEndpoint
