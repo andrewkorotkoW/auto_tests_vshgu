@@ -12,17 +12,7 @@ class TestAosPublicLink:
     @allure.title("Пройти АОС по публичной ссылке без авторизации")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
-    @pytest.mark.xfail(
-        reason=(
-            "Публичный доступ к АОС существует: плеер /testing/player?stream_feedback_content=<id> зовёт "
-            "GET /api/v1/launch-url и дальше гостевые маршруты /api/v1/unauthorized/tests/*. Но тест передаёт "
-            "content_id АОС, а launch-url отвечает 422 «Выбранное значение для stream feedback content "
-            "некорректно» (проверено 23.09.2026, до и после активации АОС на потоке), после чего плеер уводит "
-            "на логин. Нужен id именно stream feedback content — откуда его брать (админка/API), уточняется у владельца."
-        ),
-        strict=False,
-    )
-    def test_public_aos_pass(self, page, created_aos):
+    def test_public_aos_pass(self, page, created_aos, aos_endpoint):
         from config.settings import settings
 
         # 1. Создать АОС через фикстуру
@@ -30,8 +20,12 @@ class TestAosPublicLink:
             aos = created_aos()
             logger.info(f"АОС: ID={aos['id']}")
 
-        # 2. Сформировать публичную ссылку
-        public_url = f"{settings.UI_BASE_URL}/testing/player?stream_feedback_content={aos['id']}"
+        # 2. Активировать АОС на потоке и получить публичную ссылку от бэкенда
+        with allure.step("1.1. Активировать АОС на потоке и получить публичную ссылку"):
+            assert aos_endpoint.activate(aos["program_id"], aos["stream_id"], aos["id"]), "АОС не активировалась"
+            public_url = aos_endpoint.public_link(aos["program_id"], aos["stream_id"], aos["id"])
+            logger.info(f"Публичная ссылка: {public_url}")
+            assert "stream_feedback_content=" in public_url, f"Неожиданный формат ссылки: {public_url}"
 
         # 3. Открыть ссылку (без авторизации)
         with allure.step("2. Открыть публичную ссылку"):

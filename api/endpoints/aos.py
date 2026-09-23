@@ -37,6 +37,25 @@ class AosEndpoint:
             logger.warning(f"AOS activate failed: ID={aos_id}, status={resp.status_code}")
         return success
 
+    def stream_feedback(self, program_id: int, stream_id: int) -> list:
+        """Список АОС потока с публичными ссылками (после активации у записи появляется launch_url)."""
+        resp = self.client.get(f"/programs/{program_id}/streams/{stream_id}/feedback")
+        expect_status(resp, 200)
+        data = resp.json().get("data", [])
+        return data if isinstance(data, list) else [data]
+
+    def public_link(self, program_id: int, stream_id: int, aos_id: int) -> str:
+        """Публичная ссылка на АОС: /testing/player?stream_feedback_content=<id записи АОС потока>.
+        Это не content_id самой АОС — id выдаёт бэкенд после активации на потоке."""
+        for item in self.stream_feedback(program_id, stream_id):
+            attrs = item.get("attributes", item)
+            if str(attrs.get("content_id") or attrs.get("test_id") or item.get("id")) == str(aos_id) and attrs.get("launch_url"):
+                return attrs["launch_url"]
+        links = [it.get("attributes", it).get("launch_url") for it in self.stream_feedback(program_id, stream_id)]
+        links = [l for l in links if l]
+        assert links, f"У АОС {aos_id} на потоке {stream_id} нет launch_url — активирована ли она?"
+        return links[0]
+
     def mass_delete(self, content_ids: list) -> bool:
         """Массовое удаление АОС.
 
