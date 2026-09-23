@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 from api.client import ApiClient
 from utils.logger import logger
 from api.helpers.expectations import expect_status
@@ -50,7 +50,10 @@ class PollsEndpoint:
         return success
 
     def create_question(self, content_id: int, question: dict) -> Dict:
-        """Создание вопроса для опроса."""
+        """Создание вопроса для опроса. В отличие от теста, вопросы опросов (и АОС)
+        обязательно требуют поле group — без него бэкенд отвечает 422 «должен быть
+        привязан к группе» (см. api.helpers.data_generator.generate_question_payload/
+        generate_constructor_question_payload)."""
         payload = {
             "content_id": content_id,
             "question": question
@@ -60,6 +63,35 @@ class PollsEndpoint:
         data = resp.json()
         logger.info(f"Question created for poll {content_id}")
         return data
+
+    def get_questions(self, content_id: int) -> List[Dict]:
+        """Список вопросов опроса (для конструктора: найти дефолтный вопрос/группу
+        перед настройкой последовательности или добавлением вопроса из банка)."""
+        resp = self.client.get(f"/tests/questions/{content_id}")
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
+
+    def set_sequence_questions(self, poll_data: dict, is_active: bool, is_valid: bool = True) -> Dict:
+        """Включение/выключение последовательности вопросов по ответам
+        (settings.sequence_questions) через PUT /tests/{id} — принимает «сырые» данные
+        опроса/АОС (PollsEndpoint.create/get, AosEndpoint.create/get: content_id, type,
+        name, name_client, topic, cover_uuid, description, settings)."""
+        settings = dict(poll_data.get("settings") or {})
+        settings["sequence_questions"] = {"is_active": is_active, "is_valid": is_valid}
+        if is_active:
+            settings["shuffle_questions"] = {"is_active": False}
+        content_id = poll_data.get("content_id", poll_data.get("id"))
+        payload = {
+            "content_id": content_id,
+            "type": poll_data.get("type", "poll"),
+            "name": poll_data["name"],
+            "name_client": poll_data.get("name_client", poll_data["name"]),
+            "topic": poll_data.get("topic") or "",
+            "cover_uuid": poll_data.get("cover_uuid"),
+            "description": poll_data.get("description") or "",
+            "settings": settings,
+        }
+        return self.update(content_id, payload)
 
     def get_assignment_uuid(self, content_id: int) -> str:
         """Получить assignment_uuid для контента (опрос/тест) через инд. трек."""
