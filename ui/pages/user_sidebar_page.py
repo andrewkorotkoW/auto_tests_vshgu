@@ -45,6 +45,13 @@ class UserSidebarPage(BasePage):
         которая блокирует страницу сразу после первого входа. Опционально: если анкеты
         нет (уже заполнена ранее), молча пропускаем."""
         page = self.page
+        # Оранжевая плашка «Технические работы» прижимает шапку и закрывает меню пользователя — убираем из DOM
+        try:
+            if page.locator("div.tech-banner").count():
+                page.evaluate("() => document.querySelectorAll('div.tech-banner').forEach(el => el.remove())")
+                logger.info("Плашка «Технические работы» убрана")
+        except Exception:  # noqa: BLE001
+            pass
         try:
             form = page.locator(".v-overlay--active:has-text('данные о себе'), .v-dialog:has-text('данные о себе')").first
             form.wait_for(state="visible", timeout=5000)
