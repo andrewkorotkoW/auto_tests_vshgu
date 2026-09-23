@@ -24,15 +24,18 @@ docker:build:
 # Общая часть прогона: результаты и Allure-отчёт складываются в results/<env>/ и сохраняются как артефакт.
 .run_tests:
   stage: test
-  image: "${IMAGE}"
+  # entrypoint образа — scripts/run.sh; GitLab должен запускать в контейнере shell, поэтому entrypoint сбрасываем
+  image:
+    name: "${IMAGE}"
+    entrypoint: [""]
   tags:
     - devspark-builder
   variables:
     HEADLESS: "1"
   script:
-    - --env "${STAND}" ${PYTEST_ARGS}
-    # - scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
+    - cd /tests && scripts/run.sh --env "${STAND}" ${PYTEST_ARGS} && cp -r results "${CI_PROJECT_DIR}/" || { cp -r /tests/results "${CI_PROJECT_DIR}/" 2>/dev/null; exit 1; }
   artifacts:
+    when: always   # результаты нужны и при упавших тестах
     expire_in: 1 days
     paths:
       - results/
