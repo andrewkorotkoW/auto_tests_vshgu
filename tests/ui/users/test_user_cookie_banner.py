@@ -16,7 +16,7 @@ class TestUserCookieBanner:
     @pytest.mark.ui
     @pytest.mark.smoke
     @pytest.mark.xfail(
-        strict=False,
+        strict=True,
         reason=(
             "Баг develop (подтверждён 23.09.2026): cookie-баннер не показывается на странице входа "
             "/auth/main, а появляется уже внутри системы после прохождения онбординга и пропадает при "
