@@ -32,8 +32,7 @@ docker:build:
   script:
     - scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
   artifacts:
-    when: always
-    expire_in: 14 days
+    expire_in: 1 days
     paths:
       - results/
     reports:
