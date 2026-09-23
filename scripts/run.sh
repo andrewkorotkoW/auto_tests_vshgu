@@ -52,7 +52,7 @@ if [[ -d "${HISTORY_DIR}/history" ]]; then
     cp -r "${HISTORY_DIR}/history/." "${ALLURE_RESULTS_DIR}/history/"
 fi
 
-PYTEST_ARGS=(--env "$ENV_NAME" --alluredir="$ALLURE_RESULTS_DIR")
+PYTEST_ARGS=(--env "$ENV_NAME" --alluredir="$ALLURE_RESULTS_DIR" --junitxml="${ALLURE_RESULTS_DIR}/junit.xml")
 if [[ -n "$MARK_EXPR" ]]; then
     PYTEST_ARGS+=(-m "$MARK_EXPR")
 fi
