@@ -23,6 +23,7 @@ from api.endpoints.polls import PollsEndpoint
 from api.endpoints.knowledge_base import KnowledgeBaseEndpoint
 from api.endpoints.homework import HomeworkEndpoint
 from api.endpoints.certificates import CertificatesEndpoint
+from api.endpoints.dashboards import DashboardsEndpoint
 from api.helpers.data_generator import (
     generate_user_payload,
     generate_program_payload,
@@ -177,6 +178,11 @@ def schedule_items_endpoint(api_client):
 @pytest.fixture
 def aos_endpoint(api_client):
     return AosEndpoint(api_client)
+
+
+@pytest.fixture
+def dashboards_endpoint(api_client):
+    return DashboardsEndpoint(api_client)
 
 
 @pytest.fixture

@@ -40,6 +40,25 @@ class ModulesEndpoint:
         logger.info(f"Module updated: ID={data['id']}, name={data['attributes'].get('name')}")
         return data
 
+    def get_contents(self, program_id: int, stream_id: int, module_id: int) -> list:
+        """Контент модуля (обёртки stream_content вокруг content_id активити/курсов) —
+        нужен, чтобы найти stream_content_id по content_id для смены статуса прохождения."""
+        resp = self.client.get(
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}/contents"
+        )
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
+
+    def find_stream_content_id(self, program_id: int, stream_id: int, module_id: int, content_id: int) -> int:
+        """Найти stream_content_id (id обёртки) по content_id активити/курса в модуле."""
+        for item in self.get_contents(program_id, stream_id, module_id):
+            content = item.get("attributes", {}).get("content", {})
+            if int(content.get("id", 0)) == content_id:
+                return int(item["id"])
+        raise AssertionError(
+            f"В модуле id={module_id} не найден content_id={content_id}"
+        )
+
     def delete(self, program_id: int, stream_id: int, module_id: int) -> bool:
         """Удаление модуля."""
         resp = self.client.delete(
