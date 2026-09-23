@@ -1,6 +1,9 @@
 import allure
 import pytest
+from playwright.sync_api import expect
 from ui.pages.login_page import LoginPage
+from ui.pages.admin_users_page import AdminUsersPage
+from ui.pages.user_sidebar_page import UserSidebarPage
 from config.settings import settings
 from utils.logger import logger
 from api.endpoints.users import UsersEndpoint
@@ -33,51 +36,31 @@ class TestAdminVerifyRoleUI:
             allure.attach.file("allure-results/admin_role_ui_01_login.png", "Логин админа", allure.attachment_type.PNG)
 
         with allure.step("3. Перейти в список пользователей"):
-            # Открываем админку пользователей
-            page.goto(f"{api_client.base_url.replace('/api/v1', '')}/admin/users")
-            page.wait_for_load_state("networkidle")
+            # Онбординг-тур ещё не пройден на этой странице — его затемнение перехватывает
+            # клики и не даёт странице дойти до networkidle (на чём падает AdminUsersPage.open),
+            # поэтому закрываем его сразу после навигации.
+            admin_users_page = AdminUsersPage(page)
+            page.goto(f"{settings.UI_BASE_URL}{admin_users_page.PATH}")
+            UserSidebarPage(page).dismiss_popups()
+            admin_users_page.page.locator('[data-qa="km-search"]').first.wait_for(state="visible", timeout=30000)
             page.screenshot(path="allure-results/admin_role_ui_02_user_list.png")
             allure.attach.file("allure-results/admin_role_ui_02_user_list.png", "Список пользователей", allure.attachment_type.PNG)
 
-        with allure.step("4. Найти пользователя и проверить роль"):
-            # Явно ждём появления поля поиска (увеличим таймаут)
-            search_input = page.locator("[data-qa='km-search']")
-            search_input.wait_for(state="visible", timeout=15000)
+        with allure.step("4. Найти пользователя и открыть карточку"):
+            # В таблице «База Пользователей» нет колонки «Роль» — роль отображается
+            # только на карточке пользователя. Сначала ищем по email (иначе только
+            # что созданного пользователя не будет на первой странице списка).
+            admin_users_page.search_by_email(user["email"])
+            admin_users_page.open_user_by_email(user["email"])
+            page.screenshot(path="allure-results/admin_role_ui_03_user_card.png")
+            allure.attach.file("allure-results/admin_role_ui_03_user_card.png", "Карточка пользователя",
+                               allure.attachment_type.PNG)
 
-            # Кликаем по полю для фокуса и очищаем (на случай, если там что-то есть)
-            search_input.click()
-            search_input.fill("")
-
-            # Вводим полное имя (или email)
-            full_name = f"{user['surname']} {user['name']}" if user.get('surname') else user['name']
-            search_input.fill(full_name)
-            page.keyboard.press("Enter")
-
-            # Ждём появления хотя бы одной строки в таблице (как признак, что поиск завершён)
-            try:
-                page.wait_for_selector("table tbody tr", timeout=10000)
-            except:
-                pass
-
-            # Пытаемся найти строку с именем или email
-            user_row = page.locator(f"tr:has-text('{full_name}')").first
-            if user_row.count() == 0:
-                user_row = page.locator(f"tr:has-text('{user['email']}')").first
-
-            # Если всё ещё не нашли — делаем скриншот для диагностики
-            if user_row.count() == 0:
-                page.screenshot(path="allure-results/admin_role_ui_search_failed.png")
-                allure.attach.file("allure-results/admin_role_ui_search_failed.png", "Результат поиска",
-                                   allure.attachment_type.PNG)
-                logger.error(f"Пользователь {full_name} не найден. Проверьте скриншот.")
-
-            assert user_row.count() > 0, f"Пользователь {full_name} не найден в списке"
-
-            # Проверяем роль
-            role_cell = user_row.locator("td:has-text('Преподаватель')")
-            assert role_cell.count() > 0, "Роль 'Преподаватель' не отображается у пользователя"
+        with allure.step("5. Проверить роль"):
+            role_element = page.locator("text=Преподаватель").first
+            expect(role_element).to_be_visible(timeout=15000)
             logger.info("Роль 'Преподаватель' успешно отображается в админке")
 
-            page.screenshot(path="allure-results/admin_role_ui_03_role_visible.png")
-            allure.attach.file("allure-results/admin_role_ui_03_role_visible.png", "Роль отображается",
+            page.screenshot(path="allure-results/admin_role_ui_04_role_visible.png")
+            allure.attach.file("allure-results/admin_role_ui_04_role_visible.png", "Роль отображается",
                                allure.attachment_type.PNG)

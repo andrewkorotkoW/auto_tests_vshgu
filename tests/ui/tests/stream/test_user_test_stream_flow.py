@@ -2,7 +2,6 @@ import allure
 import pytest
 from playwright.sync_api import expect
 from ui.pages.login_page import LoginPage
-from ui.pages.test_page import TestPage
 from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
 
@@ -15,18 +14,6 @@ class TestUserTestStreamFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    @pytest.mark.xfail(
-        reason=(
-            "Известный дефект стенда develop (тот же класс, что в "
-            "tests/ui/homework/individual/test_ui_homework_flow.py и др., но здесь для "
-            "назначения через модуль потока): после assignments_endpoint.assign_content_to_module "
-            "вкладка «Курсы и тесты» модуля показывает только демо-примеры («Пример "
-            "назначенного курса» и т.п.) — назначенный тест не появляется в списке. "
-            "Подтверждено скриншотом: вкладка открыта верно, но в списке нет карточки с "
-            "реальным именем теста."
-        ),
-        strict=False,
-    )
     def test_user_open_test_stream(self, page, api_client, created_user, tests_endpoint, assignments_endpoint, created_program, created_stream, created_module):
         """API: программа → поток → модуль → пользователь → Тест → UI: логин → открыть Тест."""
 
@@ -69,36 +56,52 @@ class TestUserTestStreamFlow:
         with allure.step("7. Логин"):
             login_page = LoginPage(page)
             login_page.login(user["email"], user["password"])
-            UserSidebarPage(page).dismiss_popups()
             page.screenshot(path="allure-results/test_stream_login.png")
             allure.attach.file("allure-results/test_stream_login.png", "Логин", allure.attachment_type.PNG)
 
-        with allure.step("9. Открыть программу и пройти онбординг"):
-            test_page = TestPage(page)
-            # Тур иногда рендерится с задержкой после networkidle и переживает первый
-            # dismiss_popups() — повторный вызов подчищает затемнение, которое иначе прячет
-            # реальные карточки программ на «Моё обучение»
+        with allure.step("8. Онбординг"):
+            # Анкета «данные о себе» + cookie-баннер + тур — закрываем общим хелпером,
+            # т.к. анкета блокирует страницу и перехватывает клики (не только тур).
             UserSidebarPage(page).dismiss_popups()
-            program_element = page.locator(f"text={program['name']}").first
+            page.screenshot(path="allure-results/test_stream_onboarding.png")
+            logger.info("Онбординг пройден")
+
+        with allure.step("9. Открыть программу и пройти онбординг"):
+            program_element = page.locator(f"text={program['name']}")
             expect(program_element).to_be_visible(timeout=15000)
-            program_element.click(force=True)
+            program_element.first.click(force=True)
             logger.info(f"Программа '{program['name']}' открыта")
 
-            UserSidebarPage(page).dismiss_popups()
+            # Онбординг внутри программы
+            UserSidebarPage(page).pass_onboarding()
             logger.info("Онбординг внутри программы пройден")
 
         with allure.step("10. Открыть тест"):
-            # Тест лежит в модуле на вкладке «Курсы и тесты» — по умолчанию открыта
-            # «Расписание» (см. AdminStreamGroupsPage/PracticalTaskPage.open_courses_and_tests_tab)
-            courses_tab = page.locator("xpath=//span[normalize-space()='Курсы и тесты']")
-            expect(courses_tab).to_be_visible(timeout=15000)
-            courses_tab.click(force=True)
+            # Тест находится на вкладке «Курсы и тесты», по умолчанию открыта «Расписание».
+            # Только что назначенный контент модуля появляется в списке не сразу —
+            # ретраим reload, пока не пропадёт задержка индексации.
+            tests_tab = page.locator("text=Курсы и тесты").first
+            expect(tests_tab).to_be_visible(timeout=15000)
+            tests_tab.click(force=True)
 
-            test_element = page.locator(f"text={test_data['name']}").first
-            expect(test_element).to_be_visible(timeout=15000)
-            test_element.click(force=True)
+            test_element = page.locator(f"text={test_data['name']}")
+            found = False
+            for attempt in range(4):
+                try:
+                    expect(test_element).to_be_visible(timeout=10000)
+                    found = True
+                    break
+                except AssertionError:
+                    logger.info(f"Тест не найден на вкладке (попытка {attempt + 1}/4), reload+retry")
+                    page.wait_for_timeout(5000)
+                    page.reload()
+                    page.wait_for_load_state("networkidle")
+                    UserSidebarPage(page).dismiss_popups()
+                    page.locator("text=Курсы и тесты").first.click(force=True)
+            assert found, f"Тест '{test_data['name']}' не отображается на вкладке «Курсы и тесты» после 4 попыток"
+            test_element.first.click(force=True)
 
-            start_button = page.locator("span:has-text('Начать')")
+            start_button = page.locator("span:has-text('Начать')").first
             expect(start_button).to_be_visible(timeout=15000)
             page.screenshot(path="allure-results/test_stream_open.png")
             logger.info("Тест открыт, кнопка 'Начать' видна")
