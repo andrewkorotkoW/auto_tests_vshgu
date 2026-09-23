@@ -18,23 +18,13 @@ region_id/municipality_id по умолчанию из api/helpers/data_generato
 регионов, наподобие test_data/regions.py коллеги, у нас нет).
 """
 import pytest
-from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, expect
+from playwright.sync_api import Page, expect
 
 from api.helpers.user_prepare_api import prepare_user_for_tests_via_api
 from ui.pages.login_page import LoginPage
 from ui.pages.onboarding_page import OnboardingPage
 
 from tests.ui.onboarding.locators import MY_LEARNING_HEADING
-
-TOUR_STAND_DEFECT_REASON = (
-    "Дефект стенда develop: после клика «Пройти обучение» модалка «Интерактивное "
-    "руководство» не всегда переходит к слайду «Далее» — воспроизведено вручную и "
-    "в автотесте многократно (до 5 повторных кликов с паузами, force=True), "
-    "независимо от предварительного закрытия баннера «Технические работы» "
-    "(remove_tech_banner) и уведомления «Вы отказались от получения "
-    "информационных писем» (dismiss_email_opt_out_notice)."
-)
-
 
 @pytest.fixture
 def fresh_login_page(page: Page, env, created_user) -> Page:
@@ -68,11 +58,8 @@ def primary_onboarded_page(fresh_login_page: Page) -> Page:
     )
     onboarding.remove_tech_banner()
     onboarding.start_onboarding_if_present()
-    try:
-        onboarding.complete_onboarding(max_steps=20)
-        expect(page.get_by_role("heading", name=MY_LEARNING_HEADING)).to_be_visible(timeout=15000)
-    except (AssertionError, PlaywrightTimeoutError):
-        pytest.xfail(TOUR_STAND_DEFECT_REASON)
+    onboarding.complete_onboarding(max_steps=20)
+    expect(page.get_by_role("heading", name=MY_LEARNING_HEADING)).to_be_visible(timeout=15000)
     return page
 
 
@@ -99,5 +86,10 @@ def repeat_onboarding_page(page: Page, env, created_user) -> Page:
     if onboarding.registration_modal.is_visible(timeout=5000):
         onboarding.fill_registration_form()
     onboarding.dismiss_email_opt_out_notice()
+    # Порядок важен: пока плашка «Технические работы» на экране, она физически
+    # перекрывает кнопку «Принимаю» cookie-баннера — форсированный клик по банеру
+    # тогда достаётся плашке, а не кнопке (тот же эффект, что описан в
+    # OnboardingPage.remove_tech_banner для кнопки «Пройти обучение»).
     onboarding.remove_tech_banner()
+    onboarding.dismiss_cookie_banner()
     return page

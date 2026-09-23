@@ -14,10 +14,7 @@ FAVORITES_TAB = "span:has-text('Избранное')"
 SUPPORT_LINK = "xpath=//span[contains(@class,'nav-item__text') and normalize-space()='Техподдержка']"
 SUPPORT_PLUS_ICON = "path#vac-icon-add"
 
-PERSONAL_LINK = (
-    "xpath=//span[contains(@class,'individual__text') "
-    "and normalize-space()='Индивидуальное обучение']"
-)
+PERSONAL_LINK = "a.individual-education-banner__link"
 PERSONAL_SCHEDULE_TAB = "xpath=//span[contains(@class,'py-2') and normalize-space()='Расписание']"
 
 MY_LEARNING_HEADING = "Мое обучение"
