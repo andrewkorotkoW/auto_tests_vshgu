@@ -12,6 +12,7 @@ from pathlib import Path
 import allure
 import pytest
 
+from api.helpers.user_prepare_api import prepare_user_for_tests_via_api
 from ui.pages.login_page import LoginPage
 from ui.pages.practical_task_page import PracticalTaskPage
 from ui.pages.user_sidebar_page import UserSidebarPage
@@ -28,19 +29,6 @@ class TestCompletePracticalTask:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
-    @pytest.mark.xfail(
-        reason="Дефект стенда develop: после API-назначения (assignments.assign на поток + "
-               "content в модуль через mass-addition) программа не появляется в «Моё обучение» "
-               "слушателя — на странице /education показываются только 2 демо-карточки "
-               "(«Пример назначенной программы», «Пример пройденной программы»), реальное имя "
-               "программы отсутствует в тексте страницы вообще (проверено дважды через "
-               "page.locator('body').inner_text()). Тот же путь подготовки (created_program/"
-               "created_stream/created_module + assignments.assign) уже используется в "
-               "tests/ui/test_user_lpd_stream_flow.py, который на этом стенде падает раньше — "
-               "на API-подготовке (created_lpd: 422 passing_type) — так что независимая "
-               "проверка через LPD-путь также недоступна.",
-        strict=False,
-    )
     def test_complete_practical_task(
         self, page, env, api_client, tincan_endpoint, assignments_endpoint, homework_endpoint,
         assigned_user, created_module, created_homework,
@@ -52,10 +40,20 @@ class TestCompletePracticalTask:
                 assigned = assigned_user()
                 user = assigned["user"]
                 stream = assigned["stream"]
+                # Без этого «Моё обучение» показывает только 2 демо-карточки вместо
+                # реально назначенной программы — та же подготовка, что и prepared_user
+                # (api.helpers.user_prepare_api.prepare_user_for_tests_via_api), но
+                # assigned_user не принимает готового пользователя, поэтому готовим его
+                # тут же после назначения на поток.
+                prepare_user_for_tests_via_api(env, user["email"], user["password"])
                 module = created_module(program_id=stream["program_id"], stream_id=stream["id"])
 
                 cover_uuid = tincan_endpoint.upload_cover(str(TEST_DATA_DIR / "practical_task_cover.png"))
-                archive_uuid = tincan_endpoint.upload_archive(str(TEST_DATA_DIR / "practical_task_main_document.docx"))
+                # upload_archive() шлёт файл на /upload/course_archive (только zip/rar) —
+                # для «Основного документа» ПЗ (как и для доп. материалов) стенд принимает
+                # файлы через /upload/schedule_item_files, тот же эндпоинт, что и upload_sub_file
+                # (подтверждено перехватом сетевого запроса при загрузке через админку).
+                archive_uuid = tincan_endpoint.upload_sub_file(str(TEST_DATA_DIR / "practical_task_main_document.docx"))
                 sub_file_uuid = tincan_endpoint.upload_sub_file(str(TEST_DATA_DIR / "practical_task_additional_document.xlsx"))
 
                 homework = created_homework(
@@ -74,7 +72,9 @@ class TestCompletePracticalTask:
                 logger.info(f"Пользователь: {user['id']}, программа: {program_name}, ПЗ: {homework['name_client']}")
 
             with allure.step(f"2. Авторизоваться слушателем '{user['email']}'"):
-                LoginPage(page).login(user["email"], user["password"], base_url=env.ui_base_url)
+                LoginPage(page).login(
+                    user["email"], user["password"], base_url=env.ui_base_url, handle_onboarding=False
+                )
                 UserSidebarPage(page).dismiss_popups()
 
             with allure.step(f"3. Открыть программу '{program_name}' и вкладку «Курсы и тесты»"):

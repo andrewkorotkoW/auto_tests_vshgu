@@ -29,12 +29,15 @@ class PracticalTaskPage(BasePage):
         link.click(timeout=5000, force=True)
 
     def program_title(self, program_name: str) -> Locator:
-        return self.page.locator(f"xpath=//a[contains(@class,'description__title')][.//*[normalize-space()='{program_name}']]")
+        # Карточка программы на «Моё обучение» (/education, куда редиректит /programs):
+        # заголовок — <a class="program-card__link">ИмяПрограммы</a>; у карточки есть ещё
+        # такие же по классу ссылки "–" (даты) и "О программе" — отбираем по точному тексту.
+        return self.page.locator("a.program-card__link").filter(has_text=re.compile(rf"^{re.escape(program_name)}$"))
 
     def open_program(self, program_name: str) -> None:
-        expect(self.program_title(program_name)).to_be_visible(timeout=30000)
-        self.program_title(program_name).click(timeout=5000)
-        expect(self.page).to_have_url(re.compile(r".*/program/.*"), timeout=30000)
+        expect(self.program_title(program_name).first).to_be_visible(timeout=30000)
+        self.program_title(program_name).first.click(timeout=5000)
+        expect(self.page).to_have_url(re.compile(r".*/program.*"), timeout=30000)
 
     def open_courses_and_tests_tab(self) -> None:
         tab = self.page.locator("xpath=//span[normalize-space()='Курсы и тесты']")
