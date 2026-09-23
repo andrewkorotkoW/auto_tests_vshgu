@@ -5,6 +5,7 @@
 #   scripts/run.sh --env develop
 #   scripts/run.sh --env stage -m "smoke and ui"
 #   scripts/run.sh --env prod -m smoke
+#   scripts/run.sh --env develop tests/api/test_health.py -k reachable   # всё прочее уходит в pytest
 #
 # Результаты каждого запуска складываются в results/<env>/<timestamp>/ (это и есть
 # --alluredir), а history (для трендов между запусками) хранится отдельно на
@@ -19,6 +20,7 @@ cd "$ROOT_DIR"
 
 ENV_NAME="develop"
 MARK_EXPR=""
+EXTRA_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -31,9 +33,9 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         *)
-            echo "Неизвестный аргумент: $1" >&2
-            echo "Использование: $0 --env <develop|stage|prod> [-m '<expr>']" >&2
-            exit 1
+            # пути к тестам и любые другие ключи pytest (-k, -x, --reruns, -n …)
+            EXTRA_ARGS+=("$1")
+            shift
             ;;
     esac
 done
@@ -59,7 +61,7 @@ fi
 
 echo "Запуск: pytest ${PYTEST_ARGS[*]}"
 set +e
-python3 -m pytest "${PYTEST_ARGS[@]}"
+python3 -m pytest "${PYTEST_ARGS[@]}" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}
 PYTEST_EXIT_CODE=$?
 set -e
 
