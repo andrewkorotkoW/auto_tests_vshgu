@@ -30,7 +30,8 @@ docker:build:
   variables:
     HEADLESS: "1"
   script:
-    - scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
+    - --env "${STAND}" ${PYTEST_ARGS}
+    # - scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
   artifacts:
     expire_in: 1 days
     paths:
