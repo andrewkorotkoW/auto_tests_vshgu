@@ -1,6 +1,8 @@
 import allure
+from playwright.sync_api import expect
 import pytest
 from ui.pages.login_page import LoginPage
+from ui.pages.user_sidebar_page import UserSidebarPage
 from ui.pages.region_page import RegionPage
 from utils.logger import logger
 from api.helpers.expectations import expect_status
@@ -14,13 +16,6 @@ class TestCasFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    @pytest.mark.xfail(
-        strict=False,
-        reason="Дефект данных стенда develop: муниципалитет «Южный округ» отсутствует в "
-               "справочнике для региона «Москва» (дропдаун анкеты возвращает «Отсутствуют "
-               "данные», элемент text='Южный округ' не появляется за 10с) — не связано с "
-               "исправленным в этом коммите обходом api_client/settings.DEVELOP_COOKIE",
-    )
     def test_cas_login_and_redirect(self, page, env, api_client, omt_cas_endpoint, external_cas_endpoint):
         from api.helpers.data_generator import generate_cas_payload, generate_external_cas_user_payload
 
@@ -66,33 +61,38 @@ class TestCasFlow:
         with allure.step("4. Выбрать регион и муниципалитет"):
             region_page = RegionPage(page)
             region_page.select_region("Москва")
-            region_page.select_municipality("Южный округ")
+            region_page.select_municipality("Центральный округ")
             region_page.accept_agreement()
             region_page.click_continue()
             page.screenshot(path="allure-results/cas_02_region.png")
             allure.attach.file("allure-results/cas_02_region.png", "Регион выбран", allure.attachment_type.PNG)
 
         with allure.step("5. Онбординг"):
-            for btn_text in ["Пройти обучение", "Начать обучение", "Далее", "Продолжить"]:
-                btn = page.locator(f"button:has-text('{btn_text}')").first
-                if btn.is_visible(timeout=2000):
-                    btn.click(force=True)
-                    break
-            for _ in range(15):
-                btn = page.locator('[data-qa="onboarding-popup-next"]')
-                if btn.is_visible(timeout=2000):
-                    btn.click(force=True)
-                else:
-                    break
+            # Новые модалки после анкеты региона: уведомление «Вы отказались от рассылки» («Понятно»),
+            # затем вводное окно тура «Интерактивное руководство» → шаги → «Завершить». Всё закрывает общий помощник.
+            notice_ok = page.locator("button:has-text('Понятно')").first
+            if notice_ok.is_visible(timeout=5000):
+                notice_ok.click()
+                expect(notice_ok).to_be_hidden(timeout=5000)
+            UserSidebarPage(page).dismiss_popups()
             page.screenshot(path="allure-results/cas_03_onboarding.png")
             allure.attach.file("allure-results/cas_03_onboarding.png", "Онбординг", allure.attachment_type.PNG)
 
         with allure.step("6. Перейти в ЛК"):
-            page.locator("[data-onboarding-step='user-menu']").first.click(force=True)
+            # cookie-баннер появляется после тура и перекрывает низ страницы — принять до работы с меню
+            accept_cookie = page.locator("button:has-text('Принимаю')").first
+            if accept_cookie.is_visible(timeout=3000):
+                accept_cookie.click()
+                expect(accept_cookie).to_be_hidden(timeout=5000)
+            page.locator("[data-onboarding-step='user-menu']").first.click()
+            lk_item = page.locator("div.v-list-item-title:has-text('Личный кабинет обучающегося')").first
+            expect(lk_item).to_be_visible(timeout=10000)
+            page.screenshot(path="allure-results/cas_03b_menu.png")
+            allure.attach.file("allure-results/cas_03b_menu.png", "Меню пользователя", allure.attachment_type.PNG)
 
             # Кликаем ЛК — открывается новая вкладка
             with page.context.expect_page() as new_page_info:
-                region_page.go_to_lk()
+                lk_item.click()
             lk_page = new_page_info.value
             lk_page.wait_for_load_state("networkidle")
             lk_page.screenshot(path="allure-results/cas_04_lk.png")
