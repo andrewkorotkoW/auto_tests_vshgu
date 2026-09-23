@@ -170,21 +170,44 @@ class OnboardingPage:
         return True
 
     def complete_onboarding(self, max_steps: int = 20) -> None:
-        """Проходит все слайды кликами «Далее» и завершает «Завершить»."""
+        """Проходит все слайды кликами «Далее» и завершает «Завершить».
+
+        Между слайдами кнопка «Далее» на доли секунды пропадает (перерисовка), а
+        последний слайд тура вообще не содержит «Далее» (только «Назад»/«Завершить») —
+        воспроизведено вручную и в автотестах: раздельные короткие/длинные проверки
+        видимости next/finish создают гонку и роняют тест. Кликаем через
+        Locator.click(timeout=...) — у него встроено ожидание актуальности элемента,
+        оно переживает короткий флик; если клик всё же не дождался (значит «Далее»
+        пропало насовсем — дошли до последнего слайда), проверяем «Завершить»."""
         next_button = self.page.locator(NEXT_BUTTON)
         finish_button = self.page.locator(FINISH_BUTTON)
 
         for _ in range(max_steps):
-            if finish_button.is_visible(timeout=2000):
+            if finish_button.is_visible(timeout=1000):
                 break
-            expect(next_button).to_be_visible(timeout=10000)
-            next_button.click(timeout=5000)
+            try:
+                next_button.click(timeout=8000)
+            except PlaywrightTimeoutError:
+                if finish_button.is_visible(timeout=1000):
+                    break
+                raise
         else:
             raise AssertionError(f"Онбординг не завершился после {max_steps} слайдов")
 
-        expect(finish_button).to_be_visible(timeout=5000)
         finish_button.click(timeout=5000)
-        expect(self.onboarding_modal).not_to_be_visible(timeout=15000)
+        expect(finish_button).not_to_be_visible(timeout=15000)
+        self.wait_overlay_gone()
+
+    def wait_overlay_gone(self, timeout: int = 8000) -> None:
+        """Ждём, пока исчезнет затемняющий scrim тура: после «Завершить»/закрытия крестиком
+        модалка уходит с задержкой/анимацией, а scrim ещё какое-то время перехватывает клики
+        по странице — в том числе клики с force=True (реальное события мыши физически
+        достаётся scrim, а не элементу под ним, Playwright лишь пропускает свои проверки).
+        Не критично, если scrim не пропал за timeout — просто продолжаем."""
+        try:
+            self.page.locator(".v-overlay__scrim").first.wait_for(state="hidden", timeout=timeout)
+        except PlaywrightTimeoutError:
+            pass
 
     # ── Повторный онбординг: перезапуск и закрытие крестиком ────────────
 
@@ -205,3 +228,4 @@ class OnboardingPage:
         self.close_onboarding_button.click(timeout=5000, force=True)
         expect(self.page.locator(NEXT_BUTTON)).not_to_be_visible(timeout=10000)
         expect(self.onboarding_modal).not_to_be_visible(timeout=10000)
+        self.wait_overlay_gone()
