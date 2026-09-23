@@ -616,20 +616,6 @@ def knowledge_base_endpoint(api_client):
 
 @pytest.fixture
 def created_material(api_client, knowledge_base_endpoint):
-    """Создаёт материал в базе знаний. НЕ удаляет после теста."""
-    def _create(**kwargs):
-        from api.helpers.data_generator import generate_material_payload
-        payload = generate_material_payload(**kwargs)
-        data = knowledge_base_endpoint.create_material(payload)
-        return {
-            "id": data["id"],
-            "name": data.get("name"),
-            "attributes": data
-        }
-    yield _create
-
-@pytest.fixture
-def created_material(api_client, knowledge_base_endpoint):
     """Создаёт материал в базе знаний и удаляет после теста."""
     material_ids = []
 
@@ -652,6 +638,70 @@ def created_material(api_client, knowledge_base_endpoint):
             knowledge_base_endpoint.delete_materials(material_ids)
         except Exception as e:
             logger.warning(f"Failed to delete materials {material_ids}: {e}")
+
+@pytest.fixture
+def created_course(api_client, knowledge_base_endpoint, created_tincan):
+    """Создаёт материал БЗ типа «курс» поверх реального курса Tincan (created_tincan)
+    и удаляет материал после теста. Сам курс Tincan удаляется своей фикстурой."""
+    material_ids = []
+
+    def _create(name: str = None, **tincan_kwargs):
+        from api.helpers.data_generator import unique_suffix
+        tincan_kwargs.setdefault("archive_uuid", "3c0f45b7-dee1-4037-935d-6159629206a0")
+        tincan = created_tincan(**tincan_kwargs)
+        material_name = name or f"Автотест_КурсБЗ_{unique_suffix()}"
+        data = knowledge_base_endpoint.create_course_material(
+            name=material_name,
+            content_id=tincan["id"],
+        )
+        material_ids.append(data["id"])
+        return {
+            "id": data["id"],
+            "name": data.get("name"),
+            "content_id": tincan["id"],
+            "attributes": data
+        }
+
+    yield _create
+
+    if material_ids:
+        try:
+            knowledge_base_endpoint.delete_materials(material_ids)
+        except Exception as e:
+            logger.warning(f"Failed to delete course materials {material_ids}: {e}")
+
+@pytest.fixture
+def created_achievement(api_client, knowledge_base_endpoint):
+    """Создаёт достижение с условием «количество материалов» и удаляет после теста."""
+    achievement_ids = []
+
+    def _create(name: str = None, description: str = None, material_type: str = "article",
+                count: int = 1, is_active: bool = True):
+        from api.helpers.data_generator import unique_suffix
+        achievement_name = name or f"Автотест_Достижение_{unique_suffix()}"
+        achievement_description = description or "Автотестовое достижение"
+        data = knowledge_base_endpoint.create_material_count_achievement(
+            name=achievement_name,
+            description=achievement_description,
+            material_type=material_type,
+            count=count,
+            is_active=is_active,
+        )
+        achievement_ids.append(data["id"])
+        return {
+            "id": data["id"],
+            "name": data.get("name"),
+            "attributes": data
+        }
+
+    yield _create
+
+    if achievement_ids:
+        for achievement_id in achievement_ids:
+            try:
+                knowledge_base_endpoint.delete_achievement(achievement_id)
+            except Exception as e:
+                logger.warning(f"Failed to delete achievement {achievement_id}: {e}")
 
 @pytest.fixture
 def homework_endpoint(api_client):
