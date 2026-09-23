@@ -33,8 +33,11 @@ class AosPage(BasePage):
         # затемнение перехватывает клик по вкладке
         UserSidebarPage(self.page).dismiss_popups()
 
-        # Кликаем по вкладке «Анкета обратной связи»
-        aos_tab = self.page.locator("span:has-text('Анкета обратной связи')").first
+        # Кликаем по вкладке «Анкета обратной связи». Вкладки видны сразу на странице
+        # программы (без разворачивания строки модуля), но кликабелен только сам <a>
+        # с data-onboarding-step — клик по вложенному <span> с текстом не срабатывает
+        # стабильно (перехватывается v-badge разметкой внутри).
+        aos_tab = self.page.locator("a[data-onboarding-step='education-tabs-feedback']").first
         self.click_and_wait(aos_tab, force=True)
 
         # Запускаем анкету
@@ -53,7 +56,9 @@ class AosPage(BasePage):
 
     def answer_first_option(self):
         """Выбрать первый вариант ответа."""
-        self.wait_visible("label, .v-radio")
+        # Селектор матчит много элементов на странице вопроса (все варианты сразу) —
+        # wait_visible на нём падает в strict mode, ждём именно первый.
+        self.wait_visible(self.page.locator("label, .v-radio").first)
         # label
         label = self.page.locator("label").first
         if label.count() > 0:

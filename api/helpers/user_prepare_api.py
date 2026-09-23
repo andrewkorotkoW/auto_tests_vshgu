@@ -28,6 +28,16 @@ def accept_personal_data_agreement(client: ApiClient) -> None:
     expect_status(resp, (200, 201, 204))
 
 
+def opt_out_notification_agreement(client: ApiClient) -> None:
+    """PUT /me/update — отключить согласие на рекламную рассылку.
+
+    Без этого после входа в UI виснет модалка «Пожалуйста, заполните некоторые
+    данные о себе» с чекбоксом рассылки — в headless чекбокс не переключается
+    через click, а модалка перекрывает всю страницу и блокирует дальнейшие клики."""
+    resp = client.put("/me/update", json={"data": {"attributes": {"notification_agreement": False}}})
+    expect_status(resp, (200, 201, 204))
+
+
 def complete_onboarding_stories(client: ApiClient, stories: Optional[Iterable[str]] = None) -> None:
     """Закрыть список историй онбординга (по умолчанию — OnboardingEndpoint.DEFAULT_STORIES)."""
     OnboardingEndpoint(client).complete_all(stories)
@@ -47,4 +57,5 @@ def prepare_user_for_tests_via_api(
     client = ApiClient(session=session, base_url=env.api_base_url, cookie_name=env.cookie_name)
 
     accept_personal_data_agreement(client)
+    opt_out_notification_agreement(client)
     complete_onboarding_stories(client, onboarding_stories)

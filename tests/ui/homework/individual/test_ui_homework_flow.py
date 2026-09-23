@@ -20,18 +20,7 @@ class TestUIHomeworkFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.develop
     @pytest.mark.ui
-    @pytest.mark.xfail(
-        reason=(
-            "Известный дефект стенда develop (тот же класс, что в "
-            "tests/ui/practical_tasks/personal_assignment/test_complete_and_review_personal_assignment.py): "
-            "после API-назначения (assignments.assign_to_individual, ответ 200) раздел "
-            "«Индивидуальное обучение» слушателя показывает «У вас нет программ» — "
-            "назначенное ДЗ не появляется в UI. Подтверждено скриншотом: онбординг и "
-            "модалка «данные о себе» корректно закрыты, но секция с карточками пуста."
-        ),
-        strict=False,
-    )
-    def test_homework_ui_flow(self, page, api_client, created_user, created_homework):
+    def test_homework_ui_flow(self, page, api_client, prepared_user, created_homework):
         # Создаём все необходимые объекты в начале, чтобы они были доступны всегда
         tincan_ep = TincanEndpoint(api_client)
         users_ep = UsersEndpoint(api_client)
@@ -39,7 +28,7 @@ class TestUIHomeworkFlow:
 
         # ========== API: Подготовка данных ==========
         with allure.step("1. Создать студента и преподавателя"):
-            student = created_user()
+            student = prepared_user()
             logger.info(f"Студент: ID={student['id']}, email={student['email']}")
 
             # Ищем преподавателя с фамилией на «ов»
@@ -80,11 +69,12 @@ class TestUIHomeworkFlow:
 
         with allure.step("5. Открыть индивидуальное обучение, карточку ДЗ и найти поле для ответа"):
             practical_task_page = PracticalTaskPage(page)
-            practical_task_page.open_individual_education()
-            # Тур показывается отдельно на каждой странице (см. докстринг dismiss_popups) —
-            # без повторного вызова затемнение перехватывает клик по карточке ДЗ
-            UserSidebarPage(page).dismiss_popups()
-            practical_task_page.open_practical_task(homework["name_client"])
+            # «Индивидуальное обучение» -> /education/personal/schedule (тур раздела) ->
+            # вкладка «Курсы и тесты» -> /education/personal/activities, где отображается
+            # назначенное ДЗ (карточка ищется по name_client ИЛИ name)
+            UserSidebarPage(page).open_individual_tab("Курсы и тесты")
+            display_name = homework.get("name_client") or homework["name"]
+            practical_task_page.open_practical_task(display_name)
 
             page.screenshot(path="allure-results/hw_ui_03_after_onboarding.png")
             allure.attach.file("allure-results/hw_ui_03_after_onboarding.png", "После закрытия онбордингов", allure.attachment_type.PNG)
@@ -114,23 +104,14 @@ class TestUIHomeworkFlow:
             page.screenshot(path="allure-results/hw_ui_04_success.png")
             allure.attach.file("allure-results/hw_ui_04_success.png", "Ответ отправлен, собачка показана", allure.attachment_type.PNG)
 
-            # Закрываем модальное окно через JavaScript (Vuetify dialog)
-            page.evaluate("""
-                () => {
-                    // Ищем активный v-dialog и закрываем его
-                    const dialog = document.querySelector('.v-dialog--active');
-                    if (dialog) {
-                        dialog.remove();  // удаляем из DOM
-                        return 'dialog-removed';
-                    }
-                    // Ищем оверлей и кликаем по нему
-                    const overlay = document.querySelector('.v-overlay--active');
-                    if (overlay) overlay.click();
-                    return 'overlay-clicked';
-                }
-            """)
+            # Закрываем модальное окно кнопкой «×» (vs-modal__close-btn) — у этого диалога
+            # нет класса .v-dialog--active (только .v-overlay--active + .v-dialog), поэтому
+            # клик по оверлею/скриму не закрывает его, нужна именно кнопка закрытия
+            close_button = page.locator("button.vs-modal__close-btn").first
+            expect(close_button).to_be_visible(timeout=settings.UI_TIMEOUT)
+            close_button.click(force=True)
             # Ждём, пока модалка/оверлей действительно исчезнут из DOM
-            page.locator(".v-dialog--active, .v-overlay--active").first.wait_for(
+            page.locator(".v-overlay--active").first.wait_for(
                 state="hidden", timeout=settings.UI_TIMEOUT
             )
             page.screenshot(path="allure-results/hw_ui_05_closed.png")
