@@ -1,5 +1,6 @@
 import allure
 import pytest
+from playwright.sync_api import expect
 from ui.pages.aos_page import AosPage
 from utils.logger import logger
 
@@ -72,4 +73,7 @@ class TestAosPublicLink:
             page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/aos_public_completed.png")
             allure.attach.file("allure-results/aos_public_completed.png", "АОС пройдена публично", allure.attachment_type.PNG)
+
+            # Итог прохождения: кнопка «Завершить» и форма опроса больше не отображаются
+            expect(page.locator("button:has-text('Завершить')")).to_have_count(0)
             logger.info("Публичное прохождение АОС успешно!")

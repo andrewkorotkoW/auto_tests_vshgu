@@ -1,5 +1,6 @@
 import allure
 import pytest
+from playwright.sync_api import expect
 from ui.pages.login_page import LoginPage
 from ui.pages.tincan_page import TincanPage
 from ui.pages.user_sidebar_page import UserSidebarPage
@@ -73,6 +74,9 @@ class TestUserTincanIndividualFlow:
                 tincan_page.page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             tincan_page.page.screenshot(path="allure-results/tincan_ind_completed.png")
             allure.attach.file("allure-results/tincan_ind_completed.png", "Курс пройден", allure.attachment_type.PNG)
+
+            # Итог прохождения: все вопросы отвечены — вариантов ответа в тесте больше нет
+            expect(tincan_page.frame.locator("label.c-radio")).to_have_count(0)
 
         with allure.step("7. Очистка"):
             tincan_ep.mass_delete([course_id])
