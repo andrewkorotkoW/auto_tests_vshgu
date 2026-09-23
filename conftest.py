@@ -63,7 +63,25 @@ def pytest_configure(config):
 def pytest_collection_modifyitems(config, items):
     """Пропускает тесты с @pytest.mark.env(name), если запуск идёт не под тем окружением,
     и включает один автоповтор (rerunfailures) только для тестов с маркером ui — они
-    подвержены флаки из-за реального браузера, а не из-за ошибок в самом тесте."""
+    подвержены флаки из-за реального браузера, а не из-за ошибок в самом тесте.
+
+    Тесты с маркером tools (юнит-тесты test_data_generation/lib.py и т.п., без сети и
+    без --env) по умолчанию деселектятся — они не часть обычных api/ui/smoke прогонов
+    по стендам и должны запускаться только явным `-m tools` (или выражением, включающим
+    tools, например `-m "tools or api"`), либо явным указанием пути tests/tools в
+    аргументах запуска (`pytest tests/tools`) — так же, как обычно гоняют один файл/папку
+    в обход остального сьюта."""
+    markexpr = config.getoption("-m") or ""
+    cli_args = config.invocation_params.args
+    tools_requested = "tools" in markexpr or any("tests/tools" in str(arg) for arg in cli_args)
+    if not tools_requested:
+        keep, deselected = [], []
+        for item in items:
+            (deselected if item.get_closest_marker("tools") else keep).append(item)
+        if deselected:
+            items[:] = keep
+            config.hook.pytest_deselected(items=deselected)
+
     run_env = config.getoption("--env")
     for item in items:
         marker = item.get_closest_marker("env")
