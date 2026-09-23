@@ -108,10 +108,18 @@ class OnboardingPage:
         перекрывает иконку перезапуска онбординга в сайдбаре (div.v-alert--fixed),
         клик по ней тогда не долетает вообще ни разу (воспроизведено вручную:
         hover зависает на «subtree intercepts pointer events» на самом баннере).
-        Не у всех пользователей показывается — если не появился, ничего не делаем."""
+        Не у всех пользователей показывается — если не появился, ничего не делаем.
+
+        Клик через JS (element.click()), а не Locator.click(force=True): в той же
+        точке экрана периодически всплывает toast-уведомление «Подборка "Новинки"
+        обновилась...» (vs-snackbar) — воспроизведено отладкой (document.elementFromPoint
+        в момент клика возвращал именно снекбар, а не кнопку под ним). force=True всё
+        равно диспатчит реальное mouse-событие по координатам и перехватывается тем, что
+        физически сверху; программный .click() вызывает обработчик Vue напрямую, минуя
+        hit-test по координатам."""
         accept = self.page.locator("div.cookie-banner button:has-text('Принимаю')").first
         if accept.is_visible(timeout=timeout):
-            accept.click(timeout=5000, force=True)
+            accept.evaluate("el => el.click()")
             expect(accept).not_to_be_visible(timeout=10000)
 
     def remove_tech_banner(self, timeout: int = 3000) -> None:

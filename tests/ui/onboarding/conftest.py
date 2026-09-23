@@ -86,6 +86,10 @@ def repeat_onboarding_page(page: Page, env, created_user) -> Page:
     if onboarding.registration_modal.is_visible(timeout=5000):
         onboarding.fill_registration_form()
     onboarding.dismiss_email_opt_out_notice()
-    onboarding.dismiss_cookie_banner()
+    # Порядок важен: пока плашка «Технические работы» на экране, она физически
+    # перекрывает кнопку «Принимаю» cookie-баннера — форсированный клик по банеру
+    # тогда достаётся плашке, а не кнопке (тот же эффект, что описан в
+    # OnboardingPage.remove_tech_banner для кнопки «Пройти обучение»).
     onboarding.remove_tech_banner()
+    onboarding.dismiss_cookie_banner()
     return page
