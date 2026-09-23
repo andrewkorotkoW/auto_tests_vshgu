@@ -29,6 +29,17 @@ class ScheduleItemsEndpoint:
         expect_status(resp, 200)
         return resp.json()["data"]
 
+    def register_user(self, item_id: int, user_id: int, is_registered: bool = True) -> Dict:
+        """Отметить регистрацию пользователя на очное мероприятие — влияет на
+        completeness_schedule_items в статистике дашборда программ."""
+        resp = self.client.post(
+            f"/schedule-item/{item_id}/user/{user_id}/update-registration-status",
+            json={"data": {"attributes": {"is_registered": is_registered}}}
+        )
+        expect_status(resp, (200, 201))
+        logger.info(f"Schedule item registration: item={item_id}, user={user_id}, is_registered={is_registered}")
+        return resp.json()
+
     def delete(self, program_id: int, stream_id: int, module_id: int, item_id: int) -> bool:
         """Удаление элемента расписания."""
         resp = self.client.delete(

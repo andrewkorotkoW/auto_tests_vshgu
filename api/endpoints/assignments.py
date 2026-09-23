@@ -1,7 +1,14 @@
 from typing import Dict
+from urllib.parse import urlencode
+
 from api.client import ApiClient
 from utils.logger import logger
 from api.helpers.expectations import expect_status
+
+# Статусы прохождения контента потока (change-state), для дашбордов статистики.
+CONTENT_STATE_NOT_STARTED = 0
+CONTENT_STATE_LAUNCHED = 1
+CONTENT_STATE_PASSED = 2
 
 
 class AssignmentsEndpoint:
@@ -48,6 +55,33 @@ class AssignmentsEndpoint:
         else:
             logger.warning(f"Content assign failed: {resp.status_code} {resp.text[:200]}")
         return success
+
+    def list_for_stream(self, program_id: int, stream_id: int, stream_content_ids: list) -> list:
+        """Назначения потока, отфильтрованные по stream_content_id — чтобы найти
+        assignment_id конкретного пользователя для конкретного контента (нужно
+        для смены статуса прохождения change_state)."""
+        params = [("per-page", 50), ("page", 1)]
+        for stream_content_id in stream_content_ids:
+            params.append(("filters[stream_contents][]", stream_content_id))
+        resp = self.client.get(
+            f"/programs/{program_id}/streams/{stream_id}/assignments?{urlencode(params)}"
+        )
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
+
+    def change_state(self, user_id: int, assignment_id: int, stream_content_id: int, state: int) -> Dict:
+        """Смена статуса прохождения контента потока пользователем (0/1/2 —
+        не начат/запущен/пройден) — влияет на статистику дашборда курсов."""
+        resp = self.client.put(
+            f"/users/{user_id}/assignments/{assignment_id}/stream_contents/{stream_content_id}/change-state",
+            json={"state": state}
+        )
+        expect_status(resp, (200, 201))
+        logger.info(
+            f"Content state changed: user={user_id}, assignment={assignment_id}, "
+            f"stream_content={stream_content_id}, state={state}"
+        )
+        return resp.json()
 
     def assign_to_individual(self, content_ids: list, user_ids: list) -> bool:
         """Назначение активностей пользователям (инд. трек)."""
