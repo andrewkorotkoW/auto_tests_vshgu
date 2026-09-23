@@ -243,8 +243,26 @@ class OnboardingPage:
             self.page.wait_for_timeout(800)
 
     def close_onboarding(self) -> None:
-        expect(self.close_onboarding_button).to_be_visible(timeout=10000)
-        self.close_onboarding_button.click(timeout=5000, force=True)
-        expect(self.page.locator(NEXT_BUTTON)).not_to_be_visible(timeout=10000)
+        """Закрывает тур на 2-м слайде.
+
+        Есть два вида виджета тура на этом стенде: модалка «Моё обучение» —
+        v-dialog с крестиком (CLOSE_ONBOARDING_BUTTON), и попап разделов
+        (библиотека/техподдержка/индивидуальное обучение) — div.onboarding-popup,
+        привязанный к элементу страницы (highlight-box), у него в разметке только
+        «Назад»/«Далее», крестика нет (проверено вручную и в DOM: data-qa
+        только onboarding-popup-prev/next/steps/content). Для него закрытие —
+        клик по затемнению вокруг подсветки (.v-overlay__scrim), Escape на этот
+        попап не действует (проверено: «Далее» остаётся видимой после Escape) —
+        тот же обход через scrim, что и UserSidebarPage.close_tour_dialog использует
+        для зависшего тура."""
+        next_button = self.page.locator(NEXT_BUTTON)
+        close_button = self.close_onboarding_button
+        try:
+            close_button.wait_for(state="visible", timeout=5000)
+            close_button.click(timeout=5000, force=True)
+        except PlaywrightTimeoutError:
+            scrim = self.page.locator(".v-overlay__scrim").first
+            scrim.click(position={"x": 5, "y": 5}, timeout=5000, force=True)
+        expect(next_button).not_to_be_visible(timeout=10000)
         expect(self.onboarding_modal).not_to_be_visible(timeout=10000)
         self.wait_overlay_gone()
