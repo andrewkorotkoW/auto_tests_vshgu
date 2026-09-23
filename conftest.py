@@ -461,6 +461,19 @@ def api_client_global(env, env_session):
 def info_banner_endpoint(api_client_global):
     return InfoBannerEndpoint(api_client_global)
 
+
+@pytest.fixture
+def info_banner_on(info_banner_endpoint):
+    """Включает инфо-баннер «Технические работы» и гарантированно выключает после теста,
+    даже если тест упал или был прерван: оставленный баннер прижимает шапку портала и ломает
+    меню пользователя во всех остальных UI-тестах."""
+    assert info_banner_endpoint.toggle(True), "Не удалось включить инфо-баннер"
+    yield info_banner_endpoint
+    try:
+        info_banner_endpoint.toggle(False)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Не удалось выключить инфо-баннер после теста: {exc}")
+
 @pytest.fixture
 def tincan_endpoint(api_client):
     return TincanEndpoint(api_client)

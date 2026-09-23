@@ -7,6 +7,12 @@ from utils.logger import logger
 @allure.story("Toggle banner")
 class TestInfoBannerAPI:
 
+    @pytest.fixture(autouse=True)
+    def _banner_off_after(self, info_banner_endpoint):
+        """Тесты включают баннер на общем стенде — после каждого гасим его независимо от исхода."""
+        yield
+        info_banner_endpoint.toggle(False)
+
     @allure.title("Включить инфо-баннер")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api

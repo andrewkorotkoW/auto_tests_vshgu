@@ -40,18 +40,22 @@ class UserSidebarPage(BasePage):
         self.wait_loaded()
         self.dismiss_popups()
 
+    def remove_tech_banner(self) -> None:
+        """Убрать оранжевую плашку «Технические работы»: она прижимает шапку и закрывает
+        меню пользователя. Убираем из DOM, чтобы не зависеть от её кнопки. Тесты самого
+        баннера этот метод не зовут (они проверяют плашку)."""
+        try:
+            if self.page.locator("div.tech-banner").count():
+                self.page.evaluate("() => document.querySelectorAll('div.tech-banner').forEach(el => el.remove())")
+                logger.info("Плашка «Технические работы» убрана")
+        except Exception:  # noqa: BLE001
+            pass
+
     def dismiss_anketa(self) -> None:
         """Закрыть анкету «заполните данные о себе» (чекбокс согласия + «Отправить»),
         которая блокирует страницу сразу после первого входа. Опционально: если анкеты
         нет (уже заполнена ранее), молча пропускаем."""
         page = self.page
-        # Оранжевая плашка «Технические работы» прижимает шапку и закрывает меню пользователя — убираем из DOM
-        try:
-            if page.locator("div.tech-banner").count():
-                page.evaluate("() => document.querySelectorAll('div.tech-banner').forEach(el => el.remove())")
-                logger.info("Плашка «Технические работы» убрана")
-        except Exception:  # noqa: BLE001
-            pass
         try:
             form = page.locator(".v-overlay--active:has-text('данные о себе'), .v-dialog:has-text('данные о себе')").first
             form.wait_for(state="visible", timeout=5000)
@@ -69,6 +73,7 @@ class UserSidebarPage(BasePage):
         (чекбокс согласия + «Отправить»), cookie-баннер («Принимаю»), онбординг.
         Всё опционально: чего нет — пропускаем."""
         page = self.page
+        self.remove_tech_banner()
         self.dismiss_anketa()
         try:
             accept = page.locator("button:has-text('Принимаю')").first
@@ -92,8 +97,16 @@ class UserSidebarPage(BasePage):
         try:
             start = page.locator("button:has-text('Пройти обучение')").first
             try:
-                start.wait_for(state="visible", timeout=5000)
-                start.click(force=True)
+                # вводное окно тура приходит с задержкой после анкеты/перезагрузки — ждём дольше 5 с
+                start.wait_for(state="visible", timeout=12000)
+                # клик по ещё анимирующемуся окну теряется — нажимаем, проверяем, что окно ушло, иначе повторяем
+                for attempt in range(3):
+                    start.click()
+                    try:
+                        start.wait_for(state="hidden", timeout=3000)
+                        break
+                    except Exception:  # noqa: BLE001
+                        logger.info(f"Онбординг: «Пройти обучение» не сработало, попытка {attempt + 1}")
                 logger.info("Онбординг: «Пройти обучение»")
             except Exception:  # noqa: BLE001 — кнопки нет: тур уже начат или не появится
                 pass
