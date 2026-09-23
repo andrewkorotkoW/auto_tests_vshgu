@@ -905,6 +905,75 @@ def generate_question_payload(
         "group": {"id": group_id, "name": group_name or f"Группа {order}"}
     }
 
+
+def generate_single_choice_answers(correct_text: str = "Верный ответ", wrong_text: str = "Неверный ответ") -> list:
+    """Пара ответов (один верный/один неверный) для вопроса с типом single —
+    для generate_constructor_question_payload."""
+    return [
+        {"id": str(uuid.uuid4()), "text": correct_text, "correct": True, "weight": 0},
+        {"id": str(uuid.uuid4()), "text": wrong_text, "correct": False, "weight": 0},
+    ]
+
+
+def generate_constructor_question_payload(
+    question_text: str,
+    answers: list = None,
+    tag_id: int = None,
+    order: int = 1,
+    question_id: int = None,
+    group_id: int = None,
+    group_title: str = "Группа 1",
+    create_group: bool = False,
+    additional_questions_count: int = 0,
+    question_sequence: list = None,
+    required: bool = None,
+    question_type: str = "single",
+) -> dict:
+    """Payload вопроса для TestsEndpoint.create_question/PollsEndpoint.create_question
+    (PUT /tests/questions/store) с темой (tag_ids), группой и настройками конструктора
+    (доп. вопросы после неправильного ответа, последовательность вопросов по ответам,
+    обязательность группы) — которых нет в generate_question_payload.
+
+    group_id/create_group определяют, куда попадёт вопрос:
+      - create_group=True — создать новую группу с именем group_title;
+      - group_id=<id> — привязать к существующей группе (нужен group_title для UI);
+      - group_id=None и create_group=False — без группы (group_id: null в payload).
+    question_id передаётся при обновлении уже созданного вопроса (тот же order/группа).
+    """
+    if answers is None:
+        answers = generate_single_choice_answers()
+
+    settings = {
+        "time": 2,
+        "weight": 0,
+        "additional_questions_count": additional_questions_count,
+        "question_sequence": question_sequence,
+    }
+    if required is not None:
+        settings["required"] = required
+
+    question = {
+        "question_id": question_id,
+        "type": question_type,
+        "text": question_text,
+        "feedback": {},
+        "files": {"cover": None},
+        "cover_uuid": None,
+        "answers": answers,
+        "settings": settings,
+        "order": order,
+        "tag_ids": [] if tag_id is None else [tag_id],
+    }
+
+    if create_group:
+        question["group"] = {"group_id": None, "group_title": group_title}
+    elif group_id is None:
+        question["group_id"] = None
+    else:
+        question["group"] = {"group_id": group_id, "group_title": group_title}
+
+    return question
+
 def generate_poll_payload(
     name: str = None,
     name_client: str = None,
