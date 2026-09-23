@@ -14,6 +14,17 @@ from ui.pages.base_page import BasePage
 
 
 class AdminKnowledgeBasePage(BasePage):
+    # Ключ — тип материала как в API (KnowledgeBaseEndpoint.create_material/create_course_material),
+    # значение — подпись в выпадающем списке условия «Количество материалов» в форме достижения.
+    MATERIAL_TYPE_LABELS = {
+        "article": "Статья",
+        "video": "Видео",
+        "audio": "Аудио",
+        "book": "Книга",
+        "file": "Файл",
+        "course": "Курс",
+    }
+
     def __init__(self, page: Page):
         super().__init__(page)
 
@@ -62,6 +73,19 @@ class AdminKnowledgeBasePage(BasePage):
         expect(count_field).to_be_visible(timeout=15000)
         count_field.fill(count, timeout=5000)
 
+    def add_material_count_condition_for_type(self, material_type: str, count: str = "1") -> None:
+        """Как add_material_count_condition, но принимает тип материала в виде ключа API
+        (article/video/audio/book/file/course) — переводит его в подпись UI сама.
+        Нужна для переноса test_01..06 коллеги (там 6 копий одного сценария, различающихся
+        только типом материала)."""
+        label = self.MATERIAL_TYPE_LABELS.get(material_type)
+        if label is None:
+            raise ValueError(
+                f"Неизвестный тип материала: {material_type!r}. "
+                f"Допустимые: {sorted(self.MATERIAL_TYPE_LABELS)}"
+            )
+        self.add_material_count_condition(material_type=label, count=count)
+
     def save_achievement(self) -> None:
         save_button = self.page.get_by_role("button", name="Сохранить")
         expect(save_button).to_be_visible(timeout=15000)
@@ -89,6 +113,26 @@ class AdminKnowledgeBasePage(BasePage):
         self.fill_achievement_description(description)
         self.upload_achievement_icon(icon_path)
         self.add_material_count_condition(material_type=material_type, count=count)
+        self.save_achievement()
+        self.expect_achievement_created(name)
+
+    def create_achievement_with_material_count_icon_for_type(
+        self,
+        *,
+        ui_base_url: str,
+        name: str,
+        description: str,
+        icon_path: Union[str, Path],
+        material_type: str,
+        count: str = "1",
+    ) -> None:
+        """create_achievement_with_material_count_icon с типом материала как ключом API
+        (article/video/audio/book/file/course) вместо русской подписи UI."""
+        self.open_achievements_create_form(ui_base_url)
+        self.fill_achievement_name(name)
+        self.fill_achievement_description(description)
+        self.upload_achievement_icon(icon_path)
+        self.add_material_count_condition_for_type(material_type=material_type, count=count)
         self.save_achievement()
         self.expect_achievement_created(name)
 
