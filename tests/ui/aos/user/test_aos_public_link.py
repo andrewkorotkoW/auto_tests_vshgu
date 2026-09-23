@@ -41,32 +41,53 @@ class TestAosPublicLink:
             # Используем готовый метод для запуска анкеты (без открытия программы)
             aos_page.launch_questionnaire()  # если такого метода нет, просто дважды кликнем «Начать»
 
-        # 5. Пройти вопросы (используем те же универсальные методы)
+        # 5. Пройти вопросы: АОС — группы вопросов на одной странице (шкалы 1–10, комментарий,
+        #    чекбоксы) и кнопка «Ответить»; первый экран обязан появиться, иначе анонимный доступ не работает
         with allure.step("4. Пройти вопросы"):
-            for i in range(9):
-                if page.locator("label.c-radio, input[type='radio']").first.is_visible(timeout=2000):
-                    aos_page.answer_first_option()
-                    aos_page.click_answer()
-                    aos_page.click_next()
-                elif page.locator("textarea").first.is_visible(timeout=2000):
-                    aos_page.answer_textarea(f"Ответ {i+1}")
-                    aos_page.click_answer()
-                    aos_page.click_next()
-                elif page.locator("input[type='checkbox']").first.is_visible(timeout=2000):
-                    aos_page.answer_first_checkboxes(3)
-                    aos_page.click_answer()
-                    aos_page.click_next()
-                else:
+            answerable = page.locator("textarea, input[type='checkbox'], input[type='radio'], label.c-radio").first
+            expect(answerable).to_be_visible(timeout=15000)
+            finish_btn = page.locator("button:has-text('Завершить')").first
+            groups_answered = 0
+            next_group_btn = page.locator("button:has-text('Перейти к следующей группе')").first
+            for _ in range(10):
+                if finish_btn.is_visible():
                     break
-            # Завершить
-            aos_page.click_finish()
+                if next_group_btn.is_visible():
+                    next_group_btn.click()
+                    page.wait_for_load_state("networkidle")
+                    page.wait_for_timeout(1000)
+                    continue
+                # шкалы 1–10: в каждой выбираем «10»
+                for scale_ten in page.locator("button:text-is('10'), .scale-item:text-is('10'), [class*='scale'] :text-is('10')").all():
+                    scale_ten.click()
+                for area in page.locator("textarea").all():
+                    area.fill(f"Ответ автотеста {groups_answered + 1}")
+                checkboxes = page.locator("input[type='checkbox']")
+                for i in range(min(3, checkboxes.count())):
+                    checkboxes.nth(i).check(force=True)
+                radios = page.locator("label.c-radio, .v-radio")
+                if radios.count():
+                    radios.first.click(force=True)
+                answer_btn = page.locator("button:has-text('Ответить')").first
+                expect(answer_btn).to_be_enabled(timeout=5000)
+                answer_btn.click()
+                groups_answered += 1
+                page.wait_for_load_state("networkidle")
+                page.wait_for_timeout(1000)
+                page.screenshot(path=f"allure-results/aos_public_group_{groups_answered}.png")
+            logger.info(f"Отвечено групп вопросов: {groups_answered}")
+            assert groups_answered > 0, "Ни одна группа вопросов не была отвечена"
 
-        # 6. Финальный скриншот
-        with allure.step("5. Скриншот результата"):
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+        # 6. Финальный экран «Спасибо за прохождение опроса!» — единственный надёжный признак,
+        #    что ответы приняты; кнопка «Завершить» на нём лишь закрывает плеер
+        with allure.step("5. Финальный экран"):
+            # после последней группы появляется «Завершить» — по нему плеер отдаёт ответы и показывает благодарность
+            expect(finish_btn).to_be_visible(timeout=10000)
+            finish_btn.click()
+            thanks = page.get_by_text("Спасибо за прохождение опроса")
+            expect(thanks).to_be_visible(timeout=15000)
+            expect(answerable).to_have_count(0)
             page.screenshot(path="allure-results/aos_public_completed.png")
             allure.attach.file("allure-results/aos_public_completed.png", "АОС пройдена публично", allure.attachment_type.PNG)
-
-            # Итог прохождения: кнопка «Завершить» и форма опроса больше не отображаются
-            expect(page.locator("button:has-text('Завершить')")).to_have_count(0)
+            finish_btn.click()
             logger.info("Публичное прохождение АОС успешно!")
