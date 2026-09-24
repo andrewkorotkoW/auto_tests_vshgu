@@ -1433,6 +1433,69 @@ def generate_scorm_payload(
         }
     }
 
+def generate_notification_payload(
+    name: str = None,
+    caption: str = None,
+    text: str = None,
+    users: list = None,
+    programs: list = None,
+    streams: list = None,
+    channels: list = None,
+    severity: bool = False,
+    send_at: str = None,
+) -> dict:
+    """Генерация payload для POST /notifications/create."""
+    if not name:
+        name = f"Автотест_уведомление_{unique_suffix()}"
+    if not caption:
+        caption = f"Автотест_заголовок_{name}"
+    if not text:
+        text = f"<p>Автотест текст уведомления {name}</p>"
+    return {
+        "name": name,
+        "programs": programs or [],
+        "streams": streams or [],
+        "users": users or [],
+        "caption": caption,
+        "text": text,
+        "send_at": send_at,
+        "channels": channels or ["system"],
+        "severity": severity,
+    }
+
+
+def generate_notification_template_payload(
+    name: str = None,
+    caption: str = None,
+    text: str = None,
+) -> dict:
+    """Генерация payload для POST /notifications/templates."""
+    if not name:
+        name = f"Автотест_шаблон_уведомления_{unique_suffix()}"
+    if not caption:
+        caption = f"Автотест_заголовок_{name}"
+    if not text:
+        text = f"<p>Автотест текст шаблона {name}</p>"
+    return {"name": name, "caption": caption, "text": text}
+
+
+def generate_ticket_payload(
+    title: str = None,
+    text: str = None,
+    request_type: int = 12,
+) -> dict:
+    """Генерация payload для POST /tickets.
+
+    request_type — числовой ID типа обращения (не enum-строка), по факту разведки
+    на develop с id=12 связан пункт формы «Тип обращения №1».
+    """
+    if not title:
+        title = f"Автотест_обращение_{unique_suffix()}"
+    if not text:
+        text = f"Автотест текст обращения {title}"
+    return {"title": title, "text": text, "request_type": request_type}
+
+
 def generate_buk_user_payload(
         email: str = None,
         first_name: str = None,
