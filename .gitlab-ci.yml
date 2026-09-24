@@ -30,10 +30,9 @@ docker:build:
   variables:
     HEADLESS: "1"
   script:
-    - |
-      set -e
-      export $(grep -v '^#' ${CI_TEST_ENV_FILE} | xargs)
-      bash scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
+    - export $(grep -v '^#' ${CI_TEST_ENV_FILE} | xargs)
+    - cd /tests
+    - bash scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
   artifacts:
     when: always   # результаты нужны и при упавших тестах
     expire_in: 1 days
