@@ -1,3 +1,4 @@
+import os
 from typing import Dict
 from api.client import ApiClient
 from utils.logger import logger
@@ -11,23 +12,21 @@ class TincanEndpoint:
         self.client = client
 
     def upload_cover(self, file_path: str = "test_data/cover.jpg") -> str:
-        import subprocess, os
-        # Берём куку из заголовков сессии
-        cookie_header = self.client.session.headers.get("Cookie", "")
-        if not cookie_header:
-            # Если нет в заголовках — берём из cookies
-            cookie_header = f"develop={self.client.session.cookies.get('develop')}"
-        base = self.client.base_url
-        result = subprocess.run([
-            "curl", "-s",
-            f"{base}/upload/cover",
-            "-H", "Accept: application/json",
-            "-H", "X-Requested-With: XMLHttpRequest",
-            "-b", cookie_header,
-            "-F", f"cover=@{file_path};type=image/jpeg"
-        ], capture_output=True, text=True)
-        resp_json = __import__('json').loads(result.stdout)
-        data = resp_json.get("data", {})
+        """Загрузка обложки через ту же авторизованную сессию, что и остальные запросы
+        (раньше — внешний curl с кукой по имени «develop», что ломалось на любом стенде
+        с другим именем куки). Возвращает uuid файла или пустую строку."""
+        with open(file_path, "rb") as f:
+            resp = self.client.session.post(
+                f"{self.client.base_url}/upload/cover",
+                files={"cover": (os.path.basename(file_path), f, "image/jpeg")},
+                # Content-Type: None снимает session-заголовок application/json — иначе multipart не уходит
+                headers={"Accept": "application/json", "X-Requested-With": "XMLHttpRequest", "Content-Type": None},
+                timeout=60,
+            )
+        if resp.status_code not in (200, 201):
+            logger.warning(f"upload_cover failed: {resp.status_code} {resp.text[:200]}")
+            return ""
+        data = resp.json().get("data", {})
         if isinstance(data, list):
             return data[0].get("uuid", "") if data else ""
         return data.get("uuid", "")
