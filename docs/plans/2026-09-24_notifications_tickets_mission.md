@@ -68,3 +68,45 @@
   --env develop -q`).
 - В `README.md`/`docs/` — короткий раздел «Уведомления и техподдержка: что покрыто».
 - Отчёт задачи: список маршрутов, которые теперь покрыты, и кандидаты в дефекты.
+
+## Структура файлов (обязательно, как в дереве проекта)
+
+Область → папка, внутри API-тесты по смыслу, UI-тесты по ролям `admin/` и `user/`
+(как `tests/ui/aos/admin`, `tests/ui/cas/user`). Никаких тестов в корне `tests/api` или `tests/ui`.
+
+```
+api/endpoints/notifications.py           # NotificationsEndpoint: list, create, view, resend, delete,
+                                         #   templates_*, register_templates_*, review_templates_*, dictionaries
+api/endpoints/tickets.py                 # TicketsEndpoint: create, my_tickets, messages, add_message, close
+api/helpers/data_generator.py            # generate_notification_payload(), generate_ticket_payload()
+
+tests/api/notifications/
+  conftest.py                            # notifications_endpoint, created_notification (teardown delete),
+                                         #   created_template (teardown delete)
+  test_notifications_lists_api.py        # GET /notifications, /creators, /receivers, /text-variables
+  test_notifications_crud_api.py         # create → view → user sees → resend → delete
+  test_notifications_negative_api.py     # 422 без получателей/текста, 403/404 чужое и несуществующее
+  templates/
+    test_notification_templates_api.py   # POST → GET → PUT → delete, список
+    test_register_review_templates_api.py# register-templates и review-templates (чтение; PUT только с откатом)
+
+tests/api/tickets/
+  conftest.py                            # tickets_endpoint, created_ticket (teardown close)
+  test_tickets_crud_api.py               # create → my-tickets → close → статус «закрыто»
+  test_tickets_messages_api.py           # add message → messages порядок и содержимое
+  test_tickets_negative_api.py           # 422 пустые поля, чужой id, действия с закрытым
+
+tests/ui/notifications/
+  admin/test_admin_notifications_table.py   # созданное через API уведомление видно в таблице админки
+  user/test_user_sees_notification.py       # пользователь открывает «Уведомления», видит тему и текст
+tests/ui/tickets/
+  user/test_user_creates_ticket.py          # пользователь создаёт обращение через форму «Техподдержка»
+
+ui/pages/user_notifications_page.py
+ui/pages/user_support_page.py
+ui/pages/admin_notifications_page.py
+```
+
+Имена файлов `test_<что>_api.py` / `test_<роль>_<что>.py`, классы `Test<Что>API` /
+`Test<Роль><Что>`, как в соседних папках. `__init__.py` в новых папках `tests/ui/...` —
+как у соседей (посмотреть `tests/ui/aos`).
