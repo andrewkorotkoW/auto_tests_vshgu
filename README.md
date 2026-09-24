@@ -577,11 +577,19 @@ API-клиенты `NotificationsEndpoint` (`api/endpoints/notifications.py`, 19
 подтверждённые разведкой маршруты `/api/v1/notifications/*`) и `TicketsEndpoint`
 (`api/endpoints/tickets.py`, 5 методов на `/api/v1/tickets/*`), генераторы данных
 `generate_notification_payload`/`generate_notification_template_payload`/`generate_ticket_payload`
-(`api/helpers/data_generator.py`). Сами тесты (`tests/api/notifications`, `tests/api/tickets`,
-`tests/ui/notifications`, `tests/ui/tickets`) в рамках этой задачи не писались — только разведка
-и клиенты, по методике проб (временные ad-hoc скрипты вне pytest, не сохранены в репозитории;
-для `POST /notifications/create` тело запроса подсмотрено через перехват сетевого запроса
-Playwright в форме создания уведомления в админке).
+(`api/helpers/data_generator.py`), по методике проб (временные ad-hoc скрипты вне pytest, не
+сохранены в репозитории; для `POST /notifications/create` тело запроса подсмотрено через
+перехват сетевого запроса Playwright в форме создания уведомления в админке).
+
+**API-тесты «Обращения в техподдержку»** (`tests/api/tickets/`, 11 тестов, план «Часть 3»
+п.1-5) написаны и зелёные на develop (2 прогона подряд, `pytest tests/api/tickets --env develop
+-q` → 7 passed, 4 xfailed, ~90с): `test_tickets_crud_api.py` (создание → id находится через
+`my-tickets`, статус `open` → `close` → статус `closed`, + 2 xfail на повторное закрытие/
+сообщение в закрытый тикет), `test_tickets_messages_api.py` (порядок сообщений в переписке),
+`test_tickets_negative_api.py` (422 на пустые title/text/весь payload, + 2 xfail на IDOR с
+двумя по-настоящему разными пользователями). Тесты `tests/api/notifications`,
+`tests/ui/notifications`, `tests/ui/tickets` в рамках этой задачи не писались — только
+разведка и клиенты (см. выше).
 
 Маршрут `POST /notifications/register-templates/{type}` в плане не значился явным списком
 (в мишн-доке — только 8 GET-эндпоинтов разведки), но обнаружен пробой методов (405 с
@@ -641,13 +649,34 @@ Playwright в форме создания уведомления в админк
 - **`POST /tickets`, `POST /tickets/{id}/messages` не возвращают ID.** Ответ обоих — плоское
   `{"message": "Ok"}`, без id созданного тикета/сообщения — тестам нужно искать созданный тикет по
   теме через `my-tickets` (см. `TicketsEndpoint.find_by_title`).
-- **`GET /tickets/{id}/messages` — нет проверки владения тикетом.** Запрос с `id` чужого/
-  произвольного тикета (пробовался `id=1`, не принадлежащий тестовому пользователю) отдаёт 200 с
-  реальной перепиской вместо 403/404 — похоже на IDOR, стоит перепроверить с двумя разными
-  реальными пользователями (на момент разведки `admin_session`/`user_session` совпадают, см. ниже).
+- **`GET /tickets/{id}/messages`, `PUT /tickets/{id}/close`, `POST /tickets/{id}/messages` —
+  подтверждённый IDOR.** Перепроверено (не разведкой, а тестами `test_tickets_negative_api.py`)
+  с двумя по-настоящему разными пользователями: второй создан через `UsersEndpoint.create` и
+  залогинен отдельно (`config.environments.login`), а не через `admin_session`/`user_session`,
+  которые на develop — один и тот же аккаунт (в `.env` нет `DEVELOP_ADMIN_LOGIN`/
+  `DEVELOP_USER_LOGIN`, обе роли фолбэк-ятся на общий `DEVELOP_LOGIN`, id=3). Второй пользователь
+  свободно читает переписку, закрывает и пишет сообщения в чужое обращение — все три маршрута
+  отвечают 200 вместо ожидаемых 403/404, без какой-либо проверки владения тикетом. xfail в
+  `test_foreign_ticket_messages_forbidden`/`test_foreign_ticket_close_forbidden`.
 - **`PUT /tickets/{id}/close` и `POST /tickets/{id}/messages` на уже закрытый тикет.** Оба
   отвечают 200 без ошибки (повторное закрытие и сообщение в закрытый тикет не блокируются) — план
-  ожидал 4xx, реальность мягче.
+  ожидал 4xx, реальность мягче. xfail в `test_repeat_close_is_rejected`/
+  `test_message_to_closed_ticket_is_rejected`.
+- **`PUT /tickets/{id}/close` — спорадический 500.** Один раз из нескольких прогонов вернул
+  `500 {"message": "The HTTP status code \"0\" is not valid.", "exception":
+  "InvalidArgumentException", ...}` (симфони/Laravel exception) вместо обычного `200 {"message":
+  "Ok"}`; на повторном вызове того же запроса прошёл штатно — не воспроизводится стабильно,
+  похоже на редкую нестабильность стенда develop, не зафиксировано отдельным тестом (не
+  воспроизводится детерминированно), но teardown тестов ловит и логирует такие сбои, а не роняет
+  тест.
+- **`GET /tickets/my-tickets` — пагинация без поддержки reverse-сортировки.** `per_page=25`,
+  сортировка по возрастанию `created_at`/`id`; `?sort=-created_at`, `?sort=-id`, `?order=desc`
+  сервером молча игнорируются (ответ идентичен запросу без параметров) — узнать «последний
+  созданный тикет» можно только листая страницы вручную. Не дефект стенда сам по себе, но ломает
+  наивный `TicketsEndpoint.find_by_title` (был на первой странице) на аккаунте с историей больше
+  25 обращений — обычное дело для общего тестового аккаунта develop уже через десяток прогонов.
+  Исправлено в этой задаче: `find_by_title` листает страницы от последней к первой (см.
+  `api/endpoints/tickets.py`).
 - **`admin_session`/`user_session` на develop — один и тот же аккаунт.** В `.env` нет
   `DEVELOP_ADMIN_LOGIN`/`DEVELOP_USER_LOGIN`, поэтому обе роли фолбэк-ятся на общий
   `DEVELOP_LOGIN` (аккаунт с ролями `admin`+`manager`, id=3) — сценарии «пользователь видит только
