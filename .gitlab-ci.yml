@@ -33,6 +33,10 @@ docker:build:
   variables:
     HEADLESS: "1"
   script:
+    - |
+      set -e
+      export $(grep -v '^#' ${CI_TEST_ENV_FILE} | xargs)
+
     - cd /tests && scripts/run.sh --env "${STAND}" ${PYTEST_ARGS} && cp -r results "${CI_PROJECT_DIR}/" || { cp -r /tests/results "${CI_PROJECT_DIR}/" 2>/dev/null; exit 1; }
   artifacts:
     when: always   # результаты нужны и при упавших тестах
