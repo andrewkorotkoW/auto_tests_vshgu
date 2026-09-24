@@ -105,8 +105,11 @@ class DashboardsEndpoint:
         нумерация подтверждена эмпирически, не задокументирована бэкендом), launched_at,
         finished_at, completion_time_in_minutes, source, current_child, passed_percent.
 
-        current_child и passed_percent бэкенд считает, но в таблицу UI не выводит (см.
-        докстринг AdminCourseStatisticsPage) — тем не менее полезны для API-уровня проверок."""
+        current_child и passed_percent в UI-таблице видны только у курсов с разделами
+        (столбцы "Текущий раздел"/"Прогресс курса %" — см. докстринг
+        AdminCourseStatisticsPage); у курсов без разделов в вёрстке этих столбцов нет,
+        но сами поля в ответе API есть всегда — полезны для API-уровня проверок
+        независимо от того, покажет ли их конкретный курс в таблице UI."""
         params = urlencode({"page": page, "per-page": per_page})
         resp = self.client.get(f"/statistics/courses/{course_id}/users?{params}")
         expect_status(resp, 200)

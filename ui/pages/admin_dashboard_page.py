@@ -115,6 +115,35 @@ class AdminDashboardPage(BasePage):
         return AdminCourseStatisticsPage(self.page)
 
 
+def open_course_statistics_by_id(
+    page: Page, env, course_id: int, *, use_global_domain: bool = False
+) -> "AdminCourseStatisticsPage":
+    """Открыть карточку статистики курса напрямую по id, без похода через список
+    /admin/learning-statistics/courses (удобно для уже известных курсов, например
+    эталонного 4393 из docs/plans/statistics_courses_stand_facts.md).
+
+    use_global_domain=True — открыть через `env.global_base_url` (без суффикса
+    `/api/v1`), т.е. `https://global-develop.d2.devspark.ru/...` — так эту страницу
+    показал владелец на скринах стенда. Подтверждено вручную на develop (курс 4393):
+    `/admin/learning-statistics/courses/4393/info` рендерится ОДИНАКОВО что на
+    портальном домене (`env.ui_base_url`, `portal-develop.d2.devspark.ru`), что на
+    глобальном (`global-develop.d2.devspark.ru`) — это один и тот же фронтенд/бэкенд,
+    а не два разных приложения. Работает без повторного логина на обоих доменах,
+    потому что сессионная кука выставляется сервером с `domain=.d2.devspark.ru`
+    (родительский домен, общий для обоих поддоменов) — см. `config/environments.py:
+    build_storage_state`. Поэтому `AdminDashboardPage.open_course_statistics`
+    (портальный домен, уже используется в существующих фикстурах) и этот метод с
+    `use_global_domain=True` эквивалентны по результату; используйте последний,
+    когда id курса уже известен заранее или нужно явно показать соответствие
+    скринам владельца."""
+    base = env.global_base_url.removesuffix("/api/v1") if use_global_domain else env.ui_base_url
+    page.goto(f"{base.rstrip('/')}/admin/learning-statistics/courses/{course_id}/info")
+    expect(page).to_have_url(
+        re.compile(r".*/admin/learning-statistics/courses/\d+/info.*"), timeout=30000
+    )
+    return AdminCourseStatisticsPage(page)
+
+
 class AdminCourseStatisticsPage(BasePage):
     """Карточка курса в статистике обучения (/admin/learning-statistics/courses/{id}/info,
     вкладка «Инфо» по умолчанию — вкладку «Оценки и отзывы» этот класс не покрывает).
@@ -147,16 +176,22 @@ class AdminCourseStatisticsPage(BasePage):
       после открытия списка нужно НАБРАТЬ текст на клавиатуре (page.keyboard.type), а не просто
       проскроллить статичный список — иначе только что созданная программа не попадёт в
       показанные ~20 вариантов.
-    - Итоговая таблица слушателей (`.courses-statistic-table`) реально содержит 8 столбцов:
-      ID, ФИО, Email, Статус курса, Тип назначения, Дата начала обучения по курсу, Дата
-      завершения обучения по курсу, Время прохождения мин. Столбцов "Текущий раздел" и
-      "Прогресс" в вёрстке НЕТ, хотя API `/statistics/courses/{id}/users` отдаёт похожие поля
-      current_child/passed_percent — бэкенд их вычисляет, но в таблицу не выводит. Так же нет
-      отдельного столбца "Дата завершения последнего пройденного раздела" — есть только "Дата
-      завершения обучения по курсу" (общее завершение курса, а не раздела). Это несовпадение
-      с формулировками ПМИ из docs/plans/statistics_courses_plan.md стоит сверить с владельцем
-      перед тем, как писать проверки конкретных столбцов (см. также открытый вопрос "состав
-      столбцов требует ручной сверки с ДТТ" в плане).
+    - Итоговая таблица слушателей (`.courses-statistic-table`) — набор столбцов ЗАВИСИТ от
+      того, есть ли у курса разделы (подтверждено на develop, см.
+      docs/plans/statistics_courses_stand_facts.md):
+      * курс БЕЗ разделов (SCORM с одним SCO, TinCan без разделов) — 8 столбцов: ID, ФИО,
+        Email, Статус курса, Тип назначения, Дата начала обучения по курсу, Дата завершения
+        обучения по курсу, Время прохождения мин;
+      * курс С разделами (TinCan с несколькими разделами, эталон — курс 4393 и наш
+        `test_data/course_tincan.zip`, разделы «Тестирование 1»/«Тестирование 2») — ID, ФИО,
+        Email, Статус курса, Тип назначения, Дата начала обучения по курсу, **Дата завершения
+        последнего пройденного раздела**, **Текущий раздел**, **Прогресс курса %**, Время
+        прохождения мин (проверено live на курсе 4393 через `listener_table_columns()`).
+      `listener_table_columns()`/`listener_table_rows()` ниже читают заголовки/ячейки
+      генерически (без хардкода набора), поэтому работают для обоих вариантов без изменений —
+      разницу между вариантами проверяет сам тест, сравнивая полученный список столбцов.
+      У курса с разделами ниже таблицы есть ещё блок «Количество повторений прохождения
+      контента» (`content_repeat_counts()`) — у курса без разделов блока в вёрстке нет вовсе.
     - Кнопка "Выгрузить" НЕ скачивает файл сразу: она запускает генерацию отчёта на бэкенде,
       после чего рядом с кнопкой появляется ссылка `a:has-text('Скачать отчет')` на
       `/static/tmp/{uuid}/course_users_statistic_{date}_{ts}.xlsx` — только клик по этой
@@ -338,11 +373,21 @@ class AdminCourseStatisticsPage(BasePage):
         `.courses-statistic-table` (это класс только самой таблицы) — он в соседнем
         тулбаре `.vs-table-top-bar__search` перед ней, поэтому ищем без этого скоупа;
         на карточке курса такой инпут единственный (у таблицы регионов на вкладке
-        «Таблица» своего поиска нет)."""
+        «Таблица» своего поиска нет).
+
+        Таблица перечитывается по XHR `GET /statistics/courses/{id}/users...` — без
+        ожидания именно этого ответа `listener_table_rows()`, вызванный сразу после
+        `press("Enter")`, читает ещё старые (нефильтрованные) строки: подтверждено на
+        develop, `search_listeners` + немедленное чтение строк давало гонку (2 строки
+        вместо 1 после поиска по email одного слушателя)."""
         search_input = self.page.locator("input[data-qa='km-search']")
         expect(search_input).to_be_visible(timeout=15000)
-        search_input.fill(text)
-        search_input.press("Enter")
+        with self.page.expect_response(
+            lambda r: "/statistics/courses/" in r.url and "/users" in r.url and r.status == 200,
+            timeout=15000,
+        ):
+            search_input.fill(text)
+            search_input.press("Enter")
 
     def listener_table_columns(self) -> list:
         table = self.page.locator(".courses-statistic-table table")
@@ -358,6 +403,21 @@ class AdminCourseStatisticsPage(BasePage):
             cells = [c.strip() for c in row.locator("td").all_inner_texts()]
             rows.append(dict(zip(headers, cells)))
         return rows
+
+    def content_repeat_counts(self) -> dict:
+        """Блок «Количество повторений прохождения контента» (`.course-editor-statistic`)
+        — есть только у курсов с разделами (TinCan с несколькими разделами, например
+        эталонный курс 4393/наш `test_data/course_tincan.zip` с разделами «Тестирование
+        1»/«Тестирование 2»); у курсов без разделов (SCORM, TinCan без разделов) блока в
+        вёрстке нет вовсе — метод вернёт `{}`. Формат: `{"Тестирование 1": 0, ...}` —
+        `.course-editor-statistic__list` в DOM хранит имя и счётчик раздела как два
+        отдельных `<div>` подряд (не строка таблицы), поэтому читаем плоский список
+        текстов и группируем его попарно."""
+        block = self.page.locator(".course-editor-statistic__list")
+        if block.count() == 0:
+            return {}
+        texts = [t.strip() for t in block.locator("> div").all_inner_texts()]
+        return dict(zip(texts[0::2], texts[1::2]))
 
     def export_listeners(self, save_as: str = None):
         """Клик "Выгрузить" → дождаться ссылки "Скачать отчет" (бэкенд генерирует xlsx не
