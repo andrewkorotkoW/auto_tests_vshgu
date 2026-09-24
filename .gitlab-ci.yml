@@ -30,9 +30,13 @@ docker:build:
   variables:
     HEADLESS: "1"
   script:
-    - export $(grep -v '^#' ${CI_TEST_ENV_FILE} | xargs)
+    # переменные из файла CI_TEST_ENV_FILE: через set -a/. — корректно для значений с пробелами, кавычками и '#'
+    - set -a; . "${CI_TEST_ENV_FILE}"; set +a
+    # код берём из образа (/tests), результаты возвращаем в каталог джобы, иначе артефакты пустые
     - cd /tests
-    - bash scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
+    - bash scripts/run.sh --env "${STAND}" ${PYTEST_ARGS} || RC=$?
+    - mkdir -p "${CI_PROJECT_DIR}/results" && cp -r /tests/results/. "${CI_PROJECT_DIR}/results/" 2>/dev/null || true
+    - exit ${RC:-0}
   artifacts:
     when: always   # результаты нужны и при упавших тестах
     expire_in: 1 days
