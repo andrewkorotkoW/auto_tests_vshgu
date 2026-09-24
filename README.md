@@ -24,7 +24,7 @@
 - `config/settings.py` — тонкие алиасы на develop/stage из `config/environments.py`, оставлены
   ради обратной совместимости с кодом, который уже импортирует `settings.BASE_URL` и т.п.
 - `config/environments.py` — реестр окружений, логин по логину/паролю, кэш сессий и
-  Playwright `storage_state` (см. раздел 2 и 6).
+  Playwright `storage_state` (см. раздел 2 и 7).
 - `utils/logger.py`, `utils/retry.py` — логирование и `retry_until_success` для ожиданий в UI
   вместо `sleep`.
 
@@ -107,7 +107,65 @@ scripts/run.sh --env prod -m smoke
 scripts\run.bat --env develop
 ```
 
-## 4. Структура проекта
+## 4. Известные дефекты стендов (xfail)
+
+Часть тестов на `develop` стабильно падает на реальном дефекте портала, а не тестового кода —
+они помечены `@pytest.mark.xfail(strict=False, reason=...)`: прогон учитывает падение как
+ожидаемое (`XFAIL`), не проваливая сборку. По состоянию на 24.09.2026:
+
+- `tests/ui/aos/user/test_user_aos_flow.py::test_user_complete_aos` (develop) — сгенерированный
+  `created_aos` рендерится одностраничной анкетой (все шкалы/чекбоксы/комментарий на одном
+  экране), а не пошаговым визардом «один вопрос — один экран» с кнопкой «Вперед», который
+  предполагает сценарий; кнопка «Ответить» остаётся disabled, пока не отвечены все шкалы,
+  поэтому «Вперед» не появляется никогда.
+- `tests/ui/courses/tincan/stream/test_user_tincan_flow.py::test_user_open_tincan` (develop) —
+  вкладки «Расписание»/«Курсы и тесты»/«Игровая сессия» страницы программы неактивны, пока не
+  развёрнута строка модуля (шеврон справа от даты); курс внутри модуля недостижим локатором
+  title/details карточки.
+- `tests/ui/courses/tincan/individual/test_user_tincan_individual_flow.py::test_user_tincan_individual`
+  (develop) — после API-назначения через `/users/content/distant/assign-activities` (ответ 200)
+  раздел «Индивидуальное обучение» слушателя не показывает назначенный курс; тот же класс
+  дефекта — в `homework/individual`, `proctoring/individual`, `polls/individual`.
+- `tests/ui/onboarding/test_repeat_onboarding.py::test_repeat_onboarding_knowledge_base`,
+  `::test_repeat_onboarding_support`, `::test_repeat_onboarding_personal_education` (develop) —
+  попап повторного тура раздела (`div.onboarding-popup`) не имеет крестика закрытия — в
+  разметке только «Назад»/«Далее» (`data-qa onboarding-popup-prev/next`); Escape и клик по
+  `.v-overlay__scrim` тур не закрывают.
+- `tests/ui/practical_tasks/personal_assignment/test_complete_and_review_personal_assignment.py::test_complete_and_review_personal_assignment`
+  (develop) — проверяющий, назначенный на индивидуальное ПЗ (`teacher_ids`/`inspector_ids`), не
+  получает раздел «Практические задания» в кабинете (видит «У вас нет программ»); для
+  потокового ПЗ тот же проверяющий раздел получает штатно.
+- `tests/ui/dashboards/test_admin_checks_program_and_course_dashboards.py::test_admin_checks_program_and_course_dashboards`
+  (develop) — нестабильность стенда: из 3 прогонов 1 упал на поиске строки дашборда
+  (`element(s) not found` при уже подтверждённом через API наличии строки), 1 — на
+  `ConnectionError` при подготовке данных (`POST /programs`), 1 прошёл чисто.
+
+Отдельно, вне этого списка: `tests/ui/buk/test_buk_user_menu_ui.py::test_buk_consent_leads_into_buk`
+помечен `xfail(strict=True)` — дефект стенда **stage** (БУК есть только там, см. раздел 2), а не
+develop; при починке тест станет `XPASS` и упадёт как `strict`, это сигнал снять xfail.
+
+### Итоговый прогон на 24.09.2026
+
+`.venv/bin/python -m pytest --env=develop tests/api -q`: **87 passed, 1 failed, 22 skipped**
+(skip — БУК/LPD, см. раздел 2). `.venv/bin/python -m pytest --env=develop tests/ui -q`:
+**53 passed, 3 failed, 11 skipped, 7 xfailed, 1 xpassed, 4 rerun** — xpassed это
+`test_admin_checks_program_and_course_dashboards` (ожидаемо, см. описание дефекта выше).
+
+Из 4 упавших вне списка xfail при повторном одиночном прогоне 2 оказались флаки и прошли
+(`tests/ui/aos/user/test_aos_public_link.py::test_public_aos_pass`,
+`tests/ui/cas/admin/test_admin_cas_users.py::test_admin_check_cas_user`), а 2 падают
+воспроизводимо и **не помечены xfail** — новые находки этой проверки, не входят в список выше,
+требуют отдельного разбора владельцем:
+
+- `tests/api/cas/test_external_cas_sync_users_api.py::test_sync_user` (develop) — `POST
+  /external/cas/sync/users/{id}` отвечает 400 «Синхронизация для пользователя недоступна»
+  (`user_status: "pending"`, `cas_uuid: null`) сразу после создания пользователя, несмотря на
+  `sleep(20)` перед синхронизацией в тесте.
+- `tests/ui/knowledge_base/test_create_article_and_verify_in_user_ui.py::test_create_article_and_verify_in_user_ui`
+  (develop) — поиск по `/library/materials?filter=...` не применяет фильтр по имени статьи,
+  `UserKnowledgeBasePage.search` не находит только что созданный видимый материал.
+
+## 5. Структура проекта
 
 ```
 tests/
@@ -134,7 +192,7 @@ utils/
 расположение папки, поэтому теоретически туда же могут добавляться сценарии и под другие
 окружения.
 
-## 5. Как добавить новое окружение
+## 6. Как добавить новое окружение
 
 1. В `config/environments.py` добавить новую запись в `ENVIRONMENTS` через `_build_environment(...)`
    (по образцу `develop`/`stage`/`prod`) — имя, `cookie_name`, URL по умолчанию и (при
@@ -149,7 +207,7 @@ utils/
 4. `--env` в `pytest.ini`/`conftest.py` ничего менять не нужно — `pytest_addoption` берёт список
    допустимых значений прямо из `ENVIRONMENTS.keys()`.
 
-## 6. Как обновить куки
+## 7. Как обновить куки
 
 Ручные куки — запасной вариант на случай, если логин по логину/паролю не сработал. Хранятся
 в `.env` как `DEVELOP_COOKIE` / `STAGE_COOKIE` / `PROD_COOKIE` (сама кука, без имени) плюс
@@ -178,7 +236,7 @@ utils/
 неверные учётные данные возвращает осмысленную ошибку с формой логина, и `login()` эту
 ситуацию распознаёт (`LoginError`) и корректно откатывается на ручную куку.
 
-## 7. Запуск в Docker
+## 8. Запуск в Docker
 
 Образ собирается на базе `mcr.microsoft.com/playwright/python` (Chromium и системные
 зависимости уже внутри), версия образа привязана к `playwright` из `requirements.txt`.
@@ -195,7 +253,7 @@ docker compose run --rm tests --env prod -m smoke
 (`HEADLESS=1`), результаты остаются на хосте в `results/<env>/<timestamp>/`, кэш сессий —
 в `.cache/`. Локально без Docker `HEADLESS` не задан, и браузер открывается с окном, как раньше.
 
-## 8. Интеграция БУК (входящий REST)
+## 9. Интеграция БУК (входящий REST)
 
 Тесты `tests/api/buk/` покрывают `POST/PUT/DELETE /api/v1/external/buk/users` по контракту
 asuo-buk-api-contracts (§ 2, § 4): автосопоставление по email, ручное по `user_id`,
@@ -212,7 +270,7 @@ asuo-buk-api-contracts (§ 2, § 4): автосопоставление по ema
 pytest --env=stage tests/api/buk
 ```
 
-## 9. Генерация тестовых данных
+## 10. Генерация тестовых данных
 
 Единый CLI `test_data_generation/generate.py` создаёт на стенде через `api/endpoints/*.py`
 и `api/helpers/data_generator.py` связанные цепочки сущностей (программа → поток → модуль →
@@ -248,7 +306,7 @@ python test_data_generation/generate.py --env <develop|stage> --scenario <имя
 | `banner_and_partners` | включение инфо-баннера + выдача доступа Alpina/MIF N пользователям |
 | `demo` | демо-наполнение стенда: `users` + `program_full` + `activities` + `certificates` + `banner_and_partners` (count=1 на каждый шаг) |
 
-`buk` и активность LPD внутри `activities` реально доступны только на stage (см. раздел 8) —
+`buk` и активность LPD внутри `activities` реально доступны только на stage (см. раздел 9) —
 на develop эти шаги пишутся в манифест как `skipped` с причиной, а не падают.
 
 Пароль создаваемых тестовых пользователей — общий `DEFAULT_PASSWORD` (`test_data_generation/lib.py`,
@@ -281,7 +339,7 @@ DELETE-метода`); `--cleanup ... --dry-run` только печатает �
 реальные прогоны генератора на stage выполняются только по команде владельца — при разработке и
 проверке этой функциональности запуски делались исключительно на `develop`.
 
-## 10. Перенесено из ветки коллеги
+## 11. Перенесено из ветки коллеги
 
 Из ветки `feature/my-tests` коллеги Игоря Захарова (репозиторий `/Users/andreykorotkow/Projects/lms`)
 перенесены три блока UI-функциональности, которых в нашем слое не было: практические задания
@@ -393,13 +451,13 @@ pytest --env=develop -m knowledge_base
 - Дублирующийся хук `pytest_runtest_makereport` — у коллеги он объявлен в нескольких
   `conftest.py`; у нас один, в корневом `conftest.py`.
 - `headless=False`/`slow_mo` в коде — у коллеги браузер жёстко запускался видимым с искусственной
-  задержкой ~700 мс на шаг; у нас headless берётся из окружения (`HEADLESS` в Docker, см. раздел 7),
+  задержкой ~700 мс на шаг; у нас headless берётся из окружения (`HEADLESS` в Docker, см. раздел 8),
   захардкоженной паузы нет.
 
-## 11. Перенесено из feature/dashboard-autotests
+## 12. Перенесено из feature/dashboard-autotests
 
 Из ветки `origin/feature/dashboard-autotests` (тот же репозиторий `lms` коллеги Игоря Захарова,
-что и в разделе 10, но отдельная, несведённая с нашей история — код брался точечно через
+что и в разделе 11, но отдельная, несведённая с нашей история — код брался точечно через
 `git show <sha>:<путь>`) перенесены материалы и достижения базы знаний в админке, тест дашбордов
 статистики программ/курсов и логика очистки группового практического задания. Перенос — не
 копирование файлов: `cleanup_manager` и ручные локаторы коллеги превращены в наши Page Object'ы
@@ -413,7 +471,7 @@ pytest --env=develop -m knowledge_base
 
 | Источник (`lms`, `feature/dashboard-autotests`) | Приёмник |
 | --- | --- |
-| `tests/ui/knowledge_base/materials/test_01_admin_create_article_material.py` | не переносился повторно — уже перенесён в разделе 10 как `tests/ui/knowledge_base/test_create_article_and_verify_in_user_ui.py` |
+| `tests/ui/knowledge_base/materials/test_01_admin_create_article_material.py` | не переносился повторно — уже перенесён в разделе 11 как `tests/ui/knowledge_base/test_create_article_and_verify_in_user_ui.py` |
 | `tests/ui/knowledge_base/materials/test_02_admin_create_video_material.py` | `tests/ui/knowledge_base/test_create_material_video.py` |
 | `tests/ui/knowledge_base/materials/test_03_admin_create_audio_material.py` | `tests/ui/knowledge_base/test_create_material_audio.py` |
 | `tests/ui/knowledge_base/materials/test_04_admin_create_book_material.py` | `tests/ui/knowledge_base/test_create_material_book.py` |
@@ -437,7 +495,7 @@ pytest --env=develop -m knowledge_base
 | `tests/ui/cleanup/test_99_cleanup_practical_tasks_chain.py` (отдельный тест-очистка, запускался последним по всей цепочке) | teardown фикстуры `group_practical_task` (`tests/ui/practical_tasks/groups/conftest.py`) |
 
 Тест правки группового ПЗ вторым пользователем (`test_15_1_edit_group_practical_task_by_second_user.py`
-коллеги из ветки `feature/my-tests`, см. раздел 10) на момент этой задачи уже был встроен в
+коллеги из ветки `feature/my-tests`, см. раздел 11) на момент этой задачи уже был встроен в
 `tests/ui/practical_tasks/groups/test_group_practical_task_flow.py` шагом 4 — отдельный файл не
 потребовался, только рефакторинг: тест переведён на фикстуру `group_practical_task` вместо
 ручного `try/finally` с `homework_endpoint.mass_delete()`.
