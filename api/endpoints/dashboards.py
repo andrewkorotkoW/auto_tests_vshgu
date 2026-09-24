@@ -81,3 +81,36 @@ class DashboardsEndpoint:
         if row is None:
             raise AssertionError(f"Статистика курса {course_name} не появилась за {timeout}s")
         return row
+
+    def get_course_map(self, course_id: int, date_from: str = "2000-01-01", date_to: str = "2100-01-01") -> list:
+        """Данные интерактивной карты курса — список по всем регионам РФ (не только тем,
+        где есть слушатели): [{"region": {"region_name": "...", "region_code": "000000NNN"},
+        "data": {"total_count": int, "passed_count": int, "launched_count": int,
+        "not_started": int}}, ...]. `region_code` — тот же 9-значный код с ведущими
+        нулями, что атрибут data-region-id у <path> на SVG-карте
+        (ui.pages.admin_dashboard_page.AdminCourseStatisticsPage.region(code=...)) —
+        удобно сверять с UI по нему, а не по названию региона.
+
+        Даты по умолчанию — широкий диапазон "с запасом", а не текущая неделя (как
+        в дефолте UI-виджета), чтобы не зависеть от того, когда именно был прогон теста."""
+        params = urlencode({"date_from": date_from, "date_to": date_to})
+        resp = self.client.get(f"/statistics/courses/{course_id}/map?{params}")
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
+
+    def get_course_users(self, course_id: int, page: int = 1, per_page: int = 25) -> list:
+        """Строки итоговой таблицы слушателей курса (тот же источник данных, что и
+        AdminCourseStatisticsPage.listener_table_rows, но с полями API, не заголовками
+        UI): user_id, full_name, email, state (0 — не начато/назначено, 1 — в процессе —
+        нумерация подтверждена эмпирически, не задокументирована бэкендом), launched_at,
+        finished_at, completion_time_in_minutes, source, current_child, passed_percent.
+
+        current_child и passed_percent в UI-таблице видны только у курсов с разделами
+        (столбцы "Текущий раздел"/"Прогресс курса %" — см. докстринг
+        AdminCourseStatisticsPage); у курсов без разделов в вёрстке этих столбцов нет,
+        но сами поля в ответе API есть всегда — полезны для API-уровня проверок
+        независимо от того, покажет ли их конкретный курс в таблице UI."""
+        params = urlencode({"page": page, "per-page": per_page})
+        resp = self.client.get(f"/statistics/courses/{course_id}/users?{params}")
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
