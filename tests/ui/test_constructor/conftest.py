@@ -9,12 +9,16 @@ created_test/created_poll (корневой conftest.py) для конструк
 нужны как тест, так и опрос, поэтому используем tests_endpoint/polls_endpoint напрямую
 и всегда снимаем созданное через mass_delete в teardown — как просит задача.
 """
+from datetime import datetime, timedelta
+
 import pytest
 
 from api.endpoints.question_bank import QuestionBankEndpoint
 from api.helpers.data_generator import (
+    generate_aos_payload,
     generate_constructor_question_payload,
     generate_poll_payload,
+    generate_schedule_item_payload,
     generate_single_choice_answers,
     generate_test_payload,
     unique_suffix,
@@ -224,3 +228,69 @@ def bank_question(question_bank_endpoint):
             question_bank_endpoint.delete_bank_questions(bank_ids)
         except Exception as e:
             logger.warning(f"Failed to delete bank questions {bank_ids}: {e}")
+
+
+@pytest.fixture
+def created_stream_feedback(created_program, created_stream, created_module, schedule_items_endpoint, aos_endpoint):
+    """Создаёт поток с двумя очными мероприятиями (разное время — иначе бэкенд
+    отвечает 422 «Дата очного курса не может пересекаться с другими курсами в
+    модуле») в одном модуле и АОС по ним (is_last_day=True). Бэкенд при создании
+    такой АОС сам генерирует 4 группы вопросов конструктора: по одной на каждое
+    мероприятие («Вебинар <препод> «<имя мероприятия>»») + «Организация учебного
+    дня» + «Организация модуля» (та же структура, что и при создании через UI
+    вкладки «Анкета обратной связи» потока — разведано на develop через
+    _scout_aos_default.py). Удаляет АОС через AosEndpoint.mass_delete; поток/модуль/
+    программа снимаются их собственными фикстурами."""
+    content_ids = []
+
+    def _create(name: str = None, is_active: bool = False):
+        program = created_program()
+        stream = created_stream(program_id=program["id"])
+        module = created_module(program_id=program["id"], stream_id=stream["id"])
+
+        suffix = unique_suffix()
+        first_event_name = f"Автотест_Мероприятие1_{suffix}"
+        second_event_name = f"Автотест_Мероприятие2_{suffix}"
+        today = datetime.now()
+
+        first_item = schedule_items_endpoint.create(
+            program["id"], stream["id"], module["id"],
+            generate_schedule_item_payload(
+                name=first_event_name,
+                date_time_from=today.strftime("%Y-%m-%dT10:05"),
+                date_time_to=(today + timedelta(hours=1)).strftime("%Y-%m-%dT11:05"),
+            ),
+        )
+        second_item = schedule_items_endpoint.create(
+            program["id"], stream["id"], module["id"],
+            generate_schedule_item_payload(
+                name=second_event_name,
+                date_time_from=(today + timedelta(hours=2)).strftime("%Y-%m-%dT12:05"),
+                date_time_to=(today + timedelta(hours=3)).strftime("%Y-%m-%dT13:05"),
+            ),
+        )
+
+        payload = generate_aos_payload(name=name, schedule_item_ids=[first_item["id"], second_item["id"]], is_last_day=True)
+        aos_data = aos_endpoint.create(payload)
+        content_id = aos_data["content_id"]
+        content_ids.append(content_id)
+
+        if is_active:
+            assert aos_endpoint.activate(program["id"], stream["id"], content_id), f"АОС {content_id} не активировалась"
+
+        return {
+            "content_id": content_id,
+            "program_id": program["id"],
+            "stream_id": stream["id"],
+            "first_event_name": first_event_name,
+            "second_event_name": second_event_name,
+            "attributes": aos_data,
+        }
+
+    yield _create
+
+    if content_ids:
+        try:
+            aos_endpoint.mass_delete(content_ids)
+        except Exception as e:
+            logger.warning(f"Failed to mass delete stream feedback {content_ids}: {e}")
