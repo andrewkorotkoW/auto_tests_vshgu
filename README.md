@@ -592,17 +592,48 @@ Playwright в форме создания уведомления в админк
 префикса, к которым у задачи не было доступа) — при написании тестов дополнительные маршруты можно
 доразведать тем же способом.
 
-### Кандидаты в дефекты (для xfail при написании тестов)
+### Часть 1 (API-тесты уведомлений) — реализована
+
+`tests/api/notifications/` (22 теста, `pytest tests/api/notifications --env develop -q` →
+**18 passed, 4 xfailed**, стабильно на 2 прогонах подряд), маркер `notifications`. Покрыты
+маршруты: `GET /notifications` (список + поля свежесозданного уведомления), `GET
+/notifications/{id}`, `GET /notifications/creators`, `GET /notifications/receivers`, `GET
+/notifications/text-variables`, `POST /notifications/create`, `POST /notifications/resend/{id}`,
+`POST /notifications/delete`, `GET /notifications/templates` (+ `/{id}`), `POST
+/notifications/templates`, `PUT /notifications/templates/{id}`, `POST
+/notifications/templates/delete`, `GET /notifications/register-templates` (+ `/{type}`), `POST
+/notifications/register-templates/{type}` (round-trip с восстановлением исходных значений в
+`finally`), `GET /notifications/review-templates`.
+
+Попутно найден и исправлен реальный дефект в `NotificationsEndpoint.list()`
+(`api/endpoints/notifications.py`): `GET /notifications` пагинирован (25 записей на страницу,
+663+ уведомлений на develop) без сортировки «новые сверху» — без `per-page=<большое число>`
+`list()`/`find_by_name()` не находили только что созданные уведомления (ложноотрицательный
+результат). Добавлен параметр `per_page: int = 2000`.
+
+Не покрыто в рамках этой задачи: `GET /notifications/review-templates/{id}` и его `PUT` —
+на develop список review-templates пуст, безопасного существующего id для round-trip нет
+(создать шаблон через API нельзя — эндпоинта создания в разведанном списке маршрутов нет).
+
+### Кандидаты в дефекты (подтверждены тестами, xfail(strict=False))
 
 - **`GET /notifications/{id}` и `GET /notifications/register-templates/{type}` на несуществующий
   id/type** — `id` отдаёт 404 с полным стек-трейсом Laravel-исключения в теле ответа (утечка
   деталей реализации наружу), а `type` вместо 404 отдаёт 200 с `{"type": null, "title": null,
   "body": null}` — непоследовательно между похожими эндпоинтами.
-- **`POST /notifications/delete` и `POST /notifications/templates/delete` — отложенное
-  удаление.** Ответ `200 {"status": "success"}` приходит сразу, но объект ещё несколько секунд
-  виден в `GET /notifications/{id}`/`GET /notifications/templates` (подтверждено многократно:
-  первая проверка сразу после delete видит старые данные, повторная через ~5-10 c — уже нет).
-  Тестам на удаление нужен retry/wait перед assert об отсутствии, а не мгновенная проверка.
+- **`POST /notifications/delete` и `POST /notifications/templates/delete` — непредсказуемая
+  задержка удаления, не просто «несколько секунд».** Ответ `200 {"status": "success"}` приходит
+  сразу, но объект ещё какое-то время виден в `GET /notifications/{id}`/`GET
+  /notifications/templates`. При написании тестов Часть 1 задержка перепроверена дважды на
+  develop: один раз объект пропадал за ~2 c, другой раз оставался видимым больше 100 c —
+  разброс на два порядка, не «5-10 c», как показала более ранняя разведка. Надёжного окна
+  ожидания для синхронного assert нет — `test_delete_notification_removes_it` и
+  `test_delete_template_removes_it_from_list` ждут до 12 c и уходят в `xfail(strict=False)`,
+  если объект не пропал.
+- **`POST /notifications/create` без получателей/программ/потоков — план ждал 422, факт 201.**
+  `generate_notification_payload(users=[], programs=[], streams=[])` создаёт «уведомление в
+  никуда» с кодом 201 вместо ожидаемой валидационной ошибки — сервер не проверяет, что у
+  уведомления есть хоть одна аудитория (`test_create_without_receivers_returns_422`, xfail).
 - **`POST /notifications/create` — `users` в ответе создания.** В ответе на сам `POST /create`
   (201) поле `users` приходит пустым (`[]`), хотя в теле запроса передавались получатели и
   `GET /notifications/{id}` сразу после создания их уже показывает — расхождение между ответом
@@ -621,4 +652,13 @@ Playwright в форме создания уведомления в админк
   `DEVELOP_ADMIN_LOGIN`/`DEVELOP_USER_LOGIN`, поэтому обе роли фолбэк-ятся на общий
   `DEVELOP_LOGIN` (аккаунт с ролями `admin`+`manager`, id=3) — сценарии «пользователь видит только
   свои уведомления/тикеты, не чужие» физически нельзя проверить без создания отдельного тестового
-  пользователя через `UsersEndpoint.create` и логина под ним.
+  пользователя через `UsersEndpoint.create` и логина под ним. В Часть 1 (`tests/api/notifications`)
+  негативный тест доступа обошёл это через `UsersEndpoint.create` + `config.environments.login` (тот
+  же приём, что уже применялся в `tests/api/users/test_users_permissions_api.py`) — и выяснилось,
+  что весь раздел `/notifications/*` целиком закрыт для обычной роли слушателя без
+  админ/менеджерских прав (`GET /notifications/{id}` отдаёт 403 «У Вас нет доступа к данному
+  разделу» независимо от того, адресовано ли конкретное уведомление этому пользователю). Так что
+  `/notifications/*` — не персональный inbox слушателя, а админский инструмент рассылки; личная
+  лента уведомлений слушателя (пункт «Уведомления» в сайдбаре, `/portal-notifications`, см.
+  `ui/pages/user_sidebar_page.py`) работает через другой, неразведанный API — это отдельная область
+  для будущей задачи (Часть 2 плана), не для `/notifications/*`.

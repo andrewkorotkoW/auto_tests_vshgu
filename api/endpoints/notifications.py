@@ -13,9 +13,12 @@ class NotificationsEndpoint:
 
     # ── Уведомления ──────────────────────────────────────────────────────
 
-    def list(self) -> list:
-        """Список уведомлений."""
-        resp = self.client.get("/notifications")
+    def list(self, per_page: int = 2000) -> list:
+        """Список уведомлений. GET /notifications пагинирован (25 записей на страницу
+        по умолчанию, ~660+ записей на develop) — без per-page=<большое число> список
+        обрывается на первой странице и не находит свежесозданные уведомления
+        (см. find_by_name и отчёт разведки)."""
+        resp = self.client.get(f"/notifications?per-page={per_page}")
         expect_status(resp, 200)
         return resp.json()["data"]
 
