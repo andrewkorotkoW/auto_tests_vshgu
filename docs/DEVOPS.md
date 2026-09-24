@@ -26,18 +26,18 @@ docker build -t auto_tests_vshgu:latest .
 
 ## 3. Запуск
 
-Точка входа `scripts/run.sh`, аргументы передаются в pytest.
+Команда прогона задаётся явно: `scripts/run.sh --env <стенд> [аргументы pytest]`. У образа нет ENTRYPOINT, чтобы GitLab CI мог запускать в контейнере shell; по умолчанию (`CMD`) выполняется прогон на develop.
 
 ```bash
 # локально, через compose (учётки из ./.env)
-docker compose run --rm tests --env develop
-docker compose run --rm tests --env develop -m smoke
-docker compose run --rm tests --env stage -m "smoke and api"
+docker compose run --rm tests scripts/run.sh --env develop
+docker compose run --rm tests scripts/run.sh --env develop -m smoke
+docker compose run --rm tests scripts/run.sh --env stage -m "smoke and api"
 
 # без compose
 docker run --rm --env-file .env --shm-size=1g \
   -v "$PWD/results:/tests/results" -v "$PWD/.cache:/tests/.cache" \
-  auto_tests_vshgu:latest --env develop -m smoke
+  auto_tests_vshgu:latest scripts/run.sh --env develop -m smoke
 ```
 
 Обязательно `--shm-size=1g` (или `shm_size` в compose), иначе Chromium падает на длинных прогонах.
@@ -87,7 +87,7 @@ docker run --rm --env-file .env --shm-size=1g \
 ## 7. Проверка после развёртывания
 
 ```bash
-docker run --rm --env-file .env --shm-size=1g auto_tests_vshgu:latest --env develop tests/api/test_health.py
+docker run --rm --env-file .env --shm-size=1g auto_tests_vshgu:latest scripts/run.sh --env develop tests/api/test_health.py
 ```
 
 Два теста health должны пройти за несколько секунд. Затем smoke: `--env develop -m smoke`, ожидаемо около 7 минут.

@@ -24,10 +24,7 @@ docker:build:
 # Общая часть прогона: результаты и Allure-отчёт складываются в results/<env>/ и сохраняются как артефакт.
 .run_tests:
   stage: test
-  # entrypoint образа — scripts/run.sh; GitLab должен запускать в контейнере shell, поэтому entrypoint сбрасываем
-  image:
-    name: "${IMAGE}"
-    entrypoint: [""]
+  image: "${IMAGE}"
   tags:
     - devspark-builder
   variables:

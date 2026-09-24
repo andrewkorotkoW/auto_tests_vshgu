@@ -18,5 +18,6 @@ COPY . .
 # Результаты allure и кэш сессий выносятся наружу через volume (см. docker-compose.yml).
 VOLUME ["/tests/results", "/tests/.cache"]
 
-ENTRYPOINT ["scripts/run.sh"]
-CMD ["--env", "develop"]
+# Без ENTRYPOINT: GitLab CI должен запускать в контейнере shell, а команда прогона задаётся явно.
+# Локально: docker run … auto_tests_vshgu scripts/run.sh --env develop
+CMD ["scripts/run.sh", "--env", "develop"]
