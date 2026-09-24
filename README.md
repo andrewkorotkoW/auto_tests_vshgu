@@ -395,3 +395,81 @@ pytest --env=develop -m knowledge_base
 - `headless=False`/`slow_mo` в коде — у коллеги браузер жёстко запускался видимым с искусственной
   задержкой ~700 мс на шаг; у нас headless берётся из окружения (`HEADLESS` в Docker, см. раздел 7),
   захардкоженной паузы нет.
+
+## 11. Перенесено из feature/dashboard-autotests
+
+Из ветки `origin/feature/dashboard-autotests` (тот же репозиторий `lms` коллеги Игоря Захарова,
+что и в разделе 10, но отдельная, несведённая с нашей история — код брался точечно через
+`git show <sha>:<путь>`) перенесены материалы и достижения базы знаний в админке, тест дашбордов
+статистики программ/курсов и логика очистки группового практического задания. Перенос — не
+копирование файлов: `cleanup_manager` и ручные локаторы коллеги превращены в наши Page Object'ы
+на `expect()`, подготовка данных — в наши API-фикстуры с `yield`-teardown вместо JSON-хелперов
+коллеги (`dashboard_prepare_api.py`, `knowledge_base_material_prepare_api.py`) и отдельного
+теста-очистки `test_99_*`.
+
+### Источник → приёмник
+
+Материалы и достижения БЗ (админка):
+
+| Источник (`lms`, `feature/dashboard-autotests`) | Приёмник |
+| --- | --- |
+| `tests/ui/knowledge_base/materials/test_01_admin_create_article_material.py` | не переносился повторно — уже перенесён в разделе 10 как `tests/ui/knowledge_base/test_create_article_and_verify_in_user_ui.py` |
+| `tests/ui/knowledge_base/materials/test_02_admin_create_video_material.py` | `tests/ui/knowledge_base/test_create_material_video.py` |
+| `tests/ui/knowledge_base/materials/test_03_admin_create_audio_material.py` | `tests/ui/knowledge_base/test_create_material_audio.py` |
+| `tests/ui/knowledge_base/materials/test_04_admin_create_book_material.py` | `tests/ui/knowledge_base/test_create_material_book.py` |
+| `tests/ui/knowledge_base/materials/test_05_admin_create_file_material.py` | `tests/ui/knowledge_base/test_create_material_file.py` |
+| `tests/ui/knowledge_base/materials/test_06_admin_create_course_material.py` | `tests/ui/knowledge_base/test_create_material_course.py` |
+| `tests/ui/knowledge_base/achievements/test_01_admin_create_achievement_material_count.py` (условие «статья») | `tests/ui/knowledge_base/test_create_achievement.py::test_create_achievement` |
+| `tests/ui/knowledge_base/achievements/test_02..06_admin_create_achievement_material_count_{video,audio,book,file,course}.py` | `tests/ui/knowledge_base/test_create_achievement.py::test_create_achievement_material_count_for_type` (`parametrize` по 5 типам материала) |
+
+Дашборды:
+
+| Источник (`lms`, `feature/dashboard-autotests`) | Приёмник |
+| --- | --- |
+| `src/ui/pages/dashboard_page.py` (локаторы) | `ui/pages/admin_dashboard_page.py` |
+| `tests/api/helpers/dashboard_prepare_api.py`, `tests/ui/dashboards/conftest.py` (JSON-подготовка данных коллеги — не копировалась дословно) | `tests/ui/dashboards/conftest.py` — фикстуры `dashboards_admin_page`/`dashboard_data` на наших API-фикстурах/эндпоинтах (`created_schedule_item`, `created_tincan`, `created_user`, `assignments_endpoint`, `modules_endpoint`, `schedule_items_endpoint`, `dashboards_endpoint`) |
+| `tests/ui/dashboards/test_01_admin_checks_program_and_course_dashboards.py` | `tests/ui/dashboards/test_admin_checks_program_and_course_dashboards.py` |
+
+Практические задания — перенос очистки:
+
+| Источник (`lms`, `feature/dashboard-autotests`) | Приёмник |
+| --- | --- |
+| `tests/ui/cleanup/test_99_cleanup_practical_tasks_chain.py` (отдельный тест-очистка, запускался последним по всей цепочке) | teardown фикстуры `group_practical_task` (`tests/ui/practical_tasks/groups/conftest.py`) |
+
+Тест правки группового ПЗ вторым пользователем (`test_15_1_edit_group_practical_task_by_second_user.py`
+коллеги из ветки `feature/my-tests`, см. раздел 10) на момент этой задачи уже был встроен в
+`tests/ui/practical_tasks/groups/test_group_practical_task_flow.py` шагом 4 — отдельный файл не
+потребовался, только рефакторинг: тест переведён на фикстуру `group_practical_task` вместо
+ручного `try/finally` с `homework_endpoint.mass_delete()`.
+
+### Новые маркеры
+
+- `dashboards` — тесты дашбордов статистики программ/курсов в админке (`tests/ui/dashboards/`).
+
+### Итог прогона на develop
+
+- Материалы БЗ (5 новых тестов: видео/аудио/книга/файл/курс) и достижения БЗ (6 тестов: статья +
+  5 типов параметризацией) — суммарно 12 сценариев (5 новых материалов, тест статьи, задетый
+  рефакторингом `select_material_type`, и 6 достижений), все зелёные, 2/2 на develop, `HEADLESS=1`.
+- `test_admin_checks_program_and_course_dashboards` — `xfail(strict=False)`: из 3 прогонов на
+  develop (бюджет исчерпан) 1 прошёл чисто за 62.8с, 1 упал на поиске строки программы в таблице
+  дашборда (30с таймаут, хотя API уже подтвердил появление строки), 1 упал в setup на обрыв
+  соединения при создании программы (`ConnectionError`). Разведочным прогоном подтверждено, что
+  поиск/рендер строки в целом работает (строка с верными значениями появляется за ~8с) — похоже
+  на нестабильность стенда develop, а не на дефект теста/Page Object.
+- `test_group_practical_task_flow` (после перевода на фикстуру `group_practical_task`) — 2/2
+  зелёных прогона на develop (`--env=develop`, `HEADLESS=1`): 249.73с, 235.46с.
+
+### Не перенесено
+
+В `origin/feature/dashboard-autotests` есть ещё два блока тестов коллеги, которых в нашем слое
+нет. Они не были перенесены ни в одной из выполненных задач: соответствующих файлов нет ни на
+текущей ветке, ни на `office/autotests`, ни на других локальных `agent/*`-ветках, поэтому для них
+нет и финального итога прогона на develop:
+
+- **Достижения — слушатель, сквозные** (`tests/ui/knowledge_base/user_achievements/test_01..09_*.py`
+  у коллеги, 9 тестов: получение достижения слушателем по каждому из 6 типов материала + 3
+  сценария с составными условиями по нескольким материалам).
+- **Статистика базы знаний** (`tests/ui/knowledge_base/admin_statistics/test_01_admin_sees_user_achievement_history.py`,
+  `test_02_admin_sees_user_in_knowledge_base_rating.py` у коллеги, 2 теста: история достижений
+  пользователя и рейтинг БЗ в админке).
