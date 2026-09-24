@@ -166,6 +166,12 @@ class AdminProgramsPage(BasePage):
                 "//div[contains(@class,'v-list-item__content')]"
             )
         expect(dropdown_items.first).to_be_visible(timeout=15000)
+        # Список опций у части селектов (Стоимостная группа/Вид программы) подгружается
+        # асинхронно после открытия: первым в DOM оказывается плейсхолдер «Загрузка
+        # списка», который не является реальным пунктом и клик по нему не устанавливает
+        # v-model — форма потом падает валидацией «обязательно для заполнения», хотя
+        # выбранный текст в поле визуально не появляется вовсе. Ждём реальный пункт.
+        expect(dropdown_items.first).not_to_have_text("Загрузка списка", timeout=15000)
         dropdown_items.first.click(timeout=5000)
 
     def _select_by_label(self, label_text: str) -> None:
@@ -245,7 +251,9 @@ class AdminProgramsPage(BasePage):
         expect(add_button).to_be_visible(timeout=15000)
         add_button.click(timeout=5000)
 
-        modal = self.page.locator("xpath=//div[contains(@class,'confirm v-card')]")
+        modal = self.page.locator(
+            "xpath=(//div[contains(@class,'v-dialog--active')]//div[contains(@class,'base-modal') and contains(@class,'v-card')])[1]"
+        )
         expect(modal).to_be_visible(timeout=15000)
 
         name_field = self.page.locator(
