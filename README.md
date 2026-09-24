@@ -587,9 +587,7 @@ API-клиенты `NotificationsEndpoint` (`api/endpoints/notifications.py`, 19
 `my-tickets`, статус `open` → `close` → статус `closed`, + 2 xfail на повторное закрытие/
 сообщение в закрытый тикет), `test_tickets_messages_api.py` (порядок сообщений в переписке),
 `test_tickets_negative_api.py` (422 на пустые title/text/весь payload, + 2 xfail на IDOR с
-двумя по-настоящему разными пользователями). Тесты `tests/api/notifications`,
-`tests/ui/notifications`, `tests/ui/tickets` в рамках этой задачи не писались — только
-разведка и клиенты (см. выше).
+двумя по-настоящему разными пользователями).
 
 Маршрут `POST /notifications/register-templates/{type}` в плане не значился явным списком
 (в мишн-доке — только 8 GET-эндпоинтов разведки), но обнаружен пробой методов (405 с
@@ -622,6 +620,35 @@ API-клиенты `NotificationsEndpoint` (`api/endpoints/notifications.py`, 19
 Не покрыто в рамках этой задачи: `GET /notifications/review-templates/{id}` и его `PUT` —
 на develop список review-templates пуст, безопасного существующего id для round-trip нет
 (создать шаблон через API нельзя — эндпоинта создания в разведанном списке маршрутов нет).
+
+### Часть 2 и 3 (UI-тесты) — реализована
+
+`tests/ui/notifications/` и `tests/ui/tickets/`, маркер `ui` (+ `notifications` для
+уведомлений), Page Object из `ui/pages/notifications_page.py` /
+`ui/pages/admin_notifications_page.py` / `ui/pages/tickets_page.py` (задача t4).
+`pytest tests/ui/notifications tests/ui/tickets --env develop -q` → **2 passed, 1
+xfailed** (~100с), стабильно на 2 прогонах каждой папки по отдельности перед объединением.
+
+- `tests/ui/notifications/user/test_user_sees_notification.py` — уведомление создаётся через
+  `NotificationsEndpoint.create` с получателем `current_user_id` (id аккаунта, под которым
+  авторизован `user_page`, определяется через `GET /auth/me`, без хардкода); в
+  `/portal-notifications` проверяются тема и текст. Разведкой (ad-hoc скрипт вне pytest)
+  установлено, что реальная лента слушателя работает через отдельный, не описанный в плане
+  API `GET /api/v1/my-notifications` (не `/notifications/*` из Части 1 — тот закрыт для роли
+  слушателя, см. ниже), и что тема, которую показывает карточка (`.portal-notification__title`),
+  — это поле `caption`, а не `name` (`name` в карточке не отображается вовсе, это только
+  внутренний идентификатор для админского списка `/notifications`). Появляется в ленте сразу
+  после создания, без заметной задержки.
+- `tests/ui/notifications/admin/test_admin_notifications_table.py` — опциональный тест из
+  плана; xfail (см. кандидат в дефект ниже).
+- `tests/ui/tickets/user/test_user_creates_ticket.py` — обращение создаётся через реальную
+  UI-форму (не через API), находится в списке (докручиваем `#rooms-list` до появления строки —
+  список общего тестового аккаунта develop уже содержит 100+ обращений и не отсортирован по
+  дате, см. кандидат в дефект в §13 выше), переписка открывается и своё сообщение в ней видно.
+  Текст обращения для этого теста без `"_"` (см. кандидат в дефект ниже) — только тема
+  сохраняет префикс `Автотест_` через `generate_ticket_payload`. Teardown закрывает обращение
+  через `TicketsEndpoint.close` по id, найденному через `find_by_title` сразу после создания
+  (не после UI-проверок) — так teardown срабатывает, даже если сама UI-проверка упадёт.
 
 ### Кандидаты в дефекты (подтверждены тестами, xfail(strict=False))
 
@@ -689,5 +716,21 @@ API-клиенты `NotificationsEndpoint` (`api/endpoints/notifications.py`, 19
   разделу» независимо от того, адресовано ли конкретное уведомление этому пользователю). Так что
   `/notifications/*` — не персональный inbox слушателя, а админский инструмент рассылки; личная
   лента уведомлений слушателя (пункт «Уведомления» в сайдбаре, `/portal-notifications`, см.
-  `ui/pages/user_sidebar_page.py`) работает через другой, неразведанный API — это отдельная область
-  для будущей задачи (Часть 2 плана), не для `/notifications/*`.
+  `ui/pages/user_sidebar_page.py`) работает через другой API — `GET /api/v1/my-notifications`
+  (разведано в Части 2, см. `tests/ui/notifications/user/test_user_sees_notification.py`), не
+  через `/notifications/*`.
+- **Уведомление не появляется в таблице админки после отправки.** Уведомление, созданное через
+  `POST /notifications/create` (`send_at=null`) и затем явно отправленное через `POST
+  /notifications/resend/{id}` (ответ 200 `{"status": "success"}`), не появляется в таблице
+  «Все уведомления» (`/admin/notifications?i=3`) ни сразу, ни после ~20 c ожидания с
+  перезагрузкой страницы — воспроизведено ad-hoc скриптом вне pytest и тестом
+  `test_admin_sees_created_notification_in_table` (`xfail`). Не выяснено, сохраняется ли это
+  дольше (по аналогии с задержкой удаления выше разброс может быть на порядки).
+- **Переписка обращения (`.vac-format-message-wrapper`) вырезает `"_"` как markdown-курсив,
+  непредсказуемо для строк с несколькими `"_"`.** `_текст_` рендерится без подчёркиваний, но
+  сам текст остаётся видимым; для строки с нечётным числом `"_"` (например, стандартного вида
+  `generate_ticket_payload().text`, который включает title с 3 подчёркиваниями) простое
+  `text.replace("_", "")` не совпадает с фактическим рендером — часть текста теряет
+  подчёркивания парами, а «лишнее» с конца остаётся как есть. UI-тест обращения
+  (`test_user_creates_ticket.py`) обходит это, задавая текст обращения без `"_"` явно, вместо
+  того чтобы предсказывать результат разбора markdown.

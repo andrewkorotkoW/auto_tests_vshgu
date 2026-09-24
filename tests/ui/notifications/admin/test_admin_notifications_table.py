@@ -1,0 +1,52 @@
+"""UI: админка → «Уведомления» → вкладка «Все уведомления» — созданное уведомление
+должно быть видно в таблице.
+
+xfail: подтверждённый разведкой (ad-hoc скрипт вне pytest, дважды) кандидат в дефект —
+см. докстринг ui/pages/admin_notifications_page.py и README §13.
+"""
+import allure
+import pytest
+
+from ui.pages.admin_notifications_page import AdminNotificationsPage
+from utils.retry import wait_until
+
+
+@allure.feature("Уведомления UI")
+@allure.story("Админка — таблица «Все уведомления»")
+class TestAdminNotificationsTable:
+
+    @allure.title("Созданное и отправленное уведомление видно в таблице админки «Все уведомления»")
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.ui
+    @pytest.mark.notifications
+    @pytest.mark.xfail(
+        reason=(
+            "Кандидат в дефект: уведомление, созданное через POST /notifications/create "
+            "(send_at=null) и затем явно отправленное через POST /notifications/resend/{id} "
+            "(ответ 200 {'status': 'success'}), не появляется в таблице админки «Все "
+            "уведомления» (/admin/notifications?i=3) — воспроизведено дважды ad-hoc "
+            "скриптом вне pytest: ни сразу после открытия таблицы, ни после ~20 c ожидания "
+            "с перезагрузкой страницы."
+        ),
+        strict=False,
+    )
+    def test_admin_sees_created_notification_in_table(
+        self, admin_page, env, created_notification, current_user_id, notifications_endpoint
+    ):
+        notification = created_notification(users=[current_user_id])
+
+        with allure.step("Отправить уведомление явно (create() отдаёт его с send_at=null)"):
+            result = notifications_endpoint.resend(notification["id"])
+            assert result.get("status") == "success"
+
+        admin_notifications_page = AdminNotificationsPage(admin_page)
+
+        def _row_visible() -> bool:
+            admin_notifications_page.open_all(env.ui_base_url)
+            row = admin_notifications_page.notification_row(notification["name"])
+            return row.count() > 0
+
+        with allure.step("Дождаться строки с названием уведомления в таблице"):
+            found = wait_until(_row_visible, timeout=24, interval=6)
+
+        assert found, "Уведомление не появилось в таблице админки «Все уведомления»"
