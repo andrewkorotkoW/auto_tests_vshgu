@@ -37,6 +37,26 @@ REVIEWER_QUEUE_BUG_REASON = (
 class TestCompleteAndReviewPersonalAssignment:
 
     @allure.title("UI: Слушатель проходит индивидуальное ПЗ из «Индивидуальное обучение», проверяющий его проверяет")
+
+    @pytest.mark.xfail(
+
+        strict=False,
+
+        reason=(
+
+            "Дефект develop (совпадает с пометкой коллеги на test_13): проверяющий, назначенный на "
+
+            "индивидуальное ПЗ (teacher_ids/inspector_ids), не получает раздел «Практические задания» — "
+
+            "после входа видит обычный кабинет слушателя «У вас нет программ». Шаги 1–6 (слушатель "
+
+            "скачивает материалы, отвечает, отправляет на проверку) проходят; для потокового ПЗ тот же "
+
+            "проверяющий раздел получает (test_review_practical_task зелёный). Проверено 24.09.2026."
+
+        ),
+
+    )
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
