@@ -85,20 +85,13 @@ class TestCompleteAndReviewPersonalAssignment:
                 )
                 UserSidebarPage(page).dismiss_popups()
 
-            with allure.step("3. Открыть «Индивидуальное обучение» → карточку ПЗ"):
+            with allure.step("3. Открыть «Индивидуальное обучение» → «Курсы и тесты» → карточку ПЗ"):
                 task_page = PracticalTaskPage(page)
-                print("DEBUG URL BEFORE:", page.url)
-                task_page.open_individual_education()
-                # Онбординг-тур показывается отдельно на каждой странице (см. докстринг
-                # dismiss_popups) — «Моё обучение»/«Индивидуальное обучение» не исключение,
-                # без повторного вызова его затемнение перехватывает клик по карточке ПЗ
-                UserSidebarPage(page).dismiss_popups()
-                page.wait_for_load_state("networkidle")
-                print("DEBUG URL AFTER:", page.url)
-                print("DEBUG BODY:", page.locator("body").inner_text()[:4000])
-                # На разделе «Индивидуальное обучение» карточки ПЗ показаны сразу,
-                # без вкладки «Курсы и тесты» (та есть только у программ-потоков)
-                task_page.open_practical_task(homework["name_client"])
+                # «Индивидуальное обучение» -> /education/personal/schedule (тур раздела) ->
+                # вкладка «Курсы и тесты» -> /education/personal/activities, где отображается
+                # назначенное ПЗ (карточка ищется по name_client ИЛИ name — см. practical_task_page)
+                UserSidebarPage(page).open_individual_tab("Курсы и тесты")
+                task_page.open_practical_task([homework["name_client"], homework["name"]])
 
             with allure.step("4. Скачать основной документ и дополнительные материалы"):
                 task_page.download_main_document()
@@ -119,7 +112,9 @@ class TestCompleteAndReviewPersonalAssignment:
                 reviewer_page = ReviewerPage(page)
                 reviewer_page.open_practical_tasks_section()
                 try:
-                    reviewer_page.open_personal_review(user_full_name, homework["name_client"])
+                    reviewer_page.open_personal_review(
+                        user_full_name, [homework["name_client"], homework["name"]]
+                    )
                 except AssertionError as exc:
                     pytest.xfail(f"{REVIEWER_QUEUE_BUG_REASON}: {exc}")
 
@@ -133,7 +128,9 @@ class TestCompleteAndReviewPersonalAssignment:
 
             with allure.step("9. Проверить, что ПЗ отображается во вкладке «Отвечено» с оценкой 4"):
                 reviewer_page.open_answered_tab()
-                reviewer_page.expect_personal_answered(user_full_name, homework["name_client"], "4")
+                reviewer_page.expect_personal_answered(
+                    user_full_name, [homework["name_client"], homework["name"]], "4"
+                )
         finally:
             if homework_id is not None:
                 with allure.step("10. Удалить ПЗ"):
