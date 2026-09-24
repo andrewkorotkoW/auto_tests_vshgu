@@ -21,6 +21,7 @@ import allure
 import pytest
 from playwright.sync_api import expect
 
+from api.helpers.user_prepare_api import prepare_user_for_tests_via_api
 from ui.pages.admin_stream_groups_page import AdminStreamGroupsPage
 from ui.pages.login_page import LoginPage
 from ui.pages.practical_task_page import PracticalTaskPage
@@ -52,14 +53,6 @@ class TestGroupPracticalTaskFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.groups
-    @pytest.mark.xfail(
-        reason="Дефект стенда develop (см. tests/ui/practical_tasks/test_complete_practical_task.py): "
-               "после API-назначения (assignments.assign на поток) программа не появляется в "
-               "программе слушателя, который логинится впервые — program_title не находится на "
-               "/programs. Групповая часть сценария (создание группы админкой, добавление в неё ПЗ "
-               "и слушателей) уже проверена и проходит в test_create_group_for_stream.py.",
-        strict=False,
-    )
     def test_group_practical_task_flow(
         self, admin_page, browser, env, api_client, tincan_endpoint, assignments_endpoint, homework_endpoint,
         created_stream, created_module, created_homework, created_user,
@@ -93,6 +86,11 @@ class TestGroupPracticalTaskFlow:
                 assert assigned_ok, "Не удалось добавить ПЗ в модуль"
 
                 assignments_endpoint.assign(stream["program_id"], stream["id"], [user1["id"], user2["id"]])
+
+                # Без этого «Моё обучение» показывает только 2 демо-карточки вместо
+                # реально назначенной программы (см. test_complete_practical_task.py).
+                prepare_user_for_tests_via_api(env, user1["email"], user1["password"])
+                prepare_user_for_tests_via_api(env, user2["email"], user2["password"])
 
                 program_name = api_client.get(f"/programs/{stream['program_id']}").json()["data"]["attributes"]["name"]
                 user1_full_name = f"{user1['surname']} {user1['name']} {user1['patronymic']}"
@@ -148,7 +146,9 @@ class TestGroupPracticalTaskFlow:
 
                     reviewer_page = ReviewerPage(page3)
                     reviewer_page.open_practical_tasks_section()
-                    reviewer_page.open_review(user1_full_name, program_name, stream["name"], homework["name_client"])
+                    reviewer_page.open_review(
+                        user1_full_name, program_name, stream["name"], [homework["name_client"], homework["name"]]
+                    )
 
                     with allure.step("6. Скачать файл группового ответа"):
                         download = reviewer_page.download_user_answer()
@@ -164,7 +164,8 @@ class TestGroupPracticalTaskFlow:
                     with allure.step("8. Проверить, что групповое ПЗ отображается во вкладке «Отвечено» с оценкой 4"):
                         reviewer_page.open_answered_tab()
                         reviewer_page.expect_answered(
-                            user1_full_name, program_name, stream["name"], homework["name_client"], "4"
+                            user1_full_name, program_name, stream["name"],
+                            [homework["name_client"], homework["name"]], "4",
                         )
                 finally:
                     context3.close()
