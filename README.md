@@ -473,3 +473,87 @@ pytest --env=develop -m knowledge_base
 - **Статистика базы знаний** (`tests/ui/knowledge_base/admin_statistics/test_01_admin_sees_user_achievement_history.py`,
   `test_02_admin_sees_user_in_knowledge_base_rating.py` у коллеги, 2 теста: история достижений
   пользователя и рейтинг БЗ в админке).
+
+## 12. Перенесено из feature/test-constructor-autotests
+
+Из ветки `origin/feature/test-constructor-autotests` (тот же репозиторий `lms` коллеги Игоря
+Захарова, что и в разделах 10–11) перенесён код (не история коммитов) 18 UI-тестов конструктора
+тестов/опросов/анкет обратной связи (АОС). Перенос — не копирование файлов: сырые `requests` и
+JSON-хелпер коллеги (`tests/api/helpers/test_constructor_prepare_api.py`) заменены на наши
+API-эндпоинты, инлайн-локаторы — на Page Object, а `cleanup_manager`/ручной `try/finally` — на
+фикстуры с teardown через `mass_delete`. Имена файлов тестов не менялись — путь в
+`tests/ui/test_constructor/` у коллеги и у нас совпадает.
+
+### Тесты
+
+| № | Файл (`tests/ui/test_constructor/`, путь одинаковый у обеих веток) | Что тестирует | Статус |
+| --- | --- | --- | --- |
+| 01 | `test_01_admin_creates_test_and_sees_it_in_constructor_table.py` | Админ создаёт тест мастером создания и видит его в таблице конструктора (без `search_by_name` — известный баг поиска по имени, см. раздел «Известные ограничения») | зелёный |
+| 02 | `test_02_admin_creates_test_with_additional_questions.py` | Тест с дополнительным вопросом по теме, появляющимся после неверного ответа на основной вопрос | зелёный |
+| 03 | `test_03_admin_creates_poll_and_sees_it_in_constructor_table.py` | Админ создаёт опрос мастером создания и видит его в таблице конструктора | зелёный |
+| 04 | `test_04_admin_creates_question_theme_in_catalog.py` | Админ создаёт тему вопроса через UI-форму каталога «Темы вопросов» | зелёный |
+| 05 | `test_05_admin_edits_question_theme_in_catalog.py` | Админ переименовывает существующую тему вопроса через UI | зелёный |
+| 06 | `test_06_admin_sees_additional_question_competition.py` | Конкуренция двух основных вопросов за общий дополнительный вопрос по теме | зелёный |
+| 07 | `test_07_admin_adds_question_from_bank_to_test.py` | Админ добавляет готовый вопрос из банка вопросов в тест | зелёный |
+| 08 | `test_08_listener_passes_poll_sequence_by_answer.py` | Слушатель проходит опрос: последовательность вопросов по ответам переводит сразу в целевую группу, минуя промежуточную | зелёный |
+| 09 | `test_09_listener_gets_additional_question_after_wrong_answer.py` | Слушатель получает по очереди дополнительные вопросы по теме после неверного ответа на основной | зелёный |
+| 10 | `test_10_admin_sees_progress_without_additional_questions_in_statistics.py` | Прогресс слушателя в статистике не учитывает дополнительные вопросы по теме | зелёный, 2/2 на develop |
+| 11 | `test_11_admin_adds_poll_question_from_bank_to_poll.py` | Админ добавляет готовый вопрос из банка вопросов в опрос (аналог test_07 для опросов) | зелёный, 2/2 на develop |
+| 12 | `test_12_admin_sees_poll_sequence_settings_in_constructor.py` | Админ видит настроенную последовательность вопросов опроса в открытом конструкторе | зелёный, 2/2 на develop |
+| 13 | `test_13_listener_does_not_get_next_additional_question_after_wrong_additional_answer.py` | Слушатель не получает следующий доп. вопрос после неверного ответа на предыдущий доп. вопрос (регрессия к test_09) | зелёный, 2/2 на develop |
+| 14 | `test_14_listener_finishes_poll_sequence_with_required_skipped_group.py` | Слушатель завершает опрос с последовательностью, минуя группу с обязательным вопросом | зелёный, 2/2 на develop |
+| 15 | `test_15_admin_creates_feedback_with_sequence.py` | Админ создаёт АОС потока, настраивает последовательность вопросов по ответам и активирует анкету | зелёный, 2/2 на develop |
+| 16 | `test_16_authorized_listener_passes_feedback_by_link_with_expert_sequence.py` | Авторизованный слушатель проходит АОС потока по публичной ссылке с ветвлением (группа мероприятия 1 → группа мероприятия 2 → «Организация учебного дня» → «Организация модуля») | зелёный, 2/2 на develop |
+| 17 | `test_17_authorized_listener_passes_stream_feedback_skipping_second_group.py` | Авторизованный слушатель проходит АОС потока, ветка ответа уводит его мимо второй группы мероприятия целиком | зелёный, 2/2 на develop |
+| 18 | `test_18_admin_cannot_activate_feedback_with_unreachable_sequence_group.py` | Админ не может активировать АОС потока с недостижимой (ничем не целевой) группой в последовательности | зелёный, 2/2 на develop |
+
+Тесты 01–09 перенесены поверх фундамента t1, тесты 10–14 и 15–18 — двумя последующими
+партиями (t3 и t4); коммиты `5c0cbb1` и `fe4de04` фиксируют явный итог «все файлы партии
+зелёные 2/2 на develop (`HEADLESS=1`)». Ни один тест не помечен `xfail` — в отличие от разделов
+10–11, для этого переноса дефектов стенда, потребовавших xfail, не возникло (см. раздел
+«Известные ограничения» ниже про два непадающих, но задокументированных расхождения).
+
+### Перенесённые не-тестовые файлы (фундамент t1/t2)
+
+| Источник (`lms`, `feature/test-constructor-autotests`) | Приёмник | Что изменилось при переносе |
+| --- | --- | --- |
+| `tests/api/helpers/test_constructor_prepare_api.py` (сырые `requests`, JSON-подготовка) | `api/endpoints/tests.py` (`create_question`, `set_extra_questions_active`), `api/endpoints/polls.py` (`create_question`, `set_sequence_questions`, `assign_activities`), `api/endpoints/question_bank.py` (новый файл — темы вопросов и банк вопросов) | Логика подготовки вопросов/тем/банка разнесена по нашим API-эндпоинтам (`ApiClient`/`expect_status`) вместо одного файла с сырыми запросами; `question_bank.py` выделен отдельно, т.к. темы и банк логически не относятся ни к тестам, ни к опросам |
+| `src/ui/pages/test_constructor_admin_page.py` (`ConstructorAdminPage`) | `ui/pages/test_constructor_admin_page.py` | Без `allure.step` внутри методов (шаги — в тестах), без ручного логина/закрытия плашки техработ (готовая авторизованная страница из фикстуры `admin_page`), `ui_base_url` передаётся явно; поиск по имени в таблице конструктора помечен как нерабочий (см. ниже) |
+| `src/ui/pages/test_constructor_player_page.py` (`ConstructorPlayerPage`) | `ui/pages/test_constructor_player_page.py` | Без ручного `time.monotonic()`-поллинга (`expect()` на объединённый локатор через `Locator.or_`), закрытие анкеты «данные о себе»/тура/cookie-баннера — через общий `UserSidebarPage.dismiss_popups` |
+| `tests/ui/test_constructor/conftest.py` коллеги | `tests/ui/test_constructor/conftest.py` | Фикстуры создания теста/опроса/темы/вопроса переведены на `tests_endpoint`/`polls_endpoint`/`question_bank_endpoint` с `mass_delete`/`delete_theme` в teardown вместо `cleanup_manager`; добавлена `created_stream_feedback` для АОС потока (фундамент t4) |
+| `tests/ui/test_constructor/feedback_flow.py` коллеги | `tests/ui/test_constructor/feedback_flow.py` | Обобщённые шаги прохождения опроса/АОС слушателем (`pass_group_sequence_by_answer`, `pass_test_with_additional_questions`, `pass_all_groups`) поверх `ConstructorPlayerPage`, без `allure.step` внутри — шаги логирует вызывающий тест |
+
+### Известные ограничения
+
+Оба расхождения ниже — не падения тестов (xfail не понадобился), а задокументированные в
+докстрингах особенности стенда/бэкенда, важные при написании новых тестов конструктора:
+
+- Поиск теста/опроса по имени в таблице конструктора (`ConstructorAdminPage.search_by_name`,
+  `[data-qa="km-search"]`) не работает — известный баг стенда. Тесты 01/03 не используют его для
+  поиска нужной строки в фикстурах: список отсортирован по `created_at desc`, свежесозданная
+  запись — первая (проверено `GET /tests?per-page=25` в разведке).
+- `ConstructorAdminPage.add_single_question_to_group` (метод есть в фундаменте t2) на develop не
+  порождает ожидаемый PUT внутри `expect_response` при выборе последнего таргета ветвления
+  («Завершение теста») — таймаут 30000мс. Недостача зафиксирована в докстринге `test_15_*`, сам
+  метод не правился; ветвление во всех тестах с последовательностью (08, 12, 14, 15, 16, 17, 18)
+  добавлено через `PollsEndpoint.create_question`/`constructor_poll_question` в обход этого
+  метода.
+
+Также на develop подтверждено (без влияния на итог тестов): иконки конструктора рендерятся как
+inline SVG без mdi-классов (`.mdi-pencil`/`.mdi-plus`/`.mdi-file-table-box-outline` не матчатся) —
+в `ConstructorAdminPage` вместо них позиционные/структурные локаторы; `add_question_to_bank`
+требует `parent_id=None` (корневая папка банка) — с `content_id` донора бэкенд отвечает 422
+«Выбранное значение для parent id некорректно»; реальная достижимость групп последовательности
+проверяется бэкендом при активации АОС независимо от `settings.sequence_questions.is_valid` —
+недостижимая группа блокирует `POST .../feedback/{id}/change-active` (400 «Данная версия АОС
+недоступна для активации»).
+
+### Новый маркер и запуск
+
+Зарегистрирован маркер `test_constructor` (`pytest.ini`) — конструктор тестов и опросов
+(админка). Все прогоны при переносе делались только на develop с `HEADLESS=1` (см. раздел 7);
+запускать эти тесты нужно так же:
+
+```bash
+HEADLESS=1 pytest --env=develop -m "ui and test_constructor"
+```
