@@ -47,12 +47,24 @@ docker:build:
     reports:
       junit: results/**/junit.xml
 
-# develop: полный прогон, вручную или по расписанию (Schedules).
-tests:develop:
+# develop: полный прогон, разбит на API и UI, чтобы каждая джоба укладывалась в таймаут проекта (1 ч)
+# и шла параллельно. Обе — по расписанию (Schedules) или вручную.
+tests:develop:api:
   extends: .run_tests
+  timeout: 2h
   variables:
     STAND: "develop"
-    PYTEST_ARGS: ""
+    PYTEST_ARGS: "tests/api"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: manual
+
+tests:develop:ui:
+  extends: .run_tests
+  timeout: 2h
+  variables:
+    STAND: "develop"
+    PYTEST_ARGS: "tests/ui tests/e2e"
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - when: manual
@@ -60,6 +72,7 @@ tests:develop:
 # stage: только вручную, по решению владельца автотестов (там БУК/LPD и e2e, данные общие с командой).
 tests:stage:
   extends: .run_tests
+  timeout: 2h
   variables:
     STAND: "stage"
     PYTEST_ARGS: ""
