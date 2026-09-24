@@ -418,7 +418,61 @@ class ConstructorAdminPage(BasePage):
         second_counter = second_question.locator(".constructor-widget-counter")
         expect(second_counter).to_contain_text("Количество дополнительных вопросов после неправильного ответа", timeout=30000)
         expect(second_counter.locator('input[type="number"]')).to_have_value("0", timeout=30000)
-        expect(second_counter.locator("button", has=self.page.locator(".mdi-plus"))).to_be_disabled(timeout=30000)
+        # Кнопка «+» — вторая (последняя) из двух: иконка рендерится как inline SVG
+        # без класса .mdi-plus (тот же разрыв с версией коллеги, что и в
+        # edit_question_theme_via_ui — разведано на develop).
+        expect(second_counter.locator("button").last).to_be_disabled(timeout=30000)
+
+    # ── Каталог тем вопросов ─────────────────────────────────────────────
+    # Перенос src/ui/pages/catalogs_page.py коллеги (CatalogsPage) — отдельного
+    # Page Object в нашей архитектуре для этого не заводим (в задаче явно указано
+    # «Локаторы только в Page Object (test_constructor_admin_page.py)»), поэтому
+    # методы каталога тем вопросов живут здесь же.
+
+    def open_question_themes_catalog(self, ui_base_url: str) -> None:
+        self.page.goto(f"{ui_base_url.rstrip('/')}/admin/catalogs/test-themes")
+        expect(self.page).to_have_url(re.compile(r".*/admin/catalogs/test-themes.*"), timeout=30000)
+        expect(self.page.get_by_role("button", name=re.compile(r"Добавить\s+тему вопроса"))).to_be_visible(timeout=30000)
+
+    def create_question_theme_via_ui(self, theme_name: str) -> None:
+        self.page.get_by_role("button", name=re.compile(r"Добавить\s+тему вопроса")).click()
+
+        modal = self.page.locator(".v-dialog--active")
+        expect(modal).to_be_visible(timeout=30000)
+        expect(modal).to_contain_text("Добавить тему вопроса")
+
+        modal.get_by_role("textbox", name="Введите название").fill(theme_name)
+        modal.get_by_role("button", name="Сохранить").click()
+        expect(modal).not_to_be_visible(timeout=30000)
+
+    def search_question_theme_by_name(self, theme_name: str) -> None:
+        search_input = self.page.get_by_placeholder("Поиск")
+        expect(search_input).to_be_visible(timeout=15000)
+        search_input.fill(theme_name)
+        expect(self.page.locator("tr", has_text=theme_name)).to_be_visible(timeout=30000)
+
+    def edit_question_theme_via_ui(self, current_theme_name: str, new_theme_name: str) -> None:
+        """Кнопка редактирования — первая в строке (иконка карандаша рендерится как
+        inline SVG без класса .mdi-pencil, в отличие от версии коллеги: за ней вторым
+        стоит удаление, см. разведку _scout_theme_edit.py на develop)."""
+        row = self.page.locator("tr", has_text=current_theme_name)
+        expect(row).to_be_visible(timeout=30000)
+        row.locator("button").first.click()
+
+        modal = self.page.locator(".v-dialog--active")
+        expect(modal).to_be_visible(timeout=30000)
+        expect(modal).to_contain_text("Редактировать тему вопроса")
+
+        name_input = modal.get_by_role("textbox", name="Введите название")
+        expect(name_input).to_have_value(current_theme_name, timeout=30000)
+        name_input.fill(new_theme_name)
+        modal.get_by_role("button", name="Сохранить").click()
+        expect(modal).not_to_be_visible(timeout=30000)
+
+    def assert_question_theme_row_visible(self, theme_name: str) -> None:
+        row = self.page.locator("tr", has_text=theme_name)
+        expect(row).to_be_visible(timeout=30000)
+        expect(row).to_contain_text(theme_name)
 
     # ── Банк вопросов ────────────────────────────────────────────────────
 
@@ -445,10 +499,17 @@ class ConstructorAdminPage(BasePage):
         self.page.wait_for_load_state("networkidle", timeout=30000)
 
     def assert_bank_question_added_to_constructor(self, bank_question_text: str) -> None:
+        """Иконка связи с банком вопросов — inline SVG без класса
+        .mdi-file-table-box-outline (тот же разрыв с версией коллеги, что и в
+        edit_question_theme_via_ui/assert_additional_question_competition_visible,
+        разведано на develop): span[aria-haspopup="true"] в заголовке вопроса,
+        в отличие от кнопки меню «...» (тоже aria-haspopup, но это <button>)."""
         question_textarea = self.page.locator('textarea[placeholder="Вопрос"]').last
         expect(question_textarea).to_have_value(bank_question_text, timeout=30000)
         question = question_textarea.locator("xpath=ancestor::div[contains(@class, 'constructor-questions-item')]").first
-        expect(question.locator(".mdi-file-table-box-outline")).to_be_visible(timeout=30000)
+        expect(
+            question.locator(".constructor-questions-item-header__content span[aria-haspopup='true']")
+        ).to_be_visible(timeout=30000)
 
     # ── Последовательность опроса ───────────────────────────────────────
 
