@@ -92,6 +92,19 @@ class AdminKnowledgeBasePage(BasePage):
         save_button.click(timeout=5000)
         expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/achievements/created.*"), timeout=15000)
 
+    def save_achievement_and_get_id(self) -> int:
+        """Сохранить достижение и вернуть его ID из ответа POST-запроса (для teardown через API —
+        в форме админки ID достижения нигде не отображается)."""
+        save_button = self.page.get_by_role("button", name="Сохранить")
+        expect(save_button).to_be_visible(timeout=15000)
+        with self.page.expect_response(
+            lambda resp: "/admin/achievements" in resp.url and resp.request.method == "POST"
+        ) as resp_info:
+            save_button.click(timeout=5000)
+        achievement_id = resp_info.value.json()["data"]["id"]
+        expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/achievements/created.*"), timeout=15000)
+        return achievement_id
+
     def expect_achievement_created(self, name: str) -> None:
         expect(self.page.locator('a[href="/admin/knowledge-base/achievements/new"]')).to_be_visible(timeout=15000)
         self.page.reload()
@@ -107,14 +120,15 @@ class AdminKnowledgeBasePage(BasePage):
         icon_path: Union[str, Path],
         material_type: str = "Статья",
         count: str = "1",
-    ) -> None:
+    ) -> int:
         self.open_achievements_create_form(ui_base_url)
         self.fill_achievement_name(name)
         self.fill_achievement_description(description)
         self.upload_achievement_icon(icon_path)
         self.add_material_count_condition(material_type=material_type, count=count)
-        self.save_achievement()
+        achievement_id = self.save_achievement_and_get_id()
         self.expect_achievement_created(name)
+        return achievement_id
 
     def create_achievement_with_material_count_icon_for_type(
         self,
@@ -125,7 +139,7 @@ class AdminKnowledgeBasePage(BasePage):
         icon_path: Union[str, Path],
         material_type: str,
         count: str = "1",
-    ) -> None:
+    ) -> int:
         """create_achievement_with_material_count_icon с типом материала как ключом API
         (article/video/audio/book/file/course) вместо русской подписи UI."""
         self.open_achievements_create_form(ui_base_url)
@@ -133,8 +147,9 @@ class AdminKnowledgeBasePage(BasePage):
         self.fill_achievement_description(description)
         self.upload_achievement_icon(icon_path)
         self.add_material_count_condition_for_type(material_type=material_type, count=count)
-        self.save_achievement()
+        achievement_id = self.save_achievement_and_get_id()
         self.expect_achievement_created(name)
+        return achievement_id
 
     # ── Статья в БЗ ──────────────────────────────────────────────────────
 
@@ -142,11 +157,14 @@ class AdminKnowledgeBasePage(BasePage):
         self.page.goto(f"{admin_base_url.rstrip('/')}/admin/knowledge-base/material")
         expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/material$"), timeout=15000)
 
-    def select_material_type_article(self) -> None:
+    def select_material_type(self, label: str) -> None:
         self.page.locator(".v-input__append-inner").first.click(timeout=5000)
-        option = self.page.get_by_text("Статья", exact=True)
+        option = self.page.get_by_text(label, exact=True)
         expect(option).to_be_visible(timeout=10000)
         option.click(timeout=5000)
+
+    def select_material_type_article(self) -> None:
+        self.select_material_type("Статья")
 
     def fill_material_name(self, name: str) -> None:
         field = self.page.get_by_label("Название материала")
@@ -162,6 +180,39 @@ class AdminKnowledgeBasePage(BasePage):
         editor = self.page.locator(".fr-element[contenteditable='true']").first
         expect(editor).to_be_visible(timeout=10000)
         editor.fill(text, timeout=5000)
+
+    def fill_material_description(self, text: str) -> None:
+        """Для типов видео/аудио/книга/файл поле «Описание» — тот же редактор
+        (единственный .fr-element на форме), что и «Текст статьи» у типа «Статья»."""
+        self.fill_article_text(text)
+
+    def set_material_duration(self, hours: str = "0", minutes: str = "1") -> None:
+        """Поля «Часы»/«Минуты» — есть только у видео и аудио."""
+        hours_field = self.page.get_by_label("Часы", exact=True)
+        expect(hours_field).to_be_visible(timeout=10000)
+        hours_field.fill(hours, timeout=5000)
+        minutes_field = self.page.get_by_label("Минуты", exact=True)
+        expect(minutes_field).to_be_visible(timeout=10000)
+        minutes_field.fill(minutes, timeout=5000)
+
+    def upload_material_content_file(self, path: Union[str, Path], accept_hint: str) -> None:
+        """Загрузка контентного файла материала (не обложки — у обложки accept=".jpeg,.jpg,.png",
+        поэтому оба input[type=file] на форме различаются через accept_hint, напр. ".mp4"/".mp3"/".pdf").
+        Дожидается ответа /upload/material_files — без этого «Сохранить» можно нажать раньше,
+        чем файл прикрепится к материалу, и он сохранится без file_uuid (гонка, найдено при переносе)."""
+        file_input = self.page.locator(f'input[type="file"][accept*="{accept_hint}"]')
+        with self.page.expect_response(lambda resp: "/upload/material_files" in resp.url, timeout=30000):
+            file_input.set_input_files(str(path), timeout=10000)
+
+    def select_material_course(self, course_name: str) -> None:
+        """Тип материала «Курс»: выбрать уже существующий курс (Tincan) из автокомплита."""
+        field = self.page.get_by_label("Выбрать курс")
+        expect(field).to_be_visible(timeout=15000)
+        field.click(timeout=5000)
+        field.fill(course_name, timeout=5000)
+        option = self.page.get_by_text(course_name, exact=True)
+        expect(option).to_be_visible(timeout=15000)
+        option.click(timeout=5000)
 
     def save_material(self) -> None:
         save_button = self.page.locator("button.confirm__btn-ok")
