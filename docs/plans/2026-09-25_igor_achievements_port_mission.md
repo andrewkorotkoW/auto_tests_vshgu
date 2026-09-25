@@ -37,8 +37,12 @@ tests/ui/knowledge_base/admin_statistics/
   test_admin_sees_user_in_knowledge_base_rating.py
 ```
 
-Итого 11 тестов (6 + 3 + 2). Запускать только их:
-`pytest tests/ui/knowledge_base/user_achievements tests/ui/knowledge_base/admin_statistics --env develop -q`,
+Плюс один маленький тест, которого тоже нет в нашем слое: `tests/ui/test_admin_login_and_go_to_admin.py`
+у коллеги (`test_admin_can_enter_admin_panel`: админ входит по логину/паролю и переходит в админ-панель).
+Перенести как `tests/ui/users/test_admin_enters_admin_panel.py` (один тест, через форму логина, а не storage_state).
+
+Итого 12 тестов (6 + 3 + 2 + 1). Запускать только их:
+`pytest tests/ui/knowledge_base/user_achievements tests/ui/knowledge_base/admin_statistics tests/ui/users/test_admin_enters_admin_panel.py --env develop -q`,
 прогон приложить (стабильно 2 раза подряд).
 
 ## Тест-кейсы в Test IT (владелец разрешил заливку для этой миссии)
