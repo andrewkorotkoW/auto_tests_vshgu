@@ -66,10 +66,13 @@ class ApiClient:
     def upload(self, endpoint: str, files: dict, data: dict = None) -> requests.Response:
         url = f"{self.base_url}{endpoint}"
         logger.info(f"UPLOAD {url}")
-        # Для upload не задаём Content-Type — requests сам сформирует с boundary
+        # Content-Type: None снимает session-заголовок application/json (выставлен в __init__) —
+        # иначе requests не подставит multipart/form-data с boundary и файл не уйдёт
+        # (тот же приём, что в api/endpoints/tincan.py, но через requests, а не curl).
         headers = {
             "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest"
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": None,
         }
         resp = self.session.post(url, files=files, data=data, headers=headers, timeout=self.timeout)
         logger.info(f"Response [{resp.status_code}]: {resp.text[:300]}")
