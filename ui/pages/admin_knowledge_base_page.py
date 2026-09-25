@@ -254,3 +254,60 @@ class AdminKnowledgeBasePage(BasePage):
         self.fill_article_text(article_text)
         self.save_material()
         self.expect_material_created(name)
+
+    # ── История полученных достижений (админка) ────────────────────────────
+
+    def open_achievement_history(self, ui_base_url: str) -> None:
+        self.page.goto(f"{ui_base_url.rstrip('/')}/admin/knowledge-base/achievements/history")
+        expect(self.page).to_have_url(
+            re.compile(r".*/admin/knowledge-base/achievements/history.*"), timeout=60000
+        )
+        expect(self.page.get_by_text("Дата получения", exact=True)).to_be_visible(timeout=30000)
+
+    def search_achievement_history_by_user(self, full_name: str) -> None:
+        search_input = self.page.get_by_placeholder("Поиск")
+        expect(search_input).to_be_visible(timeout=15000)
+        with self.page.expect_response(
+            lambda resp: (
+                "/admin/achievements/users" in resp.url
+                and "filters%5Bfull_name%5D" in resp.url
+                and resp.request.method == "GET"
+            ),
+            timeout=30000,
+        ):
+            search_input.fill(full_name, timeout=5000)
+
+    def expect_user_achievement_in_history(self, full_name: str, achievement_name: str) -> None:
+        row = self.page.locator("tr").filter(
+            has=self.page.get_by_text(full_name, exact=True)
+        ).filter(
+            has=self.page.get_by_text(achievement_name, exact=True)
+        )
+        expect(row).to_be_visible(timeout=30000)
+
+    # ── Рейтинг Базы знаний (админка) ───────────────────────────────────────
+
+    def open_knowledge_base_rating(self, ui_base_url: str) -> None:
+        self.page.goto(f"{ui_base_url.rstrip('/')}/admin/knowledge-base/rating")
+        expect(self.page).to_have_url(re.compile(r".*/admin/knowledge-base/rating.*"), timeout=60000)
+        expect(self.page.get_by_text("Позиция", exact=True)).to_be_visible(timeout=30000)
+        expect(self.page.get_by_text("Итого", exact=True)).to_be_visible(timeout=30000)
+
+    def search_rating_by_user(self, full_name: str) -> None:
+        search_input = self.page.get_by_placeholder("Поиск")
+        expect(search_input).to_be_visible(timeout=15000)
+        with self.page.expect_response(
+            lambda resp: (
+                "/knowledge-base/admin/material-statistics" in resp.url
+                and "filters%5Bname%5D" in resp.url
+                and resp.request.method == "GET"
+            ),
+            timeout=30000,
+        ):
+            search_input.fill(full_name, timeout=5000)
+
+    def rating_row(self, full_name: str):
+        return self.page.locator("tr").filter(has=self.page.get_by_text(full_name, exact=True))
+
+    def expect_user_in_rating(self, full_name: str) -> None:
+        expect(self.rating_row(full_name)).to_be_visible(timeout=30000)

@@ -1,4 +1,8 @@
-from typing import Dict
+import mimetypes
+import time
+from pathlib import Path
+from typing import Dict, Optional
+
 from api.client import ApiClient
 from utils.logger import logger
 from api.helpers.expectations import expect_status
@@ -53,6 +57,80 @@ class KnowledgeBaseEndpoint:
         resp = self.client.get("/knowledge-base/admin/tags")
         expect_status(resp, 200)
         return resp.json()["data"]["tags"]
+
+    def upload_material_file(self, file_path, content_type: Optional[str] = None) -> Dict:
+        """Загрузка файла контента материала (аудио/видео/книга/файл) — /upload/material_files.
+        Возвращает элемент data[0] (uuid + attributes) для поля files при создании материала."""
+        file_path = Path(file_path)
+        guessed_type = content_type or mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+        with file_path.open("rb") as fh:
+            resp = self.client.upload(
+                "/upload/material_files",
+                files={"files[0]": (file_path.name, fh, guessed_type)},
+            )
+        expect_status(resp, (200, 201))
+        files = resp.json().get("data")
+        if not isinstance(files, list) or not files or not files[0].get("uuid"):
+            raise AssertionError(f"Ответ загрузки файла материала без uuid: {resp.text[:500]}")
+        return files[0]
+
+    def create_article_material(self, name: str, article_text: str, is_visible: bool = True,
+                                 short_description: str = "", description: str = "") -> Dict:
+        """Создание материала БЗ типа «Статья» — текст статьи передаётся напрямую (без файла)."""
+        payload = {
+            "data": {
+                "id": None,
+                "name": name,
+                "short_description": short_description,
+                "type": "article",
+                "is_visible": is_visible,
+                "description": description,
+                "article_text": article_text,
+                "cover_uuid": "",
+                "duration": 0,
+                "files": [],
+                "authors": [{"name": "AQA", "avatar_url": "", "avatar_uuid": ""}],
+                "bundles": [],
+                "categories": [],
+                "competencies": [],
+                "tags": [],
+                "professional_areas": [],
+            }
+        }
+        return self.create_material(payload)
+
+    def create_file_material(self, name: str, material_type: str, file_path, content_type: Optional[str] = None,
+                              duration: int = 0, is_visible: bool = True,
+                              short_description: str = "", description: str = "") -> Dict:
+        """Создание материала БЗ с файлом контента (типы аудио/видео/книга/файл): сначала
+        загружает файл через upload_material_file, затем создаёт материал с полученным uuid."""
+        uploaded_file = self.upload_material_file(file_path, content_type=content_type)
+        payload = {
+            "data": {
+                "id": None,
+                "name": name,
+                "short_description": short_description,
+                "type": material_type,
+                "is_visible": is_visible,
+                "description": description,
+                "article_text": "",
+                "cover_uuid": "",
+                "duration": duration,
+                "files": [
+                    {
+                        "file_uuid": uploaded_file["uuid"],
+                        "attributes": uploaded_file.get("attributes", {}),
+                    }
+                ],
+                "authors": [],
+                "bundles": [],
+                "categories": [],
+                "competencies": [],
+                "tags": [],
+                "professional_areas": [],
+            }
+        }
+        return self.create_material(payload)
 
     def create_course_material(self, name: str, content_id: int, is_visible: bool = True,
                                 short_description: str = "", description: str = "") -> Dict:
@@ -118,6 +196,29 @@ class KnowledgeBaseEndpoint:
         }
         return self.create_achievement(payload)
 
+    @staticmethod
+    def material_set_condition(material_id: int) -> dict:
+        """Условие достижения «конкретный материал изучен» (в отличие от material_count,
+        где считается количество материалов заданного типа)."""
+        return {
+            "type": "material_set",
+            "entity_type": "knowledge_base_material",
+            "entity_id": material_id,
+        }
+
+    def create_achievement_with_conditions(self, name: str, description: str, conditions: list,
+                                            is_active: bool = True) -> Dict:
+        """Достижение с произвольным списком условий — для составных достижений
+        (несколько material_set условий, например «аудио + книга»)."""
+        payload = {
+            "name": name,
+            "description": description,
+            "is_active": is_active,
+            "icon_uuid": self.get_default_achievement_icon_uuid(),
+            "conditions": conditions,
+        }
+        return self.create_achievement(payload)
+
     def list_achievements(self, name_filter: str = "", per_page: int = 25, page: int = 1) -> list:
         """Список достижений (админка), с опциональным фильтром по названию."""
         endpoint = f"/admin/achievements?per-page={per_page}&page={page}"
@@ -153,3 +254,69 @@ class KnowledgeBaseEndpoint:
         else:
             logger.warning(f"Delete achievement failed: {resp.status_code} {resp.text[:200]}")
         return success
+
+    def wait_user_achievement(self, full_name: str, achievement_name: str,
+                               timeout: int = 120, interval: int = 5) -> Dict:
+        """Опрашивает историю полученных достижений (get_user_achievements), пока в ней не
+        появится запись с нужным названием достижения — начисление происходит асинхронно."""
+        deadline = time.monotonic() + timeout
+        last_history: list = []
+        while time.monotonic() < deadline:
+            last_history = self.get_user_achievements(full_name)
+            for user_achievement in last_history:
+                if (user_achievement.get("achievement") or {}).get("name") == achievement_name:
+                    return user_achievement
+            time.sleep(interval)
+        raise AssertionError(
+            f"Достижение «{achievement_name}» не появилось в истории пользователя «{full_name}» "
+            f"за {timeout}с. Последняя история: {last_history}"
+        )
+
+    # ── Прохождение материала слушателем, статистика ───────────────────────
+
+    def launch_material_assignment(self, material_id: int) -> Dict:
+        """POST — фиксирует начало изучения материала слушателем (клиент должен быть
+        создан с пользовательской, не админской, сессией)."""
+        resp = self.client.post(f"/knowledge-base/materials/{material_id}/assignment")
+        expect_status(resp, (200, 201))
+        return resp.json().get("data", {})
+
+    def complete_material_assignment(self, material_id: int) -> Dict:
+        """PUT — фиксирует завершение изучения материала слушателем."""
+        resp = self.client.put(f"/knowledge-base/materials/{material_id}/assignment")
+        expect_status(resp, 200)
+        return resp.json().get("data", {})
+
+    def pass_material_via_api(self, material_id: int) -> None:
+        """API fallback для завершения изучения материала — запуск + завершение назначения.
+        Используется как подстраховка к UI-действию (дочитать/дослушать/досмотреть до конца),
+        когда фиксация прогресса медиа в браузере ненадёжна (см. перенос coллеги)."""
+        self.launch_material_assignment(material_id)
+        self.complete_material_assignment(material_id)
+
+    def get_material_statistics(self, full_name: str, per_page: int = 25, page: int = 1) -> list:
+        """Статистика изученных материалов по пользователям («Рейтинг» в админке)."""
+        endpoint = (
+            f"/knowledge-base/admin/material-statistics?per-page={per_page}&page={page}"
+            f"&filters[name]={full_name}"
+        )
+        resp = self.client.get(endpoint)
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
+
+    def wait_material_statistics(self, full_name: str, expected: dict,
+                                  timeout: int = 120, interval: int = 5) -> Dict:
+        """Опрашивает get_material_statistics, пока значения полей из expected (например
+        {"article": 1, "total": 1}) не совпадут — статистика обновляется асинхронно."""
+        deadline = time.monotonic() + timeout
+        last_statistics: list = []
+        while time.monotonic() < deadline:
+            last_statistics = self.get_material_statistics(full_name)
+            for row in last_statistics:
+                if all(int(row.get(key, 0)) == value for key, value in expected.items()):
+                    return row
+            time.sleep(interval)
+        raise AssertionError(
+            f"Статистика материалов пользователя «{full_name}» не обновилась до {expected} "
+            f"за {timeout}с. Последняя статистика: {last_statistics}"
+        )
