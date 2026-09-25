@@ -133,6 +133,33 @@ class AdminUsersPage(BasePage):
 
         expect(self.assignment_row(pz_name)).to_be_visible(timeout=30000)
 
+    def select_region(self, value: str) -> None:
+        """Выбрать значение справочника region в поле «Регион» формы создания/редактирования
+        пользователя (/admin/users/create) — единственный справочник-select в этой форме,
+        см. ui/pages/admin_dictionaries_page.py. В отличие от «Вид программы»/«Стоимостная
+        группа» формы потока (admin_programs_page.py) это полноценный поисковый автокомплит:
+        ввод текста подсвечивает совпадение (`v-list-item__mask`) и сужает список вплоть до
+        единственного пункта — проверено вручную на develop для «Москва»."""
+        select_locator = self.page.locator(
+            "xpath=//label[normalize-space()='Регион']/ancestor::div[contains(@class,'v-input')][1]"
+        )
+        expect(select_locator).to_be_visible(timeout=15000)
+        select_locator.click(timeout=15000)
+        select_locator.locator("input").first.fill(value, timeout=5000)
+        # debounce фильтрации списка — без паузы результат иногда не успевает подгрузиться
+        self.page.wait_for_timeout(800)
+
+        list_id = select_locator.get_attribute("aria-owns")
+        if list_id:
+            option = self.page.locator(f"#{list_id} >> xpath=.//div[contains(@class,'v-list-item__content')]").first
+        else:
+            option = self.page.locator(
+                "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
+                "//div[contains(@class,'v-list-item__content')]"
+            ).first
+        expect(option).to_be_visible(timeout=15000)
+        option.click(timeout=5000)
+
     def tooltip_of(self, chip: Locator) -> Optional[str]:
         """Навести курсор на чип и вернуть текст всплывающей подсказки (v-tooltip)."""
         self.page.mouse.move(0, 0)

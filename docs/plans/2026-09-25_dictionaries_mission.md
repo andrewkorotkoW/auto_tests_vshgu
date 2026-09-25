@@ -92,3 +92,24 @@ value for enum Dictionaries\Enums\DictionaryType`) вместо ожидаемо
 
 Тесты (`tests/api/dictionaries/...`) в этой задаче не писались — по ТЗ их делает
 dwight отдельно.
+
+## Уточнение (задача UI Page Object, 25.09.2026)
+
+Раздел «Справочники» в боковом меню админки **есть** — вывод выше о его отсутствии
+неверен. Причина, почему обход сайдбара его не нашёл: у пункта «Справочники» нет
+своего `href` — это `<div class="v-list-item__title">`, разворачивающий вложенный
+список ссылок по клику (Vuetify `v-list-group`), а не `<a class="menu__item">`, как у
+остальных пунктов верхнего уровня. Проверено вручную на develop: клик по заголовку
+раскрывает 6 ссылок с полноценным CRUD (таблица + модалки создание/редактирование/
+удаление, round-trip проверен через Page Object):
+
+    /admin/catalogs/programs        «Вид программы»            program_type
+    /admin/catalogs/forms           «Форма реализации»         learning_format
+    /admin/catalogs/departments     «Подразделение реализации» program_department
+    /admin/catalogs/regions         «Регионы»                  region
+    /admin/catalogs/municipalities  «Муниципалитеты»           municipality
+    /admin/catalogs/test-themes     «Темы вопросов»            tag
+
+Типов `project` и `program_level` среди этих 6 ссылок нет — они по-прежнему только
+через API, отдельной страницы в админке для них нет (это единственная часть исходного
+вывода, которая подтвердилась). См. `ui/pages/admin_dictionaries_page.py`.
