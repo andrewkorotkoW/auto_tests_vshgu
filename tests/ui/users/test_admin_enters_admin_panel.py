@@ -28,8 +28,8 @@ class TestAdminEntersAdminPanel:
             expect(page).not_to_have_url(re.compile(r".*/auth/(main|login)$"), timeout=30000)
 
         with allure.step("2. Открыть админ-панель"):
-            page.goto(f"{env.ui_base_url.rstrip('/')}/admin")
-            expect(page).to_have_url(re.compile(r".*/admin(/.*)?$"), timeout=30000)
+            page.goto(f"{env.ui_base_url.rstrip('/')}/admin/programs")
+            expect(page).to_have_url(re.compile(r".*/admin/programs.*"), timeout=30000)
             expect(page).not_to_have_url(re.compile(r".*/(auth|404)"), timeout=5000)
 
         with allure.step("3. В админ-панели виден раздел «База Программ»"):
