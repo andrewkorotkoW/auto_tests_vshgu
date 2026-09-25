@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import pytest
+import requests
 
 from tools.test_cases.testit_sync import (
     TestItClient,
@@ -207,6 +208,34 @@ def test_dry_run_rerun_gives_identical_plan(tmp_path, monkeypatch):
     assert first == second
 
 
+def test_dry_run_never_touches_requests_even_when_config_is_present(tmp_path, monkeypatch):
+    """--dry-run не должен звать сеть даже когда TESTIT_* заданы — в отличие от других
+    dry-run тестов здесь env-переменные заполнены, поэтому единственная гарантия отсутствия
+    сети — то, что дефолтный (без --apply) режим main() никогда не создаёт TestItClient."""
+    monkeypatch.setenv("TESTIT_URL", "https://testit.example")
+    monkeypatch.setenv("TESTIT_TOKEN", "secret-token")
+    monkeypatch.setenv("TESTIT_PROJECT_ID", "42")
+    docs_dir = tmp_path / "docs" / "test_cases"
+    _write_doc(docs_dir)
+    export_path = tmp_path / "workspace" / "testit_export.json"
+
+    def _boom(self, url, *a, **k):
+        raise AssertionError(f"дефолтный (dry-run) режим не должен звать сеть: {url}")
+
+    for method in ("get", "post", "put"):
+        monkeypatch.setattr(requests.Session, method, _boom)
+        monkeypatch.setattr(requests, method, _boom)
+
+    exit_code = main(["--docs-dir", str(docs_dir), "--export", str(export_path)])
+
+    assert exit_code == 0
+    payload = json.loads(export_path.read_text(encoding="utf-8"))
+    assert payload["areas"][0]["work_items"][0]["action"] == "create"
+    assert payload["areas"][0]["section"] == {
+        "projectId": "42", "name": "widgets", "parentId": None,
+    }
+
+
 def test_load_config_reports_missing_vars(monkeypatch):
     for name in ("TESTIT_URL", "TESTIT_TOKEN", "TESTIT_PROJECT_ID"):
         monkeypatch.delenv(name, raising=False)
@@ -368,3 +397,83 @@ def test_apply_finds_existing_work_item_by_name_and_autotest_tag_when_id_not_sto
     assert applied[0].work_item_id == "555"
     create_calls = [url for method, url, _ in session.calls if method == "POST" and url.endswith("/workItems")]
     assert create_calls == []  # не создан дубль — найден и обновлён существующий
+
+
+# ------------------------------------------------------------ --apply через CLI, requests замокан на уровне класса
+
+
+class _FakeTestItBackend:
+    """Состояние Test IT сервера для теста ниже. В отличие от FakeSession (внедряется через
+    TestItClient(session=...)), здесь requests.Session.get/post/put патчатся на уровне класса —
+    так что через них проходит even the real requests.Session(), созданная внутри main()/
+    TestItClient без переданного session. Так проверяется путь --apply целиком через CLI."""
+
+    def __init__(self):
+        self.sections = []
+        self.work_items = {}
+        self._next_id = 100
+        self.calls = []
+
+    def _new_id(self):
+        self._next_id += 1
+        return self._next_id
+
+    def get(self, url, **kwargs):
+        self.calls.append(("GET", url))
+        assert url.endswith("/sections")
+        return FakeResponse(self.sections)
+
+    def post(self, url, json=None, **kwargs):
+        self.calls.append(("POST", url, json))
+        if url.endswith("/sections"):
+            section = {"id": self._new_id(), "name": json["name"]}
+            self.sections.append(section)
+            return FakeResponse(section)
+        if url.endswith("/workItems/search"):
+            return FakeResponse([])
+        if url.endswith("/workItems"):
+            item = {"id": self._new_id(), **json}
+            self.work_items[item["id"]] = item
+            return FakeResponse(item)
+        raise AssertionError(f"unexpected POST {url}")
+
+    def put(self, url, json=None, **kwargs):
+        self.calls.append(("PUT", url, json))
+        return FakeResponse(json)
+
+
+def test_apply_via_cli_with_requests_session_monkeypatched_updates_on_rerun_without_duplicate(
+    tmp_path, monkeypatch,
+):
+    monkeypatch.setenv("TESTIT_URL", "https://testit.example")
+    monkeypatch.setenv("TESTIT_TOKEN", "secret-token")
+    monkeypatch.setenv("TESTIT_PROJECT_ID", "42")
+    docs_dir = tmp_path / "docs" / "test_cases"
+    doc_path = _write_doc(docs_dir)
+
+    backend = _FakeTestItBackend()
+    monkeypatch.setattr(requests.Session, "get", lambda self, url, **k: backend.get(url, **k))
+    monkeypatch.setattr(requests.Session, "post", lambda self, url, json=None, **k: backend.post(url, json=json, **k))
+    monkeypatch.setattr(requests.Session, "put", lambda self, url, json=None, **k: backend.put(url, json=json, **k))
+
+    exit_code = main(["--docs-dir", str(docs_dir), "--apply"])
+    assert exit_code == 0
+
+    create_calls_after_first = [c for c in backend.calls if c[0] == "POST" and c[1].endswith("/workItems")]
+    assert len(create_calls_after_first) == 2  # по одному work item на каждый из 2 кейсов фикстуры
+
+    text_after_first = doc_path.read_text(encoding="utf-8")
+    assert text_after_first.count("- Test IT: ") == 2  # id обоих кейсов дописан в md
+
+    # повторный --apply: id уже в md, второй прогон обязан обновить, а не создать заново
+    exit_code_2 = main(["--docs-dir", str(docs_dir), "--apply"])
+    assert exit_code_2 == 0
+
+    create_calls_total = [c for c in backend.calls if c[0] == "POST" and c[1].endswith("/workItems")]
+    assert len(create_calls_total) == 2  # второй прогон не добавил новых POST /workItems
+
+    update_calls = [c for c in backend.calls if c[0] == "PUT" and "/workItems/" in c[1]]
+    assert len(update_calls) == 2  # второй прогон ушёл именно в PUT /workItems/{id}
+
+    section_create_calls = [c for c in backend.calls if c[0] == "POST" and c[1].endswith("/sections")]
+    assert len(section_create_calls) == 1  # секция создана единожды, второй прогон нашёл её через GET
