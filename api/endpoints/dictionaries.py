@@ -8,7 +8,10 @@ from utils.logger import logger
 class DictionariesEndpoint:
     """Методы для работы со справочниками (/api/v1/dictionaries/*) — общий REST-ресурс
     на все типы (поле `type`, backing enum Dictionaries\\Enums\\DictionaryType на
-    бэкенде, отдельного пункта «Справочники» в левом меню админки нет). Известные по
+    бэкенде). В админке есть раздел «Справочники» с CRUD-страницами для части типов
+    (program_type/learning_format/program_department/region/municipality/tag, см.
+    ui/pages/admin_dictionaries_page.py и уточнение в docs/plans/2026-09-25_dictionaries_mission.md);
+    project/program_level своей страницы не имеют — только через этот API. Известные по
     разведке типы и где они используются как поля форм:
       - project, program_level, program_department, program_type, learning_format —
         обязательные селекты формы создания потока программы (/admin/programs/{id}/streams/create:

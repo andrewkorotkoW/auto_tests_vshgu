@@ -200,6 +200,35 @@ class AdminProgramsPage(BasePage):
     def select_program_form(self) -> None:
         self._select_by_label("Форма реализации")
 
+    def select_program_type_value(self, value: str) -> None:
+        """Как select_program_type(), но выбирает конкретное значение справочника
+        program_type (см. ui/pages/admin_dictionaries_page.py), а не первый попавшийся
+        пункт — селект «Вид программы» фильтрует список по вводу (не combobox: набор
+        текста без совпадения даёт «Нет данных», см. docs/plans/2026-09-25_dictionaries_mission.md),
+        поэтому можно допечатать точное имя элемента и выбрать именно его."""
+        select_locator = self.page.locator(
+            "xpath=//label[contains(normalize-space(),'Вид программы')]"
+            "/ancestor::div[contains(@class,'v-input')][1]"
+        )
+        expect(select_locator).to_be_visible(timeout=15000)
+        select_locator.click(timeout=15000)
+        select_locator.locator("input").first.fill(value, timeout=5000)
+        # debounce фильтрации списка — без паузы результат иногда не успевает подгрузиться
+        self.page.wait_for_timeout(800)
+
+        list_id = select_locator.get_attribute("aria-owns")
+        if list_id:
+            option = self.page.locator(
+                f"#{list_id} >> xpath=.//div[contains(@class,'v-list-item__content')][normalize-space()='{value}']"
+            )
+        else:
+            option = self.page.locator(
+                "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
+                f"//div[contains(@class,'v-list-item__content') and normalize-space()='{value}']"
+            )
+        expect(option.first).to_be_visible(timeout=15000)
+        option.first.click(timeout=5000)
+
     def fill_total_load(self, value: str = "100") -> None:
         field = self.page.locator("xpath=//label[contains(text(),'Общий объем')]/following::input[@type='text'][1]")
         expect(field).to_be_visible(timeout=15000)
