@@ -806,3 +806,26 @@ list/update/delete по типам без обязательного доп. `me
   зависеть от подобранных id, замеченного поведения достаточно для отчёта задачи) — при желании
   можно воспроизвести детерминированно через `created_dictionary_item(dictionary_type="tag")` +
   `generate_stream_payload(project=<tag_item_id>)`.
+
+### UI
+
+`tests/ui/dictionaries/` (5 тестов, маркер `dictionaries`) поверх `AdminDictionariesPage`
+(`ui/pages/admin_dictionaries_page.py`, раздел «Справочники» в боковом меню админки, 6
+подстраниц `/admin/catalogs/*`) — зелёные на develop, **2 прогона подряд**,
+`pytest tests/ui/dictionaries --env develop -q -m dictionaries` (HEADLESS=1) → **5 passed**
+каждый раз (~4.5–5 мин/прогон, в основном ожидания Vuetify-модалок и селектов).
+
+- `admin/test_admin_dictionaries_crud.py` — CRUD через форму на типе `program_type`
+  («Вид программы», единственный безопасный тип для UI-round-trip, см. выше «Модель прав»/
+  `SAFE_DICTIONARY_TYPES`): создание, редактирование, удаление — каждый раз с перезагрузкой
+  страницы после мутации, чтобы не поверить DOM, ещё не подтверждённому сервером.
+- `admin/test_dictionary_program_type_selection.py` — интеграция со формой создания потока
+  программы: элемент, созданный в «Справочники», сразу выбирается в поле «Вид программы»
+  через `AdminProgramsPage.select_program_type_value(value)` (метод, допечатывающий точное
+  имя, а не берущий первый пункт списка, как `select_program_type()`).
+- `user/test_dictionaries_admin_access_restricted.py` — обычный пользователь (реально другой
+  аккаунт, `second_user_page`, не `user_page`, см. «Модель прав» выше) при прямом переходе на
+  `/admin/catalogs/programs` детерминированно редиректится на `/programs` — SPA-роутер не
+  пускает в «Админку» целиком, согласуется с 403 на запись API для той же роли. `page.goto`
+  здесь на `wait_until="domcontentloaded"`, а не дефолтном `"load"`: под нагрузкой (весь
+  каталог тестов разом) SPA держит сеть активной и событие `"load"` не всегда успевает за 30с.
