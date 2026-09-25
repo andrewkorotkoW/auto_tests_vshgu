@@ -1479,6 +1479,20 @@ def generate_notification_template_payload(
     return {"name": name, "caption": caption, "text": text}
 
 
+def generate_dictionary_payload(
+    dictionary_type: str = "program_type",
+    name: str = None,
+) -> dict:
+    """Генерация payload для POST /dictionaries.
+
+    dictionary_type — известные по разведке значения: project, program_level,
+    program_department, program_type, learning_format, tag (region/municipality —
+    только для чтения, создавать их автотестами не нужно)."""
+    if not name:
+        name = f"Автотест_справочник_{dictionary_type}_{unique_suffix()}"
+    return {"name": name, "type": dictionary_type}
+
+
 def generate_ticket_payload(
     title: str = None,
     text: str = None,
