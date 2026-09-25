@@ -32,22 +32,7 @@ MATERIAL_TYPE_LABELS = {
     "course": "курс",
 }
 
-MATERIAL_TYPE_PARAMS = [
-    pytest.param(
-        material_type,
-        marks=pytest.mark.xfail(
-            reason=(
-                "Дефект стенда: на странице материала-курса клик по «Приступить к изучению» "
-                "не открывает попап с курсом (Page.expect_popup таймаутит за 30с) — вместо "
-                "этого текущая вкладка переходит на /library/material/{id} → /404. Проверено "
-                "вручную Playwright-скриптом вне теста: после клика открытых вкладок остаётся "
-                "1, её url становится https://.../404."
-            ),
-            strict=False,
-        ),
-    ) if material_type == "course" else material_type
-    for material_type in MATERIAL_TYPE_LABELS
-]
+MATERIAL_TYPE_PARAMS = list(MATERIAL_TYPE_LABELS)
 
 
 def _complete_material(kb_page: UserKnowledgeBasePage, material_type: str, material_name: str) -> None:

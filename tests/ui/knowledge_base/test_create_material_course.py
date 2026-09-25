@@ -22,12 +22,12 @@ class TestCreateMaterialCourse:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.knowledge_base
-    def test_create_material_course(self, admin_page, api_client, env, created_tincan):
+    def test_create_material_course(self, admin_page, api_client, env, created_tincan, tincan_endpoint):
         kb_page = AdminKnowledgeBasePage(admin_page)
         material_id = None
 
         with allure.step("1. Подготовить курс Tincan через API"):
-            tincan = created_tincan(archive_uuid="3c0f45b7-dee1-4037-935d-6159629206a0")
+            tincan = created_tincan(archive_uuid=tincan_endpoint.upload_archive("test_data/course_tincan.zip"))
             course_name = tincan["name"]
             logger.info(f"Курс Tincan подготовлен: ID={tincan['id']}, name={course_name}")
 

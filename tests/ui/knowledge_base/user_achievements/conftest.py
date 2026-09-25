@@ -58,7 +58,7 @@ def kb_test_user_full_name(user_api_client):
 
 
 @pytest.fixture
-def material_for_type(kb_endpoint, created_tincan):
+def material_for_type(kb_endpoint, created_tincan, tincan_endpoint):
     """Создаёт материал БЗ нужного типа через API с префиксом «Автотест_» и возвращает
     (material_id, material_name). Удаляет все созданные материалы после теста, даже если
     тест упал. Материал создаётся видимым напрямую в payload (is_visible=True) — в отличие
@@ -78,7 +78,12 @@ def material_for_type(kb_endpoint, created_tincan):
             )
             material = kb_endpoint.create_article_material(name=name, article_text=article_text)
         elif material_type == "course":
-            tincan = created_tincan(archive_uuid="3c0f45b7-dee1-4037-935d-6159629206a0")
+            # Архив загружаем заново: у контента с захардкоженным archive_uuid ручка
+            # /content/launch/{id} отвечает 404 «курс не найден», и портал уводит вкладку на /404
+            # (проверено 25.09.2026 на develop; со свежим архивом launch → 200 и курс открывается
+            # в новом окне, как у материала 469).
+            archive_uuid = tincan_endpoint.upload_archive("test_data/course_tincan.zip")
+            tincan = created_tincan(archive_uuid=archive_uuid)
             material = kb_endpoint.create_course_material(name=name, content_id=tincan["id"])
         elif material_type in FILE_BACKED_MATERIALS:
             file_name, content_type = FILE_BACKED_MATERIALS[material_type]
