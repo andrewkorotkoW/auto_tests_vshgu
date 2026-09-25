@@ -734,3 +734,75 @@ xfailed** (~100с), стабильно на 2 прогонах каждой па
   подчёркивания парами, а «лишнее» с конца остаётся как есть. UI-тест обращения
   (`test_user_creates_ticket.py`) обходит это, задавая текст обращения без `"_"` явно, вместо
   того чтобы предсказывать результат разбора markdown.
+
+## 14. Справочники: что покрыто
+
+По плану `docs/plans/2026-09-25_dictionaries_mission.md` разведан единый REST-ресурс
+`/dictionaries` (не набор отдельных сущностей — один Laravel-ресурс на backing-enum
+`Dictionaries\Enums\DictionaryType`, общий для восьми известных типов: `project`,
+`program_level`, `program_department`, `program_type`, `learning_format`, `tag`, `region`,
+`municipality`). Клиент — `DictionariesEndpoint` (`api/endpoints/dictionaries.py`), генератор
+данных — `generate_dictionary_payload` (`api/helpers/data_generator.py`).
+
+**API-тесты** (`tests/api/dictionaries/`, 29 тестов, маркер `dictionaries`) зелёные на develop
+(4 прогона подряд, `pytest tests/api/dictionaries --env develop -q` → **25 passed, 4 xfailed**,
+~45с): `test_dictionaries_crud_api.py` (create/find_by_name/list_by_type/постраничный
+list/update/delete по типам без обязательного доп. `meta` — `program_type`,
+`program_department`, `learning_format`, `tag`; отдельно 405 на `GET`/`PUT` по id),
+`test_dictionaries_negative_api.py` (422 на пустой `name`, права доступа, + 2 xfail-кандидата в
+дефект ниже), `test_dictionaries_association_api.py` (поток программы с новым элементом
+`program_type` хранит связь через вложенный объект в ответе; пользователь с существующими
+`region_id`/`municipality_id` — связь сверяется со справочником `region` по `dictionary_id`).
+
+`region`/`municipality` — read-only справочники ФИАС на develop (мишн-док), тестами не
+создаются; связь с ними проверяется на уже существующих элементах через профиль пользователя.
+
+### Модель прав
+
+В отличие от `/notifications/*` (403 целиком для не-админов, см. §13), справочники читаются
+любым авторизованным пользователем: `GET /dictionaries/by-type/{type}` под реально другим,
+только что созданным обычным пользователем (`UsersEndpoint.create` + `config.environments.login`,
+не `admin_session`/`user_session` — на develop это один и тот же аккаунт) отвечает 200.
+Запись (`POST`/`PATCH`/`DELETE`) — админский раздел: тот же пользователь получает 403 «У Вас нет
+доступа к данному разделу» на `POST /dictionaries`.
+
+### Кандидаты в дефекты (подтверждены тестами, xfail(strict=False))
+
+- **`POST /dictionaries` для `type=project`/`program_level` без `meta.experts_entity_id` ломает
+  чтение всего типа для всех пользователей.** По коду (и по мишн-доку) типы `project` и
+  `program_level` дополнительно хранят `meta.experts_entity_id`, но `POST /dictionaries {name,
+  type}` не требует и не валидирует это поле — создание проходит нормально (201). После этого
+  `GET /dictionaries/by-type/{type}` и постраничный `GET /dictionaries?filters[type]=...`
+  отвечают **500** `"Undefined array key \"experts_entity_id\""`
+  (`Dictionaries/Models/Casts/Meta/ExpertsDictionaryMeta.php`) — сервер падает при сериализации
+  на кастинге meta **любого** элемента этого типа, не только сломанного, то есть один
+  некорректно созданный элемент вырубает чтение всего справочника (в проде это ломает выпадающий
+  список «Проект»/«Стоимостная группа» в форме создания потока программы для всех
+  администраторов). Обнаружено во время разведки к этой задаче: элемент случайно остался без
+  `meta` после ad-hoc-проверки, стенд develop был на несколько минут в сломанном состоянии для
+  чтения типа `project`, пока не найден и не удалён напрямую по id (`find_by_name`/`list_by_type`
+  для восстановления не годятся — сами падают, пока сломанный элемент жив). Тест
+  `test_create_experts_type_without_meta_breaks_type_reads` (параметризован по обоим типам)
+  воспроизводит дефект и тут же лечит стенд в `finally` (`delete` по id из ответа `create()`,
+  без похода через `list`/`find_by_name`) — самоизлечивающийся xfail, безопасен для повторных
+  прогонов и для параллельных тестов на том же стенде.
+- **`PATCH /dictionaries/{id}` для `type=program_department` — детерминированный 500.**
+  Штатный `PATCH {"name": "..."}"` на элементе `program_department` (в отличие от
+  `program_type`/`learning_format`/`tag`, которые обновляются нормально) отвечает 500 `"0" is not
+  a valid backing value for enum Dictionaries\Enums\DictionaryType`
+  (`UpdateDictionaryRulesBuilder.php`) — та же по формулировке ошибка приведения enum из
+  отсутствующего значения, что и у `POST` без `type` (см. ниже), но здесь воспроизводится на
+  update конкретно этого типа. `test_update_program_department_name`, xfail.
+- **`POST /dictionaries` без поля `type` — план ждал 422, факт 500.** `"0" is not a valid backing
+  value for enum Dictionaries\Enums\DictionaryType` — сервер падает на приведении отсутствующего
+  значения к enum до валидации, вместо ожидаемой валидационной 422 (`POST` без `name` при этом
+  корректно отвечает 422). `test_create_without_type_returns_422`, xfail.
+- **Ссылка на элемент справочника несовпадающего типа в потоке программы — принимается молча,
+  без 422.** `generate_stream_payload` требует `project`/`program_level`/`program_department`/
+  `program_type`/`learning_format` как обязательные числовые id, но сервер не проверяет, что id
+  реально принадлежит ожидаемому типу справочника: id элемента типа `tag`, подставленный в поле
+  `project`, не отклоняется (201), просто соответствующее поле в ответе тихо становится `null` —
+  как и id несуществующего/из другого типа элемента вовсе. Не оформлено отдельным тестом (риск
+  зависеть от подобранных id, замеченного поведения достаточно для отчёта задачи) — при желании
+  можно воспроизвести детерминированно через `created_dictionary_item(dictionary_type="tag")` +
+  `generate_stream_payload(project=<tag_item_id>)`.
