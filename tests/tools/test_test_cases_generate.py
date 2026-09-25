@@ -127,6 +127,16 @@ def test_compute_area_merges_api_and_ui_zones_and_handles_edge_cases():
     assert compute_area(Path("tools/test_lib.py")) == "tools"
 
 
+@pytest.mark.xfail(
+    strict=False,
+    reason="дефект generate.py: для теста прямо в корне tests/ (не в подпапке api/ui/e2e/...) "
+    "compute_area возвращает имя файла с расширением '.py' как область (сейчас в реальном "
+    "tests/ таких файлов нет, поэтому дефект не проявляется на боевом дереве)",
+)
+def test_compute_area_for_root_level_test_file_has_no_py_suffix():
+    assert compute_area(Path("test_smoke.py")) == "test_smoke"
+
+
 def test_generates_file_per_area_with_expected_case_ids_and_fields(repo):
     report = _run(repo)
 
