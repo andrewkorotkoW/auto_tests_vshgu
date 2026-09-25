@@ -7,6 +7,8 @@
 основного способа ожидания: состояния (первичный/повторный онбординг) определяются
 через один web-first expect() на объединённый локатор (Locator.or_).
 """
+import re
+
 from playwright.sync_api import Page, Locator, TimeoutError as PlaywrightTimeoutError, expect
 
 REGISTRATION_MODAL = "div.v-dialog:has-text('Пожалуйста, заполните'), div.v-dialog:has-text('обработку персональных данных')"
@@ -22,7 +24,11 @@ EMAIL_OPT_OUT_MODAL = "div.v-dialog:has-text('Вы отказались от п�
 
 ONBOARDING_MODAL = "div.v-dialog:has-text('Интерактивное руководство')"
 START_BUTTON = "button:has-text('Пройти обучение')"
-NEXT_BUTTON = "button:has-text('Далее')"
+# На разных разделах стенда встречаются две разметки тура: контентный попап и
+# диалог первичного онбординга. Точное совпадение нормализованного текста важно:
+# селектор :has-text('Далее') также находит кнопку «Назад», если текст «Далее»
+# присутствует в дочернем/соседнем контенте того же контейнера.
+NEXT_BUTTON = "[data-qa='onboarding-popup-next']"
 FINISH_BUTTON = "button:has-text('Завершить')"
 
 # Несколько версток одной и той же кнопки на разных страницах — объединяем через
@@ -200,21 +206,45 @@ class OnboardingPage:
         пропало насовсем — дошли до последнего слайда), проверяем «Завершить»."""
         next_button = self.page.locator(NEXT_BUTTON)
         finish_button = self.page.locator(FINISH_BUTTON)
+        scrim = self.page.locator(".v-overlay__scrim").first
+        step_indicator = self.page.get_by_text(re.compile(r"^\d+\s+из\s+\d+$")).first
 
         for _ in range(max_steps):
             if finish_button.is_visible(timeout=1000):
+                finish_button.click(timeout=5000, force=True)
                 break
+            if not next_button.is_visible(timeout=1000):
+                # В некоторых разделах последний клик по «Далее» сразу закрывает
+                # тур и кнопка «Завершить» вообще не появляется.
+                if not scrim.is_visible(timeout=500) and not self.onboarding_modal.is_visible(timeout=500):
+                    break
+                continue
             try:
-                next_button.click(timeout=8000)
+                # Затемнение/подсветка контентного тура иногда перехватывает hit-test,
+                # хотя сама кнопка уже видима. force-клик соответствует рабочему
+                # сценарию UserSidebarPage.pass_onboarding.
+                previous_step = None
+                if step_indicator.is_visible(timeout=500):
+                    previous_step = step_indicator.inner_text().strip()
+                next_button.click(timeout=8000, force=True)
+                if previous_step is not None:
+                    expect(step_indicator).not_to_have_text(previous_step, timeout=5000)
             except PlaywrightTimeoutError:
                 if finish_button.is_visible(timeout=1000):
                     break
                 raise
+            if not next_button.is_visible(timeout=500) and not finish_button.is_visible(timeout=500):
+                # Между слайдами кнопка кратко исчезает, но scrim остаётся. Если
+                # исчезли оба признака сразу, последний слайд закрыл тур сам.
+                if not scrim.is_visible(timeout=500):
+                    break
         else:
             raise AssertionError(f"Онбординг не завершился после {max_steps} слайдов")
 
-        finish_button.click(timeout=5000)
+        if finish_button.is_visible(timeout=1000):
+            finish_button.click(timeout=5000, force=True)
         expect(finish_button).not_to_be_visible(timeout=15000)
+        expect(next_button).not_to_be_visible(timeout=15000)
         self.wait_overlay_gone()
 
     def wait_overlay_gone(self, timeout: int = 8000) -> None:

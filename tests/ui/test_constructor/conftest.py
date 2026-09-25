@@ -90,6 +90,78 @@ def created_constructor_test(tests_endpoint):
 
 
 @pytest.fixture
+def register_constructor_test(tests_endpoint):
+    """Регистрирует тесты, созданные через UI, для best-effort cleanup.
+
+    Фикстура нужна UI-сценариям, где API используется только для удаления уже
+    созданного через интерфейс объекта. Регистрация выполняется сразу после
+    подтверждения создания, поэтому cleanup сработает и при падении дальнейшей
+    UI-проверки.
+    """
+    content_ids = []
+
+    def _register(content_id: int) -> None:
+        content_ids.append(content_id)
+
+    yield _register
+
+    if content_ids:
+        try:
+            tests_endpoint.mass_delete(content_ids)
+        except Exception as exc:  # noqa: BLE001 - cleanup не должен скрывать исходный фейл
+            allure.attach(
+                str(exc),
+                name="constructor_test_cleanup_error",
+                attachment_type=allure.attachment_type.TEXT,
+            )
+            logger.warning(f"Failed to mass delete UI-created constructor tests {content_ids}: {exc}")
+
+
+@pytest.fixture
+def register_constructor_poll(polls_endpoint):
+    """Регистрирует опросы, созданные через UI, для best-effort cleanup."""
+    content_ids = []
+
+    def _register(content_id: int) -> None:
+        content_ids.append(content_id)
+
+    yield _register
+
+    if content_ids:
+        try:
+            polls_endpoint.mass_delete(content_ids)
+        except Exception as exc:  # noqa: BLE001 - cleanup не должен скрывать исходный фейл
+            allure.attach(
+                str(exc),
+                name="constructor_poll_cleanup_error",
+                attachment_type=allure.attachment_type.TEXT,
+            )
+            logger.warning(f"Failed to mass delete UI-created constructor polls {content_ids}: {exc}")
+
+
+@pytest.fixture
+def register_question_theme(question_bank_endpoint):
+    """Регистрирует темы, созданные через UI, для best-effort cleanup."""
+    theme_ids = []
+
+    def _register(theme_id: int) -> None:
+        theme_ids.append(theme_id)
+
+    yield _register
+
+    for theme_id in theme_ids:
+        try:
+            question_bank_endpoint.delete_theme(theme_id)
+        except Exception as exc:  # noqa: BLE001 - cleanup не должен скрывать исходный фейл
+            allure.attach(
+                str(exc),
+                name="question_theme_cleanup_error",
+                attachment_type=allure.attachment_type.TEXT,
+            )
+            logger.warning(f"Failed to delete UI-created question theme {theme_id}: {exc}")
+
+
+@pytest.fixture
 def created_constructor_poll(polls_endpoint):
     """Создаёт опрос (type=poll) конструктора с уникальным именем. Удаляет после теста
     через PollsEndpoint.mass_delete."""

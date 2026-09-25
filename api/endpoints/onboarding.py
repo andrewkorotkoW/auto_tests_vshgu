@@ -13,12 +13,18 @@ class OnboardingEndpoint:
     # кабинет индивидуального обучения.
     DEFAULT_STORIES = [
         "sidebar",
+        "knowledge_base_library",
+        "support",
         "main_education",
         "program_education_information",
         "program_education_schedule",
         "program_education_tabs",
         "program_education_activities",
+        "individual_education_tabs",
+        "individual_education_schedule",
         "individual_education_activities",
+        "knowledge_base_tabs",
+        "knowledge_base_favorite",
     ]
 
     def __init__(self, client: ApiClient):

@@ -29,8 +29,8 @@ class TestCreateGroupForStream:
     @pytest.mark.ui
     @pytest.mark.groups
     def test_create_group_for_stream(
-        self, admin_page, env, api_client, tincan_endpoint, assignments_endpoint, homework_endpoint,
-        created_stream, created_module, created_homework, created_user,
+        self, admin_page, env, api_client, tincan_endpoint, assignments_endpoint,
+        created_stream, created_module, created_homework, created_user, register_practical_homework,
     ):
         homework_id = None
 
@@ -49,6 +49,7 @@ class TestCreateGroupForStream:
                     sub_files_uuids=[sub_file_uuid],
                 )
                 homework_id = homework["id"]
+                register_practical_homework(homework_id)
 
                 assigned_ok = assignments_endpoint.assign_content_to_module(
                     stream["program_id"], stream["id"], module["id"], [homework_id]
@@ -91,6 +92,4 @@ class TestCreateGroupForStream:
                 expect(groups_page.group_listener_row(user1["email"])).to_be_visible(timeout=15000)
                 expect(groups_page.group_listener_row(user2["email"])).to_be_visible(timeout=15000)
         finally:
-            if homework_id is not None:
-                with allure.step("9. Удалить ПЗ"):
-                    homework_endpoint.mass_delete([homework_id])
+            pass

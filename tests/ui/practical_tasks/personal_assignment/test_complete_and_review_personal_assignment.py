@@ -61,8 +61,8 @@ class TestCompleteAndReviewPersonalAssignment:
     @pytest.mark.ui
     @pytest.mark.practical_tasks
     def test_complete_and_review_personal_assignment(
-        self, page, env, api_client, tincan_endpoint, homework_endpoint,
-        created_user, created_homework,
+        self, page, env, api_client, tincan_endpoint,
+        created_user, created_homework, register_practical_homework,
     ):
         homework_id = None
 
@@ -91,6 +91,7 @@ class TestCompleteAndReviewPersonalAssignment:
                     inspector_ids=[reviewer["id"]],
                 )
                 homework_id = homework["id"]
+                register_practical_homework(homework_id)
 
                 assignments_ep = AssignmentsEndpoint(api_client)
                 assigned_ok = assignments_ep.assign_to_individual([homework_id], [user["id"]])
@@ -152,6 +153,4 @@ class TestCompleteAndReviewPersonalAssignment:
                     user_full_name, [homework["name_client"], homework["name"]], "4"
                 )
         finally:
-            if homework_id is not None:
-                with allure.step("10. Удалить ПЗ"):
-                    homework_endpoint.mass_delete([homework_id])
+            pass

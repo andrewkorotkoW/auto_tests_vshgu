@@ -53,8 +53,8 @@ class TestReviewPracticalTask:
     @pytest.mark.ui
     @pytest.mark.practical_tasks
     def test_review_practical_task(
-        self, page, browser, env, api_client, tincan_endpoint, assignments_endpoint, homework_endpoint,
-        assigned_user, created_module, created_homework, created_user,
+        self, page, browser, env, api_client, tincan_endpoint, assignments_endpoint,
+        assigned_user, created_module, created_homework, created_user, register_practical_homework,
     ):
         homework_id = None
 
@@ -78,6 +78,7 @@ class TestReviewPracticalTask:
                     inspector_ids=[reviewer["id"]],
                 )
                 homework_id = homework["id"]
+                register_practical_homework(homework_id)
 
                 assigned_ok = assignments_endpoint.assign_content_to_module(
                     stream["program_id"], stream["id"], module["id"], [homework_id]
@@ -124,6 +125,4 @@ class TestReviewPracticalTask:
                     user_full_name, program_name, stream["name"], [homework["name_client"], homework["name"]], "4"
                 )
         finally:
-            if homework_id is not None:
-                with allure.step("9. Удалить ПЗ"):
-                    homework_endpoint.mass_delete([homework_id])
+            pass
