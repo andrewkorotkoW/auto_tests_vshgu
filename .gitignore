@@ -31,3 +31,7 @@ utils/.env
 # Манифесты реальных прогонов test_data_generation/generate.py (созданные id на develop/stage) —
 # только рабочие артефакты, в репозитории не нужны.
 test_data_generation/manifests/*.json
+
+# План tools/test_cases/testit_sync.py --dry-run (workspace/testit_export.json) — локальный
+# рабочий артефакт с реальным TESTIT_PROJECT_ID из .env, в репозитории не нужен.
+workspace/

@@ -40,6 +40,7 @@ from api.helpers.data_generator import (
 from config.settings import settings
 from config.environments import ENVIRONMENTS, ensure_prod_allowed, get_session, get_storage_state_path
 from utils.logger import logger
+from tools.test_cases.testit_sync import DEFAULT_DOCS_DIR, iter_area_files
 
 
 def pytest_addoption(parser):
@@ -117,6 +118,28 @@ def pytest_runtest_makereport(item, call):
         )
     except Exception as exc:  # noqa: BLE001 — страница могла уже закрыться к моменту хука
         logger.info(f"Не удалось сделать скриншот при падении: {exc}")
+
+
+def _load_testit_id_map() -> dict:
+    """node id автотеста -> id work item Test IT, из `- Test IT: <id>` в docs/test_cases/*.md
+    (проставляется tools/test_cases/testit_sync.py --apply)."""
+    mapping = {}
+    for area_file in iter_area_files(DEFAULT_DOCS_DIR):
+        for case in area_file.cases:
+            if case.autotest and case.testit_id:
+                mapping[case.autotest] = case.testit_id
+    return mapping
+
+
+_TESTIT_ID_BY_NODE_ID = _load_testit_id_map()
+
+
+def pytest_runtest_setup(item):
+    """Проставляет allure-label testit_id для тестов, у которых кейс уже залит в Test IT —
+    без установки testit-adapter-pytest, только allure.dynamic.label."""
+    testit_id = _TESTIT_ID_BY_NODE_ID.get(item.nodeid)
+    if testit_id:
+        allure.dynamic.label("testit_id", testit_id)
 
 
 @pytest.fixture(scope="session")
