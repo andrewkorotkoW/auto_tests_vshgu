@@ -468,10 +468,13 @@ pytest --env=develop -m knowledge_base
 - `test_group_practical_task_flow` (после перевода на фикстуру `group_practical_task`) — 2/2
   зелёных прогона на develop (`--env=develop`, `HEADLESS=1`): 249.73с, 235.46с.
 - `test_user_gets_achievement_by_material` (6 параметров: статья/аудио/видео/книга/файл/курс) —
-  5 passed + 1 `xfail(strict=False)` (`course`: «Приступить к изучению» в headless Chromium не
-  открывает popup с курсом, `Page.expect_popup` таймаутит за 30с и текущая вкладка уходит на
-  `/404` — известный дефект стенда, достижение по курсу всё равно подтверждается вызовом API).
-  Стабильно 2/2 на develop, `HEADLESS=1`.
+  6 passed. Вариант `course` сначала был помечен xfail как «дефект стенда» (клик по «Приступить к
+  изучению» уводил вкладку на `/404`), но причина оказалась в тестовых данных: курс создавался с
+  захардкоженным `archive_uuid`, для такого контента `GET /content/launch/{id}` отвечает 404
+  «курс не найден». С 25.09.2026 фикстура `material_for_type("course")` загружает архив
+  `test_data/course_tincan.zip` заново, launch отвечает 200 и курс открывается в новом окне
+  (проверено на develop, в том числе на материале 469). Xfail снят; на первом заходе вариант
+  `course` может упасть по таймингу попапа и проходит с повтора.
 - `test_user_gets_complex_achievement` (3 составных сценария: аудио+книга, файл+книга, две книги) —
   3 passed, стабильно 2/2.
 - `admin_statistics/test_admin_sees_user_achievement_history`,
