@@ -11,6 +11,15 @@ class TincanEndpoint:
     def __init__(self, client: ApiClient):
         self.client = client
 
+    def _curl_cookie_header(self) -> str:
+        """Заголовок Cookie для curl-загрузок. Имя сессионной куки у ветковых стендов
+        не «develop», а имя ветки (например «vshgu2-1263-pdf-lib»), поэтому берём все куки
+        сессии как есть, а не подставляем имя «develop»."""
+        cookie_header = self.client.session.headers.get("Cookie", "")
+        if cookie_header:
+            return cookie_header
+        return "; ".join(f"{k}={v}" for k, v in self.client.session.cookies.items())
+
     def upload_cover(self, file_path: str = "test_data/cover.jpg") -> str:
         """Загрузка обложки через ту же авторизованную сессию, что и остальные запросы
         (раньше — внешний curl с кукой по имени «develop», что ломалось на любом стенде
@@ -33,9 +42,7 @@ class TincanEndpoint:
 
     def upload_archive(self, file_path: str = "test_data/course_tincan.zip") -> str:
         import subprocess, os
-        cookie_header = self.client.session.headers.get("Cookie", "")
-        if not cookie_header:
-            cookie_header = f"develop={self.client.session.cookies.get('develop')}"
+        cookie_header = self._curl_cookie_header()
         base = self.client.base_url
         result = subprocess.run([
             "curl", "-s",
@@ -54,9 +61,7 @@ class TincanEndpoint:
 
     def upload_sub_file(self, file_path: str = "test_data/sub_files.jpg") -> str:
         import subprocess, os
-        cookie_header = self.client.session.headers.get("Cookie", "")
-        if not cookie_header:
-            cookie_header = f"develop={self.client.session.cookies.get('develop')}"
+        cookie_header = self._curl_cookie_header()
         base = self.client.base_url
         result = subprocess.run([
             "curl", "-s",
@@ -150,9 +155,7 @@ class TincanEndpoint:
     def upload_certificate_file(self, file_path: str = "test_data/certificat.pdf") -> str:
         """Загрузка PDF-файла для сертификата. Возвращает UUID."""
         import subprocess
-        cookie_header = self.client.session.headers.get("Cookie", "")
-        if not cookie_header:
-            cookie_header = f"develop={self.client.session.cookies.get('develop')}"
+        cookie_header = self._curl_cookie_header()
         base = self.client.base_url
         result = subprocess.run([
             "curl", "-s",
