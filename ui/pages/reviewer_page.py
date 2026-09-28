@@ -87,6 +87,18 @@ class ReviewerPage(BasePage):
 
     # ── Проверка ответа (общая для потока и индивидуального ПЗ) ─────────
 
+    def additional_materials_table(self) -> Locator:
+        """Таблица файлов под подписью «Дополнительные материалы по заданию» на странице проверки
+        (страница проверяющего: подпись `.coaches__label`, следом `.files-table`)."""
+        return self.page.locator(
+            "xpath=//div[contains(@class,'coaches__label') and contains(normalize-space(),'Дополнительные материалы')]"
+            "/following-sibling::div[contains(@class,'files-table')][1]"
+        )
+
+    def additional_material_link(self, file_name: str) -> Locator:
+        """Ссылка на скачивание файла доп. материалов по имени файла."""
+        return self.additional_materials_table().locator("tr").filter(has_text=file_name).locator("a[download]")
+
     @property
     def user_answer_download_button(self) -> Locator:
         return self.page.locator("xpath=(//a[@download])[last()]")
