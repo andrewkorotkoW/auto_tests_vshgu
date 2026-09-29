@@ -119,6 +119,24 @@ ENVIRONMENTS = {
     ),
 }
 
+# Произвольный стенд «k8s» (релизные k8s-стенды: portal-k8s-release.d9.darkarow.ru и т.п.).
+# База — STAND_URL (его передаёт test_hub для стенда) или K8S_UI_URL; API и глобальная админка
+# выводятся из хоста портала (portal-… → global-…). Кука сессии у таких стендов называется
+# «develop» (снимок develop), учётки — те же, что на develop (см. get_credentials).
+_K8S_UI = (os.getenv("K8S_UI_URL") or os.getenv("STAND_URL") or "https://portal-k8s-release.d9.darkarow.ru").rstrip("/")
+ENVIRONMENTS["k8s"] = _build_environment(
+    "k8s",
+    cookie_name=os.getenv("K8S_COOKIE_NAME", "develop"),
+    default_api=f"{_K8S_UI}/api/v1",
+    default_ui=_K8S_UI,
+    default_global=_K8S_UI.replace("://portal-", "://global-") + "/api/v1",
+    legacy={
+        "cas_auth_token": "CAS_AUTH_TOKEN",
+        "external_system_client_token": "EXTERNAL_SYSTEM_CLIENT_TOKEN",
+        "lpd_jwt_token": "LPD_JWT_TOKEN",
+    },
+)
+
 # prod по умолчанию выключен — на нём разрешено гонять только smoke-тесты,
 # чтобы случайный полный прогон не выполнял мутирующие тесты на проде.
 PROD_ALLOWED_MARKEXPR = "smoke"
@@ -226,14 +244,18 @@ def get_credentials(env_name: str, role: str = "default") -> Tuple[Optional[str]
     if role == "default":
         login_ = os.getenv(f"{prefix}_LOGIN")
         password_ = os.getenv(f"{prefix}_PASSWORD")
-        if env_name == "develop":
-            login_ = login_ or os.getenv("DEFAULT_LOGIN")
-            password_ = password_ or os.getenv("DEFAULT_PASSWORD")
+        if env_name in ("develop", "k8s"):
+            # k8s-стенды подняты на снимке develop — учётки те же
+            login_ = login_ or os.getenv("DEVELOP_LOGIN") or os.getenv("DEFAULT_LOGIN")
+            password_ = password_ or os.getenv("DEVELOP_PASSWORD") or os.getenv("DEFAULT_PASSWORD")
         return login_, password_
 
     role_prefix = f"{prefix}_{role.upper()}"
     login_ = os.getenv(f"{role_prefix}_LOGIN")
     password_ = os.getenv(f"{role_prefix}_PASSWORD")
+    if not (login_ and password_) and env_name == "k8s":
+        login_ = os.getenv(f"DEVELOP_{role.upper()}_LOGIN")
+        password_ = os.getenv(f"DEVELOP_{role.upper()}_PASSWORD")
     if login_ and password_:
         return login_, password_
     return get_credentials(env_name, role="default")
