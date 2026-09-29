@@ -17,6 +17,8 @@ import base64
 import contextlib
 import email
 import importlib
+import io
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -34,6 +36,20 @@ _PNG_BYTES = base64.b64decode(
 
 
 # ---------- инфраструктура: reload плагина под нужный TH_* env ----------
+
+@pytest.fixture
+def th_stdout(monkeypatch):
+    """Служебные строки [TH] плагин пишет напрямую в sys.__stdout__ мимо capsys (см.
+    _th_print) — здесь sys.__stdout__ подменяется на StringIO, чтобы их перехватить."""
+    buf = io.StringIO()
+    monkeypatch.setattr(sys, "__stdout__", buf)
+    return buf
+
+
+def _th_lines(buf, prefix="[TH]"):
+    """Строки плагина из буфера th_stdout без пустых строк, оставшихся от ведущих \n."""
+    return [line for line in buf.getvalue().splitlines() if line.startswith(prefix)]
+
 
 @pytest.fixture
 def plugin_env(monkeypatch):
@@ -129,13 +145,13 @@ class FakePage:
 
 # ---------- 1. выключенное состояние без TH_* env ----------
 
-def test_disabled_without_th_env(plugin_env, capsys):
+def test_disabled_without_th_env(plugin_env, th_stdout):
     with plugin_env() as module:
         assert module.ENABLED is False
         module.pytest_runtest_logstart("tests/test_x.py::test_a", None)
         module.pytest_runtest_logreport(FakeReport("tests/test_x.py::test_a", "call", "passed"))
 
-    assert capsys.readouterr().out == ""
+    assert th_stdout.getvalue() == ""
 
 
 def test_disabled_pytest_configure_does_not_patch_allure_step(plugin_env):
@@ -159,58 +175,54 @@ def test_disabled_even_with_partial_th_env(plugin_env):
 
 # ---------- 2. разметка start/end по исходам ----------
 
-def test_logstart_prints_th_start(plugin_env, capsys):
+def test_logstart_prints_th_start(plugin_env, th_stdout):
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         assert module.ENABLED is True
         module.pytest_runtest_logstart("tests/test_x.py::test_a", None)
 
-    assert capsys.readouterr().out == "[TH] start tests/test_x.py::test_a\n"
+    assert th_stdout.getvalue() == "\n[TH] start tests/test_x.py::test_a\n"
 
 
-def test_logreport_end_passed(plugin_env, capsys):
+def test_logreport_end_passed(plugin_env, th_stdout):
     nodeid = "tests/test_x.py::test_a"
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         module.pytest_runtest_logreport(FakeReport(nodeid, "setup", "passed"))
         module.pytest_runtest_logreport(FakeReport(nodeid, "call", "passed"))
         module.pytest_runtest_logreport(FakeReport(nodeid, "teardown", "passed"))
 
-    lines = capsys.readouterr().out.splitlines()
-    assert lines == [f"[TH] end {nodeid} passed"]
+    assert _th_lines(th_stdout) == [f"[TH] end {nodeid} passed"]
 
 
-def test_logreport_end_failed(plugin_env, capsys):
+def test_logreport_end_failed(plugin_env, th_stdout):
     nodeid = "tests/test_x.py::test_a"
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         module.pytest_runtest_logreport(FakeReport(nodeid, "setup", "passed"))
         module.pytest_runtest_logreport(FakeReport(nodeid, "call", "failed"))
         module.pytest_runtest_logreport(FakeReport(nodeid, "teardown", "passed"))
 
-    lines = capsys.readouterr().out.splitlines()
-    assert lines == [f"[TH] end {nodeid} failed"]
+    assert _th_lines(th_stdout) == [f"[TH] end {nodeid} failed"]
 
 
-def test_logreport_end_skipped(plugin_env, capsys):
+def test_logreport_end_skipped(plugin_env, th_stdout):
     nodeid = "tests/test_x.py::test_a"
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         module.pytest_runtest_logreport(FakeReport(nodeid, "setup", "skipped"))
         module.pytest_runtest_logreport(FakeReport(nodeid, "teardown", "passed"))
 
-    lines = capsys.readouterr().out.splitlines()
-    assert lines == [f"[TH] end {nodeid} skipped"]
+    assert _th_lines(th_stdout) == [f"[TH] end {nodeid} skipped"]
 
 
-def test_logreport_end_xfailed(plugin_env, capsys):
+def test_logreport_end_xfailed(plugin_env, th_stdout):
     nodeid = "tests/test_x.py::test_a"
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         module.pytest_runtest_logreport(FakeReport(nodeid, "setup", "passed"))
         module.pytest_runtest_logreport(FakeReport(nodeid, "call", "skipped", wasxfail=True))
         module.pytest_runtest_logreport(FakeReport(nodeid, "teardown", "passed"))
 
-    lines = capsys.readouterr().out.splitlines()
-    assert lines == [f"[TH] end {nodeid} xfailed"]
+    assert _th_lines(th_stdout) == [f"[TH] end {nodeid} xfailed"]
 
 
-def test_logreport_end_emitted_only_once(plugin_env, capsys):
+def test_logreport_end_emitted_only_once(plugin_env, th_stdout):
     """Даже если по какой-то причине call и teardown оба дадут классифицируемый исход
     (например, тест падает в teardown после успешного call), в лог должна уйти только
     первая строка end — раннер не должен увидеть два конфликтующих исхода одного теста."""
@@ -219,13 +231,12 @@ def test_logreport_end_emitted_only_once(plugin_env, capsys):
         module.pytest_runtest_logreport(FakeReport(nodeid, "call", "passed"))
         module.pytest_runtest_logreport(FakeReport(nodeid, "teardown", "failed"))
 
-    lines = capsys.readouterr().out.splitlines()
-    assert lines == [f"[TH] end {nodeid} passed"]
+    assert _th_lines(th_stdout) == [f"[TH] end {nodeid} passed"]
 
 
 # ---------- 3. шаги: нумерация, контекст-менеджер и декоратор ----------
 
-def test_steps_numbered_sequentially_as_context_manager(plugin_env, capsys):
+def test_steps_numbered_sequentially_as_context_manager(plugin_env, th_stdout):
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         item = FakeItem("tests/test_x.py::test_a")
         module._state["item"] = item
@@ -238,15 +249,14 @@ def test_steps_numbered_sequentially_as_context_manager(plugin_env, capsys):
         with allure.step("third"):
             pass
 
-    lines = [l for l in capsys.readouterr().out.splitlines() if l.startswith("[TH] step")]
-    assert lines == [
+    assert _th_lines(th_stdout, "[TH] step") == [
         f"[TH] step {item.nodeid} 1 first",
         f"[TH] step {item.nodeid} 2 second",
         f"[TH] step {item.nodeid} 3 third",
     ]
 
 
-def test_step_as_decorator_prints_and_preserves_return_value(plugin_env, capsys):
+def test_step_as_decorator_prints_and_preserves_return_value(plugin_env, th_stdout):
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         item = FakeItem("tests/test_x.py::test_a")
         module._state["item"] = item
@@ -259,11 +269,10 @@ def test_step_as_decorator_prints_and_preserves_return_value(plugin_env, capsys)
         result = do_work(21)
 
     assert result == 42
-    lines = [l for l in capsys.readouterr().out.splitlines() if l.startswith("[TH] step")]
-    assert lines == [f"[TH] step {item.nodeid} 1 do work"]
+    assert _th_lines(th_stdout, "[TH] step") == [f"[TH] step {item.nodeid} 1 do work"]
 
 
-def test_step_context_manager_and_decorator_share_numbering(plugin_env, capsys):
+def test_step_context_manager_and_decorator_share_numbering(plugin_env, th_stdout):
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         item = FakeItem("tests/test_x.py::test_a")
         module._state["item"] = item
@@ -279,15 +288,14 @@ def test_step_context_manager_and_decorator_share_numbering(plugin_env, capsys):
         with allure.step("third"):
             pass
 
-    lines = [l for l in capsys.readouterr().out.splitlines() if l.startswith("[TH] step")]
-    assert lines == [
+    assert _th_lines(th_stdout, "[TH] step") == [
         f"[TH] step {item.nodeid} 1 first",
         f"[TH] step {item.nodeid} 2 decorated",
         f"[TH] step {item.nodeid} 3 third",
     ]
 
 
-def test_step_context_manager_reraises_exception(plugin_env, capsys):
+def test_step_context_manager_reraises_exception(plugin_env, th_stdout):
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
         item = FakeItem("tests/test_x.py::test_a")
         module._state["item"] = item
@@ -297,8 +305,7 @@ def test_step_context_manager_reraises_exception(plugin_env, capsys):
             with allure.step("boom"):
                 raise ValueError("boom")
 
-    lines = [l for l in capsys.readouterr().out.splitlines() if l.startswith("[TH] step")]
-    assert lines == [f"[TH] step {item.nodeid} 1 boom"]
+    assert _th_lines(th_stdout, "[TH] step") == [f"[TH] step {item.nodeid} 1 boom"]
 
 
 def test_step_decorator_reraises_exception(plugin_env):
@@ -314,7 +321,7 @@ def test_step_decorator_reraises_exception(plugin_env):
             risky()
 
 
-def test_allure_attach_inside_step_still_works(plugin_env, capsys):
+def test_allure_attach_inside_step_still_works(plugin_env, th_stdout):
     """Патч allure.step не должен ломать allure.attach внутри тела шага —
     это отдельный путь (allure_commons.plugin_manager), который плагин не трогает."""
     with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
@@ -324,7 +331,7 @@ def test_allure_attach_inside_step_still_works(plugin_env, capsys):
         with allure.step("attach something"):
             allure.attach(b"payload", name="note", attachment_type=allure.attachment_type.TEXT)
 
-    assert "[TH] step" in capsys.readouterr().out
+    assert "[TH] step" in th_stdout.getvalue()
 
 
 def test_pytest_configure_patches_and_cleanup_unpatches(plugin_env):
@@ -389,7 +396,7 @@ def _base_url(server):
     return f"http://{host}:{port}"
 
 
-def test_frame_sent_to_mock_server_with_multipart_and_bearer_token(plugin_env, frame_server, capsys):
+def test_frame_sent_to_mock_server_with_multipart_and_bearer_token(plugin_env, frame_server, th_stdout):
     with plugin_env(url=_base_url(frame_server), run_id="run42", run_token="sekret-token") as module:
         item = FakeItem("tests/test_ui.py::test_login", funcargs={"page": FakePage()})
         module._state["item"] = item
@@ -407,7 +414,7 @@ def test_frame_sent_to_mock_server_with_multipart_and_bearer_token(plugin_env, f
     assert record["file"]["filename"] == "step_1.png"
     assert record["file"]["content"][:8] == _PNG_BYTES[:8]
 
-    assert f"[TH] step {item.nodeid} 1 open login page" in capsys.readouterr().out
+    assert f"[TH] step {item.nodeid} 1 open login page" in th_stdout.getvalue()
 
 
 def test_frame_captured_for_each_step_with_active_page(plugin_env, frame_server):
@@ -440,7 +447,7 @@ def test_admin_and_user_page_fixtures_are_also_detected(plugin_env, frame_server
 
 # ---------- 5. сетевая ошибка не должна ронять тест ----------
 
-def test_frame_network_error_does_not_raise(plugin_env, capsys):
+def test_frame_network_error_does_not_raise(plugin_env, th_stdout):
     """TH_URL указывает на заведомо закрытый локальный порт — POST не пройдёт,
     но шаг должен допечататься, а исключение наружу не выйти (см. _send_frame try/except)."""
     closed_port_server = ThreadingHTTPServer(("127.0.0.1", 0), _FrameHandler)
@@ -455,12 +462,12 @@ def test_frame_network_error_does_not_raise(plugin_env, capsys):
         with allure.step("do something"):
             pass  # не должно бросить исключение, несмотря на недоступный TH_URL
 
-    assert f"[TH] step {item.nodeid} 1 do something" in capsys.readouterr().out
+    assert f"[TH] step {item.nodeid} 1 do something" in th_stdout.getvalue()
 
 
 # ---------- 6. лимит кадров на тест ----------
 
-def test_frame_limit_stops_sending_but_steps_keep_logging(plugin_env, frame_server, capsys):
+def test_frame_limit_stops_sending_but_steps_keep_logging(plugin_env, frame_server, th_stdout):
     with plugin_env(url=_base_url(frame_server), run_id="run1", run_token="tok") as module:
         limit = module.MAX_FRAMES_PER_TEST
         total_steps = limit + 10
@@ -474,14 +481,14 @@ def test_frame_limit_stops_sending_but_steps_keep_logging(plugin_env, frame_serv
 
     assert len(frame_server.received) == limit
 
-    step_lines = [l for l in capsys.readouterr().out.splitlines() if l.startswith("[TH] step")]
+    step_lines = _th_lines(th_stdout, "[TH] step")
     assert len(step_lines) == total_steps
     assert step_lines[-1] == f"[TH] step {item.nodeid} {total_steps} step {total_steps - 1}"
 
 
 # ---------- 7. API-тесты (без активной страницы) не создают кадров ----------
 
-def test_api_test_without_page_creates_no_frames(plugin_env, frame_server, capsys):
+def test_api_test_without_page_creates_no_frames(plugin_env, frame_server, th_stdout):
     with plugin_env(url=_base_url(frame_server), run_id="run1", run_token="tok") as module:
         item = FakeItem("tests/test_api.py::test_create_user", funcargs={"api_client": object()})
         module._state["item"] = item
@@ -493,8 +500,7 @@ def test_api_test_without_page_creates_no_frames(plugin_env, frame_server, capsy
             pass
 
     assert frame_server.received == []
-    step_lines = [l for l in capsys.readouterr().out.splitlines() if l.startswith("[TH] step")]
-    assert step_lines == [
+    assert _th_lines(th_stdout, "[TH] step") == [
         f"[TH] step {item.nodeid} 1 create user via api",
         f"[TH] step {item.nodeid} 2 check response",
     ]

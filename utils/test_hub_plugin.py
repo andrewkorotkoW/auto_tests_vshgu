@@ -5,6 +5,7 @@
 вызовов и патча allure.step), обычные локальные/стендовые прогоны не меняются.
 """
 import os
+import sys
 from functools import wraps
 
 import allure
@@ -92,12 +93,20 @@ def _unpatch_allure_step():
         _step_patched = False
 
 
+def _th_print(line):
+    """Печатает служебную строку мимо capture pytest (иначе она склеивается с выводом
+    pytest -v в одну строку или вовсе теряется внутри перехваченного stdout теста).
+    Ведущий перевод строки отделяет её от того, что уже написано в sys.__stdout__."""
+    sys.__stdout__.write(f"\n{line}\n")
+    sys.__stdout__.flush()
+
+
 def _on_step_start(title):
     item = _state.get("item")
     nodeid = item.nodeid if item is not None else "<unknown>"
     _state["step_count"] += 1
     step_no = _state["step_count"]
-    print(f"[TH] step {nodeid} {step_no} {title}", flush=True)
+    _th_print(f"[TH] step {nodeid} {step_no} {title}")
     if item is not None:
         _maybe_capture_frame(item, nodeid, step_no)
 
@@ -222,7 +231,7 @@ def pytest_runtest_protocol(item, nextitem):
 def pytest_runtest_logstart(nodeid, location):
     if not ENABLED:
         return
-    print(f"[TH] start {nodeid}", flush=True)
+    _th_print(f"[TH] start {nodeid}")
 
 
 def pytest_runtest_logreport(report):
@@ -234,4 +243,4 @@ def pytest_runtest_logreport(report):
     if outcome is None:
         return
     _state["end_emitted"] = True
-    print(f"[TH] end {report.nodeid} {outcome}", flush=True)
+    _th_print(f"[TH] end {report.nodeid} {outcome}")
