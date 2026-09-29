@@ -1,0 +1,108 @@
+# Карта продукта ВШГУ для страницы «Покрытие» (схема продукта) в test_hub.
+# Формат — app/core/product_map.py::parse_layout() (репозиторий test_hub):
+# zones/nodes/edges/canvas; node.tests — префиксы nodeid/путей тестов этого репозитория.
+#
+# Раскладка (zones/nodes/edges, x/y/w/h) взята из
+# test_hub/docs/missions/redesign/coverage_v5/product_map.json — утверждённого макета
+# схемы продукта v5. node.tests сопоставлены по node.feature == feature.name с
+# test_hub/docs/missions/redesign/coverage_v5/features_vshgu.yml (не v4 — этот файл
+# в своей шапке прямо указывает, что сделан для карты продукта v5 и его имена функций
+# 1:1 совпадают с node.feature). Префиксы тестов сверены с реальным деревом tests/ этого
+# репозитория (только чтение) — все существуют.
+project: VSHGU
+canvas: {width: 1440, height: 900}
+zones:
+  - {id: ext, label: "Внешка · слушатель", x: 30, y: 60, w: 470, h: 560}
+  - {id: rev, label: "Проверяющий", x: 520, y: 60, w: 270, h: 560}
+  - {id: adm, label: "Админка", x: 810, y: 60, w: 600, h: 560}
+  - {id: int, label: "Интеграции (внешние системы, стрелка — куда входят)", x: 30, y: 670, w: 1380, h: 170}
+nodes:
+  - {id: ext_login, label: Вход, zone: ext, x: 60, y: 90, w: 150, h: 40, tests: [tests/ui/users/test_user_login_navigation]}
+  - {id: ext_onboarding, label: Онбординг, zone: ext, x: 230, y: 90, w: 150, h: 40, tests: [tests/ui/onboarding, tests/api/onboarding]}
+  - {id: ext_lk, label: "Личный кабинет", zone: ext, x: 145, y: 160, w: 170, h: 40, tests: []}
+  - {id: ext_my_learning, label: "Моё обучение", zone: ext, x: 40, y: 240, w: 130, h: 40, tests: [tests/api/programs, tests/ui/practical_tasks/test_add_listener_to_stream]}
+  - {id: ext_kb, label: "База знаний", zone: ext, x: 185, y: 240, w: 130, h: 40, tests: [tests/ui/knowledge_base, tests/api/knowledge_base]}
+  - {id: ext_notifications, label: Уведомления, zone: ext, x: 330, y: 240, w: 130, h: 40, tests: [tests/ui/notifications, tests/api/notifications]}
+  - {id: ext_program, label: Программа, zone: ext, x: 40, y: 310, w: 130, h: 40, tests: [tests/api/programs]}
+  - {id: ext_material, label: Материал, zone: ext, x: 185, y: 310, w: 130, h: 40, tests: [tests/ui/knowledge_base/test_create_material_audio, tests/ui/knowledge_base/test_create_material_book, tests/ui/knowledge_base/test_create_material_course, tests/ui/knowledge_base/test_create_material_file]}
+  - {id: ext_support, label: Техподдержка, zone: ext, x: 330, y: 310, w: 130, h: 40, tests: [tests/ui/tickets, tests/api/tickets]}
+  - {id: ext_course, label: Курс, zone: ext, x: 40, y: 380, w: 60, h: 40, tests: [tests/ui/courses, tests/api/create_activity/courses]}
+  - {id: ext_test, label: Тест, zone: ext, x: 108, y: 380, w: 60, h: 40, tests: [tests/api/tests]}
+  - {id: ext_pt, label: ПЗ, zone: ext, x: 176, y: 380, w: 40, h: 40, tests: [tests/ui/practical_tasks/test_complete_practical_task, tests/ui/practical_tasks/personal_assignment]}
+  - {id: ext_poll, label: Опрос, zone: ext, x: 224, y: 380, w: 64, h: 40, tests: [tests/ui/polls, tests/api/polls]}
+  - {id: ext_ticket, label: Тикет, zone: ext, x: 330, y: 380, w: 130, h: 40, tests: [tests/api/tickets, tests/ui/tickets]}
+  - {id: ext_achievements, label: Достижения, zone: ext, x: 185, y: 450, w: 130, h: 40, tests: [tests/ui/knowledge_base/test_create_achievement, tests/ui/knowledge_base/admin_statistics/test_admin_sees_user_achievement_history]}
+  - {id: ext_profile, label: Профиль, zone: ext, x: 40, y: 520, w: 130, h: 40, tests: []}
+  - {id: ext_certificates, label: Сертификаты, zone: ext, x: 185, y: 520, w: 130, h: 40, tests: [tests/api/certificates]}
+  - {id: ext_dashboard, label: "Дашборд слушателя", zone: ext, x: 330, y: 520, w: 150, h: 40, tests: [tests/ui/dashboards]}
+
+  - {id: rev_pt, label: "Практические задания", zone: rev, x: 560, y: 240, w: 190, h: 40, tests: []}
+  - {id: rev_queue, label: "Новые / Отвечено", zone: rev, x: 560, y: 310, w: 190, h: 40, tests: []}
+  - {id: rev_review, label: "Проверка ответа", zone: rev, x: 560, y: 380, w: 190, h: 40, tests: [tests/ui/practical_tasks/test_review_practical_task, tests/ui/practical_tasks/test_reviewer_sees_additional_materials, tests/api/users/teacher]}
+  - {id: rev_proctoring, label: Прокторинг, zone: rev, x: 560, y: 450, w: 190, h: 40, tests: [tests/ui/proctoring, tests/api/proctoring]}
+
+  - {id: adm_users, label: Пользователи, zone: adm, x: 840, y: 90, w: 150, h: 40, tests: [tests/api/users, tests/ui/users]}
+  - {id: adm_programs, label: "База программ", zone: adm, x: 1010, y: 90, w: 150, h: 40, tests: [tests/api/programs]}
+  - {id: adm_dictionaries, label: Справочники, zone: adm, x: 1180, y: 90, w: 150, h: 40, tests: [tests/api/dictionaries, tests/ui/dictionaries]}
+  - {id: adm_user_card, label: "Карточка пользователя", zone: adm, x: 840, y: 160, w: 150, h: 40, tests: []}
+  - {id: adm_streams_modules, label: "Потоки → Модули", zone: adm, x: 1010, y: 160, w: 150, h: 40, tests: [tests/api/streams, tests/api/programs/test_assignments_api, tests/api/programs/test_create_module]}
+  - {id: adm_stats, label: Статистика, zone: adm, x: 1180, y: 160, w: 150, h: 40, tests: [tests/ui/learning_statistics, tests/api/learning_statistics]}
+  - {id: adm_activities, label: "Активности (контент)", zone: adm, x: 1010, y: 230, w: 150, h: 40, tests: [tests/api/create_activity]}
+  - {id: adm_certificates, label: "Сертификаты (адм.)", zone: adm, x: 1180, y: 230, w: 150, h: 40, tests: [tests/api/certificates]}
+  - {id: adm_pt, label: "ПЗ (адм.)", zone: adm, x: 840, y: 300, w: 150, h: 40, tests: [tests/ui/practical_tasks/test_create_practical_task, tests/ui/practical_tasks/test_add_practical_task_to_schedule, tests/api/create_activity/homeworks]}
+  - {id: adm_test_constructor, label: "Конструктор тестов", zone: adm, x: 1010, y: 300, w: 150, h: 40, tests: [tests/ui/test_constructor]}
+  - {id: adm_polls, label: "Опросы (адм.)", zone: adm, x: 1180, y: 300, w: 150, h: 40, tests: [tests/ui/polls, tests/api/polls]}
+  - {id: adm_schedule, label: "Расписание / АОС", zone: adm, x: 840, y: 370, w: 150, h: 40, tests: [tests/api/aos, tests/ui/aos]}
+  - {id: adm_mailings, label: Рассылки, zone: adm, x: 1010, y: 370, w: 150, h: 40, tests: []}
+  - {id: adm_tickets, label: "Тикеты (адм.)", zone: adm, x: 1180, y: 370, w: 150, h: 40, tests: [tests/api/tickets, tests/ui/tickets]}
+  - {id: adm_kb, label: "База знаний (адм.)", zone: adm, x: 840, y: 440, w: 150, h: 40, tests: [tests/ui/knowledge_base/test_create_article_and_verify_in_user_ui, tests/api/knowledge_base]}
+  - {id: adm_banner, label: "Инфо-баннер", zone: adm, x: 1010, y: 440, w: 150, h: 40, tests: [tests/api/banner, tests/ui/banner]}
+  - {id: adm_games, label: "Игровые сессии", zone: adm, x: 1180, y: 440, w: 150, h: 40, tests: [tests/ui/game_session]}
+  - {id: adm_superadmin, label: "Суперадминка / тенанты", zone: adm, x: 840, y: 510, w: 150, h: 40, tests: []}
+  - {id: adm_experts, label: Эксперты, zone: adm, x: 1010, y: 510, w: 150, h: 40, tests: []}
+
+  - {id: int_buk, label: БУК, zone: int, x: 840, y: 700, w: 110, h: 40, tests: [tests/api/buk, tests/ui/buk], target: adm_users}
+  - {id: int_cas, label: CAS, zone: int, x: 60, y: 700, w: 110, h: 40, tests: [tests/api/cas, tests/ui/cas], target: ext_login}
+  - {id: int_alpina, label: "Альпина / МИФ", zone: int, x: 185, y: 700, w: 130, h: 40, tests: [tests/api/alpina_and_mif, tests/ui/alpina_and_mif], target: ext_kb}
+  - {id: int_lrs, label: "LRS / xAPI", zone: int, x: 40, y: 770, w: 110, h: 40, tests: [tests/api/create_activity/courses/tincan], target: ext_course}
+  - {id: int_helpdesk, label: Helpdesk, zone: int, x: 330, y: 700, w: 130, h: 40, tests: [], target: ext_support}
+edges:
+  - {from: ext_login, to: ext_onboarding}
+  - {from: ext_onboarding, to: ext_lk}
+  - {from: ext_lk, to: ext_my_learning}
+  - {from: ext_lk, to: ext_kb}
+  - {from: ext_lk, to: ext_notifications}
+  - {from: ext_my_learning, to: ext_program}
+  - {from: ext_program, to: ext_course}
+  - {from: ext_program, to: ext_test}
+  - {from: ext_program, to: ext_pt}
+  - {from: ext_program, to: ext_poll}
+  - {from: ext_kb, to: ext_material}
+  - {from: ext_material, to: ext_achievements}
+  - {from: ext_notifications, to: ext_support}
+  - {from: ext_support, to: ext_ticket}
+  - {from: ext_lk, to: ext_profile}
+  - {from: ext_profile, to: ext_certificates}
+  - {from: ext_lk, to: ext_dashboard}
+
+  - {from: rev_pt, to: rev_queue}
+  - {from: rev_queue, to: rev_review}
+
+  - {from: adm_users, to: adm_user_card}
+  - {from: adm_programs, to: adm_streams_modules}
+  - {from: adm_streams_modules, to: adm_activities}
+  - {from: adm_stats, to: adm_certificates}
+  - {from: adm_activities, to: adm_pt}
+  - {from: adm_activities, to: adm_test_constructor}
+  - {from: adm_activities, to: adm_polls}
+
+  - {from: ext_pt, to: rev_pt}
+  - {from: ext_test, to: rev_proctoring}
+  - {from: adm_mailings, to: ext_notifications}
+  - {from: adm_tickets, to: ext_ticket}
+
+  - {from: int_buk, to: adm_users}
+  - {from: int_cas, to: ext_login}
+  - {from: int_alpina, to: ext_kb}
+  - {from: int_lrs, to: ext_course}
+  - {from: int_helpdesk, to: ext_support}
