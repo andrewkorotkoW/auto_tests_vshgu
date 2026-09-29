@@ -1,4 +1,4 @@
-# auto_tests_vshgu_cloude
+# auto_tests_vshgu
 
 Автотесты портала (API + UI) для develop/stage/prod окружений.
 

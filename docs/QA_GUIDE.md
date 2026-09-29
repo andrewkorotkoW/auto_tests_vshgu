@@ -19,7 +19,7 @@
 ## 2. Дерево проекта
 
 ```
-auto_tests_vshgu_cloude/
+auto_tests_vshgu/
   conftest.py            общие фикстуры: окружение, сессии, клиенты, created_* с очисткой
   pytest.ini             маркеры, testpaths, allure
   requirements.txt
