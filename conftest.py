@@ -42,6 +42,8 @@ from config.environments import ENVIRONMENTS, ensure_prod_allowed, get_session, 
 from utils.logger import logger
 from tools.test_cases.testit_sync import DEFAULT_DOCS_DIR, iter_area_files
 
+pytest_plugins = ["utils.test_hub_plugin"]
+
 
 def pytest_addoption(parser):
     parser.addoption(
