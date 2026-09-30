@@ -17,10 +17,13 @@ from tools.test_cases.testit_sync import (
     apply_area,
     autotest_tag,
     build_plan,
+    build_section_payload,
     case_tags,
     load_config,
     main,
     parse_area_file,
+    readable_area_title,
+    tc_tag,
 )
 
 pytestmark = pytest.mark.tools
@@ -106,7 +109,9 @@ def test_case_tags_include_area_type_roles_and_autotest(tmp_path):
 
     tags = case_tags(case, area_file.area)
 
-    assert tags == ["widgets", "api", "admin", "user", autotest_tag(case.autotest)]
+    assert tags == [
+        "widgets", "api", "admin", "user", f"tc:{case.tc_id}", autotest_tag(case.autotest),
+    ]
 
 
 def test_build_plan_maps_action_create_when_no_testit_id(tmp_path):
@@ -146,6 +151,182 @@ def test_build_plan_filters_by_area(tmp_path):
     plans = build_plan(tmp_path, areas={"gadgets"}, project_id=None)
 
     assert [p.area_file.area for p in plans] == ["gadgets"]
+
+
+MANUAL_AREA_DOC = """# Тест-кейсы: mts_link — часть 13, ручные
+
+| Параметр | Значение |
+|---|---|
+| Область | ручная проверка |
+| Стенд | dev |
+| Роли | см. кейсы ниже |
+
+### TC-MTS-080 Настройка интеграции в карточке тенанта
+- Приоритет: high   Тип: e2e   Роли: admin, tenant-admin
+- Предусловия: Реальный валидный токен
+- Требование: часть 13, файл.md, раздел «Прогон полного цикла», шаг 1
+| Шаг | Действие | Ожидаемый результат |
+|---|---|---|
+| 1 | Ввести токен | Токен проходит проверку |
+
+### TC-WIDGETS-001 Автотестовый кейс с требованием
+- Автотест: tests/api/widgets/test_widgets_api.py::TestWidgetsApi::test_create_widget
+- Приоритет: high   Тип: api   Роли: admin
+- Предусловия: Нужен активный проект
+- Требование: часть 1, файл.md, раздел «Флоу»
+| Шаг | Действие | Ожидаемый результат |
+|---|---|---|
+| 1 | POST /widgets | Виджет создан |
+"""
+
+
+def test_parse_area_file_reads_manual_case_without_autotest(tmp_path):
+    doc_path = _write_doc(tmp_path, name="mts.md", content=MANUAL_AREA_DOC)
+
+    area_file = parse_area_file(doc_path)
+
+    manual_case = area_file.cases[0]
+    assert manual_case.tc_id == "TC-MTS-080"
+    assert manual_case.autotest == ""
+    assert manual_case.testit_id is None
+    assert manual_case.requirement == "часть 13, файл.md, раздел «Прогон полного цикла», шаг 1"
+
+
+def test_parse_area_file_reads_requirement_on_automated_case(tmp_path):
+    doc_path = _write_doc(tmp_path, name="mts.md", content=MANUAL_AREA_DOC)
+
+    area_file = parse_area_file(doc_path)
+
+    automated_case = area_file.cases[1]
+    assert automated_case.autotest
+    assert automated_case.requirement == "часть 1, файл.md, раздел «Флоу»"
+
+
+def test_case_tags_manual_case_gets_tc_tag_and_manual_instead_of_autotest(tmp_path):
+    doc_path = _write_doc(tmp_path, name="mts.md", content=MANUAL_AREA_DOC)
+    area_file = parse_area_file(doc_path)
+    manual_case = area_file.cases[0]
+
+    tags = case_tags(manual_case, area_file.area)
+
+    assert tags == ["mts", "e2e", "admin", "tenant-admin", tc_tag("TC-MTS-080"), "manual"]
+
+
+def test_build_plan_includes_manual_cases_without_skipping(tmp_path):
+    doc_path = _write_doc(tmp_path, name="mts.md", content=MANUAL_AREA_DOC)
+
+    plans = build_plan(tmp_path, areas=None, project_id="42")
+
+    assert len(plans[0].items) == 2
+    manual_item = plans[0].items[0]
+    assert manual_item.autotest == ""
+    assert manual_item.action == "create"
+
+
+def test_build_work_item_payload_puts_requirement_before_precondition(tmp_path):
+    doc_path = _write_doc(tmp_path, name="mts.md", content=MANUAL_AREA_DOC)
+
+    plans = build_plan(tmp_path, areas=None, project_id="42")
+
+    precondition_steps = plans[0].items[0].payload["preconditionSteps"]
+    assert precondition_steps == [
+        {"description": "Требование: часть 13, файл.md, раздел «Прогон полного цикла», шаг 1"},
+        {"description": "Реальный валидный токен"},
+    ]
+
+
+# --------------------------------------------------------------------------------- читаемое имя секции
+
+
+def test_readable_area_title_strips_numeric_prefix_and_underscores_but_keeps_order():
+    assert readable_area_title("00_tenant_settings") == "00. Tenant settings"
+    assert readable_area_title("13_dev_real_e2e") == "13. Dev real e2e"
+
+
+def test_readable_area_title_passes_through_names_without_numeric_prefix():
+    assert readable_area_title("widgets") == "widgets"
+
+
+def test_parse_area_file_uses_readable_title_when_no_header_title(tmp_path):
+    doc_without_header = "### TC-WIDGETS-001 Кейс без заголовка области\n- Автотест: x\n"
+    doc_path = _write_doc(tmp_path, name="00_tenant_settings.md", content=doc_without_header)
+
+    area_file = parse_area_file(doc_path)
+
+    assert area_file.area == "00_tenant_settings"
+    assert area_file.title == "00. Tenant settings"
+
+
+# --------------------------------------------------------------------------------- --parent-section
+
+
+def test_build_section_payload_with_parent_id():
+    payload = build_section_payload("42", "mts_link — часть 0.1", parent_id="777")
+
+    assert payload == {"projectId": "42", "name": "mts_link — часть 0.1", "parentId": "777"}
+
+
+def test_build_plan_wires_parent_id_into_section_payload(tmp_path):
+    doc_path = _write_doc(tmp_path)
+
+    plans = build_plan(tmp_path, areas=None, project_id="42", parent_id="<parent-section:МТС Линк>")
+
+    assert plans[0].section_payload == {
+        "projectId": "42", "name": "widgets", "parentId": "<parent-section:МТС Линк>",
+    }
+
+
+def test_dry_run_with_parent_section_shows_nesting_in_export_and_stdout(tmp_path, monkeypatch, capsys):
+    for name in ("TESTIT_URL", "TESTIT_TOKEN", "TESTIT_PROJECT_ID"):
+        monkeypatch.delenv(name, raising=False)
+    docs_dir = tmp_path / "docs" / "test_cases"
+    _write_doc(docs_dir)
+    export_path = tmp_path / "workspace" / "testit_export.json"
+
+    exit_code = main([
+        "--docs-dir", str(docs_dir), "--export", str(export_path),
+        "--parent-section", "МТС Линк",
+    ])
+
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "МТС Линк" in captured.out
+    payload = json.loads(export_path.read_text(encoding="utf-8"))
+    assert payload["parent_section"] == {"projectId": None, "name": "МТС Линк", "parentId": None}
+    assert payload["areas"][0]["section"]["parentId"] == "<parent-section:МТС Линк>"
+
+
+def test_apply_with_parent_section_creates_area_section_nested_under_parent(tmp_path, fake_client):
+    client, session = fake_client
+    docs_dir = tmp_path / "docs" / "test_cases"
+    doc_path = _write_doc(docs_dir)
+    area_file = parse_area_file(doc_path)
+
+    parent_section = client.ensure_section("МТС Линк")
+    parent_id = parent_section["id"]
+    apply_area(client, area_file, parent_section_id=parent_id)
+
+    section_posts = [body for method, url, body in session.calls if method == "POST" and url.endswith("/sections")]
+    assert section_posts == [
+        {"projectId": "42", "name": "МТС Линк", "parentId": None},
+        {"projectId": "42", "name": "widgets", "parentId": parent_id},
+    ]
+
+
+def test_apply_area_section_lookup_scoped_by_parent_id_does_not_merge_same_named_sections(tmp_path, fake_client):
+    """Одинаковое имя секции области в разных родителях (mts_link/p2p) не должно склеиваться."""
+    client, session = fake_client
+    docs_dir = tmp_path / "docs" / "test_cases"
+    doc_path = _write_doc(docs_dir)
+    area_file = parse_area_file(doc_path)
+
+    section_under_other_parent = {"id": 999, "name": "widgets", "parentId": "other-parent"}
+    session.sections.append(section_under_other_parent)
+
+    apply_area(client, area_file, parent_section_id="my-parent")
+
+    section_posts = [url for method, url, _ in session.calls if method == "POST" and url.endswith("/sections")]
+    assert len(section_posts) == 1  # секция под "my-parent" не найдена среди чужих -> создана новая
 
 
 # --------------------------------------------------------------------------------- --dry-run

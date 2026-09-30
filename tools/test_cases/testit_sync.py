@@ -2,7 +2,7 @@
 
 Читает md-кейсы, для каждой области готовит секцию проекта Test IT, для каждого кейса —
 work item типа «Test case» (шаги, приоритет, теги область/api-ui/роли, тег с путём
-автотеста). Использует только `requests` (Test IT Public API v2, заголовок
+автотеста или `manual`). Использует только `requests` (Test IT Public API v2, заголовок
 `Authorization: PrivateToken <TESTIT_TOKEN>`) — новых зависимостей нет.
 
 Схема запросов (`/api/v2/projects/{id}/sections`, `/api/v2/workItems`,
@@ -15,10 +15,17 @@ work item типа «Test case» (шаги, приоритет, теги обл�
     --apply — реальная заливка: создаёт/обновляет секции и work items, id найденного/
         созданного work item дописывает в md-файл кейса (`- Test IT: <id>`).
     --area <name> — ограничить одной областью (имя = имя файла без .md).
+    --parent-section <name> — все секции областей из `--docs-dir` создаются вложенными
+        (parentId) в эту родительскую секцию проекта; используется, когда `--docs-dir`
+        указывает на подпапку (`docs/test_cases/mts_link`, `docs/test_cases/p2p`), которую
+        в Test IT нужно видеть отдельным разделом со своими вложенными областями.
+
+Кейсы без `- Автотест:` заливаются как ручные test case (без node id, тег `manual`).
 
 Идемпотентность: перед созданием work item ищется существующий по названию + тегу
-`autotest:<node id>` (а если в кейсе уже записан `- Test IT: <id>` — используется он
-напрямую). Повторный `--apply` обновляет найденный item, а не плодит дубли.
+`autotest:<node id>` для автотестовых кейсов или `tc:<TC-ID>` для ручных (а если в кейсе
+уже записан `- Test IT: <id>` — используется он напрямую). Повторный `--apply` обновляет
+найденный item, а не плодит дубли.
 """
 import argparse
 import json
@@ -44,8 +51,12 @@ HEADING_RE = re.compile(r"^### (TC-[A-Za-z0-9_]+-\d+)\s+(.+)$")
 AUTOTEST_RE = re.compile(r"^-\s*Автотест:\s*(\S+)\s*$")
 META_RE = re.compile(r"^-\s*Приоритет:\s*(\S+)\s+Тип:\s*(\S+)\s+Роли:\s*(.*)$")
 PRECONDITION_RE = re.compile(r"^-\s*Предусловия:\s*(.*)$")
+REQUIREMENT_RE = re.compile(r"^-\s*Требование:\s*(.*)$")
 TESTIT_ID_RE = re.compile(r"^-\s*Test IT:\s*(.*)$")
 AREA_TITLE_RE = re.compile(r"^#\s*Тест-кейсы:\s*(.+)$")
+# Имя файла-области без читаемого заголовка в md, вида "00_tenant_settings": числовой
+# префикс сохраняется отдельно, чтобы секции в Test IT шли по порядку файлов.
+AREA_STEM_PREFIX_RE = re.compile(r"^(\d+)_(.+)$")
 
 PRIORITY_MAP = {"high": "High", "medium": "Medium", "low": "Low"}
 DEFAULT_PRIORITY_API = "Medium"
@@ -69,6 +80,7 @@ class Case:
     type_: str
     roles: list[str]
     precondition: str
+    requirement: str
     steps: list[CaseStep]
     testit_id: str | None
     block: list[str] = field(repr=False)
@@ -105,6 +117,7 @@ def _parse_case_block(block: list[str]) -> Case:
     type_ = "api"
     roles: list[str] = []
     precondition = "-"
+    requirement = ""
     testit_id: str | None = None
     steps: list[CaseStep] = []
 
@@ -123,6 +136,10 @@ def _parse_case_block(block: list[str]) -> Case:
         if m:
             precondition = m.group(1).strip() or "-"
             continue
+        m = REQUIREMENT_RE.match(stripped)
+        if m:
+            requirement = m.group(1).strip()
+            continue
         m = TESTIT_ID_RE.match(stripped)
         if m:
             testit_id = m.group(1).strip() or None
@@ -133,8 +150,23 @@ def _parse_case_block(block: list[str]) -> Case:
 
     return Case(
         tc_id=tc_id, title=title, autotest=autotest, priority=priority, type_=type_,
-        roles=roles, precondition=precondition, steps=steps, testit_id=testit_id, block=block,
+        roles=roles, precondition=precondition, requirement=requirement, steps=steps,
+        testit_id=testit_id, block=block,
     )
+
+
+def readable_area_title(stem: str) -> str:
+    """"00_tenant_settings" -> "00. Tenant settings": числовой префикс остаётся (порядок
+    секций в Test IT), подчёркивания уходят. Используется только когда в md нет заголовка
+    `# Тест-кейсы: <area>` и title иначе совпал бы с сырым именем файла."""
+    m = AREA_STEM_PREFIX_RE.match(stem)
+    if not m:
+        return stem
+    order, rest = m.groups()
+    words = rest.replace("_", " ").strip()
+    if words:
+        words = words[0].upper() + words[1:]
+    return f"{order}. {words}"
 
 
 def parse_area_file(path: Path) -> AreaFile:
@@ -150,6 +182,8 @@ def parse_area_file(path: Path) -> AreaFile:
         if m:
             title = m.group(1).strip()
             break
+    if title == area:
+        title = readable_area_title(area)
 
     cases = []
     for pos, start in enumerate(heading_idx):
@@ -187,9 +221,9 @@ def _set_block_testit_id(block: list[str], work_item_id: str) -> bool:
             return True
     insert_at = len(block)
     for i, line in enumerate(block):
-        if PRECONDITION_RE.match(line.strip()):
-            insert_at = i + 1
-            break
+        stripped = line.strip()
+        if PRECONDITION_RE.match(stripped) or REQUIREMENT_RE.match(stripped):
+            insert_at = i + 1  # после последней из Предусловия/Требование, перед таблицей шагов
     block.insert(insert_at, new_line)
     return True
 
@@ -201,12 +235,27 @@ def autotest_tag(autotest: str) -> str:
     return f"autotest:{autotest}"
 
 
+def tc_tag(tc_id: str) -> str:
+    return f"tc:{tc_id}"
+
+
 def case_tags(case: Case, area: str) -> list[str]:
-    return [area, case.type_, *case.roles, autotest_tag(case.autotest)]
+    tags = [area, case.type_, *case.roles, tc_tag(case.tc_id)]
+    tags.append(autotest_tag(case.autotest) if case.autotest else "manual")
+    return tags
 
 
-def build_section_payload(project_id: str | None, area_title: str) -> dict:
-    return {"projectId": project_id, "name": area_title, "parentId": None}
+def build_section_payload(project_id: str | None, area_title: str, parent_id: str | None = None) -> dict:
+    return {"projectId": project_id, "name": area_title, "parentId": parent_id}
+
+
+def _precondition_steps(case: Case) -> list[dict]:
+    steps = []
+    if case.requirement:
+        steps.append({"description": f"Требование: {case.requirement}"})
+    if case.precondition and case.precondition != "-":
+        steps.append({"description": case.precondition})
+    return steps
 
 
 def build_work_item_payload(project_id: str | None, section_id: str | None, case: Case, area: str) -> dict:
@@ -216,9 +265,7 @@ def build_work_item_payload(project_id: str | None, section_id: str | None, case
         "entityTypeName": "TestCases",
         "name": case.title,
         "priority": PRIORITY_MAP.get(case.priority.lower(), DEFAULT_PRIORITY_API),
-        "preconditionSteps": (
-            [{"description": case.precondition}] if case.precondition and case.precondition != "-" else []
-        ),
+        "preconditionSteps": _precondition_steps(case),
         "steps": [{"action": step.action, "expectedResult": step.expected} for step in case.steps],
         "tags": [{"name": tag} for tag in case_tags(case, area)],
     }
@@ -245,12 +292,10 @@ class AreaPlan:
     items: list[PlannedItem]
 
 
-def plan_area(area_file: AreaFile, project_id: str | None) -> AreaPlan:
-    section_payload = build_section_payload(project_id, area_file.title)
+def plan_area(area_file: AreaFile, project_id: str | None, parent_id: str | None = None) -> AreaPlan:
+    section_payload = build_section_payload(project_id, area_file.title, parent_id)
     items = []
     for case in area_file.cases:
-        if not case.autotest:
-            continue
         action = "update" if case.testit_id else "create"
         payload = build_work_item_payload(project_id, None, case, area_file.area)
         items.append(PlannedItem(
@@ -260,12 +305,14 @@ def plan_area(area_file: AreaFile, project_id: str | None) -> AreaPlan:
     return AreaPlan(area_file=area_file, section_payload=section_payload, items=items)
 
 
-def build_plan(docs_dir: Path, areas: set[str] | None, project_id: str | None) -> list[AreaPlan]:
+def build_plan(
+    docs_dir: Path, areas: set[str] | None, project_id: str | None, parent_id: str | None = None,
+) -> list[AreaPlan]:
     plans = []
     for area_file in iter_area_files(docs_dir):
         if areas and area_file.area not in areas:
             continue
-        plans.append(plan_area(area_file, project_id))
+        plans.append(plan_area(area_file, project_id, parent_id))
     return plans
 
 
@@ -314,24 +361,26 @@ class TestItClient:
     def _url(self, path: str) -> str:
         return f"{self._base_url}{path}"
 
-    def find_section(self, name: str) -> dict | None:
+    def find_section(self, name: str, parent_id: str | None = None) -> dict | None:
+        """Ищет секцию и по имени, и по parentId — иначе одинаковые имена файлов в разных
+        родительских секциях (например, области mts_link и p2p) склеились бы в одну."""
         resp = self._session.get(self._url(f"/projects/{self.project_id}/sections"))
         resp.raise_for_status()
         for section in resp.json() or []:
-            if section.get("name") == name:
+            if section.get("name") == name and section.get("parentId") == parent_id:
                 return section
         return None
 
-    def create_section(self, name: str) -> dict:
+    def create_section(self, name: str, parent_id: str | None = None) -> dict:
         resp = self._session.post(
             self._url(f"/projects/{self.project_id}/sections"),
-            json=build_section_payload(self.project_id, name),
+            json=build_section_payload(self.project_id, name, parent_id),
         )
         resp.raise_for_status()
         return resp.json()
 
-    def ensure_section(self, name: str) -> dict:
-        return self.find_section(name) or self.create_section(name)
+    def ensure_section(self, name: str, parent_id: str | None = None) -> dict:
+        return self.find_section(name, parent_id) or self.create_section(name, parent_id)
 
     def find_work_item(self, name: str, tag: str) -> dict | None:
         resp = self._session.post(
@@ -367,22 +416,23 @@ class AppliedItem:
     work_item_id: str
 
 
-def apply_area(client: TestItClient, area_file: AreaFile) -> list[AppliedItem]:
-    section = client.ensure_section(area_file.title)
+def apply_area(
+    client: TestItClient, area_file: AreaFile, parent_section_id: str | None = None,
+) -> list[AppliedItem]:
+    section = client.ensure_section(area_file.title, parent_section_id)
     section_id = section.get("id")
     applied = []
     changed = False
 
     for case in area_file.cases:
-        if not case.autotest:
-            continue
         payload = build_work_item_payload(client.project_id, section_id, case, area_file.area)
 
         if case.testit_id:
             work_item = client.update_work_item(case.testit_id, payload)
             action = "update"
         else:
-            existing = client.find_work_item(case.title, autotest_tag(case.autotest))
+            search_tag = autotest_tag(case.autotest) if case.autotest else tc_tag(case.tc_id)
+            existing = client.find_work_item(case.title, search_tag)
             if existing:
                 work_item = client.update_work_item(existing["id"], payload)
                 action = "update"
@@ -404,19 +454,35 @@ def apply_area(client: TestItClient, area_file: AreaFile) -> list[AppliedItem]:
 # --------------------------------------------------------------------------------- CLI
 
 
-def _print_dry_run_summary(plans: list[AreaPlan]) -> None:
-    total_create = total_update = 0
+def _print_dry_run_summary(plans: list[AreaPlan], parent_section_payload: dict | None = None) -> None:
+    if parent_section_payload:
+        print(
+            f"Родительская секция: {parent_section_payload['name']!r} "
+            f"(в неё вложены секции {len(plans)} областей)"
+        )
+    total_create = total_update = total_manual = 0
     for plan in plans:
         create = sum(1 for item in plan.items if item.action == "create")
         update = sum(1 for item in plan.items if item.action == "update")
+        manual = sum(1 for item in plan.items if not item.autotest)
         total_create += create
         total_update += update
-        print(f"{plan.area_file.area}: {len(plan.items)} кейсов (создать {create}, обновить {update})")
-    print(f"Итого: {len(plans)} областей, создать {total_create}, обновить {total_update}")
+        total_manual += manual
+        indent = "  " if parent_section_payload else ""
+        print(
+            f"{indent}{plan.area_file.area} ({plan.area_file.title}): {len(plan.items)} кейсов "
+            f"(создать {create}, обновить {update}, ручных {manual})"
+        )
+    total_cases = sum(len(plan.items) for plan in plans)
+    print(
+        f"Итого: {len(plans)} областей, {total_cases} кейсов, "
+        f"создать {total_create}, обновить {total_update}, ручных {total_manual}"
+    )
 
 
-def _export_payload(plans: list[AreaPlan]) -> dict:
+def _export_payload(plans: list[AreaPlan], parent_section_payload: dict | None = None) -> dict:
     return {
+        "parent_section": parent_section_payload,
         "areas": [
             {
                 "area": plan.area_file.area,
@@ -426,6 +492,7 @@ def _export_payload(plans: list[AreaPlan]) -> dict:
                         "tc_id": item.tc_id,
                         "action": item.action,
                         "autotest": item.autotest,
+                        "manual": not item.autotest,
                         "existing_testit_id": item.case.testit_id,
                         "payload": item.payload,
                     }
@@ -442,6 +509,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--docs-dir", type=Path, default=DEFAULT_DOCS_DIR)
     parser.add_argument("--export", type=Path, default=DEFAULT_EXPORT_PATH)
     parser.add_argument("--area", action="append", dest="areas", help="ограничить одной или несколькими областями")
+    parser.add_argument(
+        "--parent-section",
+        dest="parent_section",
+        help="имя родительской секции Test IT — секции всех областей из --docs-dir вложены в неё",
+    )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="без сети, план + workspace/testit_export.json (по умолчанию)")
     mode.add_argument("--apply", action="store_true", help="реальная заливка в Test IT")
@@ -455,10 +527,13 @@ def main(argv: list[str] | None = None) -> int:
             print("Не заливаю: не заданы переменные .env: " + ", ".join(missing))
             return 1
         client = TestItClient(config)
+        parent_section_id = None
+        if args.parent_section:
+            parent_section_id = client.ensure_section(args.parent_section).get("id")
         for area_file in iter_area_files(args.docs_dir):
             if areas and area_file.area not in areas:
                 continue
-            applied = apply_area(client, area_file)
+            applied = apply_area(client, area_file, parent_section_id=parent_section_id)
             created = sum(1 for a in applied if a.action == "create")
             updated = sum(1 for a in applied if a.action == "update")
             print(f"{area_file.area}: {len(applied)} кейсов (создано {created}, обновлено {updated})")
@@ -467,13 +542,20 @@ def main(argv: list[str] | None = None) -> int:
     if missing:
         print("Сухой режим: не заданы переменные .env: " + ", ".join(missing))
 
-    plans = build_plan(args.docs_dir, areas, config.project_id if config else None)
+    project_id = config.project_id if config else None
+    parent_section_payload = None
+    parent_placeholder = None
+    if args.parent_section:
+        parent_section_payload = build_section_payload(project_id, args.parent_section)
+        parent_placeholder = f"<parent-section:{args.parent_section}>"
+
+    plans = build_plan(args.docs_dir, areas, project_id, parent_placeholder)
     args.export.parent.mkdir(parents=True, exist_ok=True)
     args.export.write_text(
-        json.dumps(_export_payload(plans), ensure_ascii=False, indent=2, sort_keys=False),
+        json.dumps(_export_payload(plans, parent_section_payload), ensure_ascii=False, indent=2, sort_keys=False),
         encoding="utf-8",
     )
-    _print_dry_run_summary(plans)
+    _print_dry_run_summary(plans, parent_section_payload)
     print(f"План записан в {args.export}")
     return 0
 
