@@ -154,6 +154,14 @@ def ensure_prod_allowed(env_name: str, markexpr: str) -> None:
         )
 
 
+def is_feature_ready(flag_name: str) -> bool:
+    """Читает булев флаг готовности функциональности к автотестам (например P2P_READY) —
+    выставляется вручную, когда контракт API/UI подтверждён на ветке. Формат — как у
+    HEADLESS в conftest.py: "1"/"true"/"yes" (без учёта регистра) считаются включением,
+    всё остальное (включая пустую строку/отсутствие переменной) — выключением."""
+    return os.getenv(flag_name, "0").strip().lower() in ("1", "true", "yes")
+
+
 class LoginError(RuntimeError):
     """Не удалось авторизоваться на портале по логину/паролю."""
 

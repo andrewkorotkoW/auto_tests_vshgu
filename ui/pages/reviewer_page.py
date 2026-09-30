@@ -153,3 +153,103 @@ class ReviewerPage(BasePage):
         self.attach_review_file(file_path)
         self.select_grade(grade)
         self.submit_review()
+
+    # ── Взаимопроверка (p2p): peer-проверки, агрегаты, итог, возврат ────
+    # Функциональности ещё нет ни на одной ветке (docs/missions/2026-09-30_tz2026_p2p.md,
+    # docs/test_cases/p2p/06_final_result.md, 07_aggregation.md, 08_return_for_revision.md).
+    # Селекторы ниже — предположение по аналогии с существующим блоком «Проверка ответа»
+    # этого же файла (additional_materials_table/comment_textarea/select_grade).
+    # TODO: уточнить после ветки — каждый локатор.
+
+    def open_peer_reviews_block(self) -> None:
+        """Блок всех peer-проверок по работе, видимый штатному проверяющему ПЗ
+        (04 §9, §3 — роли)."""
+        block = self.page.locator("xpath=//div[contains(@class,'peer-reviews-block')]")  # TODO: уточнить после ветки
+        expect(block).to_be_visible(timeout=15000)
+
+    def peer_review_rows(self) -> Locator:
+        # TODO: уточнить после ветки — одна строка = одна peer-проверка одного проверяющего
+        return self.page.locator("xpath=//div[contains(@class,'peer-reviews-block')]//tr[contains(@class,'vs-table__row')]")
+
+    def peer_review_value(self, reviewer_full_name: str, criterion_label: str) -> Locator:
+        # TODO: уточнить после ветки
+        return self.page.locator(
+            "xpath=//div[contains(@class,'peer-reviews-block')]"
+            f"//tr[.//*[normalize-space()='{reviewer_full_name}']]"
+            f"//td[@data-criterion='{criterion_label}']"
+        )
+
+    def aggregate_value(self, criterion_label: str) -> Locator:
+        """Агрегированное значение по критерию: среднее с округлением до 0,1 для
+        числовых критериев, список ответов для текстовых (04 §5.1)."""
+        # TODO: уточнить после ветки
+        return self.page.locator(
+            "xpath=//div[contains(@class,'peer-review-aggregates')]"
+            f"//div[contains(@class,'criterion') and contains(.,'{criterion_label}')]"
+            "//*[contains(@class,'aggregate-value')]"
+        )
+
+    def expect_aggregate_value(self, criterion_label: str, expected: str) -> None:
+        value = self.aggregate_value(criterion_label)
+        expect(value).to_have_text(expected, timeout=15000)
+
+    # ── Итоговый результат ────────────────────────────────────────────────
+
+    def open_final_result_form(self) -> None:
+        # TODO: уточнить после ветки
+        button = self.page.get_by_role("button", name="Выставить итоговый результат")
+        expect(button).to_be_visible(timeout=15000)
+        button.click(timeout=5000)
+
+    def set_final_result(self, grade: str) -> None:
+        """Штатный проверяющий выставляет (или меняет) итоговый результат по работе
+        (04 §9 п.1–2)."""
+        self.select_grade(grade)
+        submit_button = self.page.get_by_role("button", name="Сохранить итог")  # TODO: уточнить после ветки
+        expect(submit_button).to_be_visible(timeout=15000)
+        expect(submit_button).to_be_enabled(timeout=15000)
+        submit_button.click(timeout=5000)
+
+    def expect_final_result(self, grade: str) -> None:
+        # TODO: уточнить после ветки
+        result = self.page.locator(f"xpath=//div[contains(@class,'final-result') and contains(.,'{grade}')]")
+        expect(result).to_be_visible(timeout=15000)
+
+    def expect_final_result_action_unavailable(self) -> None:
+        """Администратор без назначения штатным проверяющим не может выставить итоговый
+        результат — просмотр работ/назначений/статистики остаётся доступен (04 §9, §3)."""
+        # TODO: уточнить после ветки — либо кнопка не отрисована, либо disabled
+        button = self.page.get_by_role("button", name="Выставить итоговый результат")
+        expect(button).to_have_count(0)
+
+    # ── Возврат на доработку ──────────────────────────────────────────────
+
+    def return_for_revision(self, comment: str) -> None:
+        """Возврат работы на доработку — доступно только штатному проверяющему ПЗ
+        (04 §8.2 п.2; слушатель-проверяющий такого действия не видит, 03 §9)."""
+        # TODO: уточнить после ветки
+        button = self.page.get_by_role("button", name="Вернуть на доработку")
+        expect(button).to_be_visible(timeout=15000)
+        button.click(timeout=5000)
+
+        comment_field = self.page.locator("xpath=//div[contains(@class,'v-dialog__content--active')]//textarea")
+        expect(comment_field).to_be_visible(timeout=15000)
+        comment_field.fill(comment, timeout=5000)
+
+        confirm_button = self.page.locator(
+            "xpath=//div[contains(@class,'v-dialog__content--active')]//button[.//span[normalize-space()='Вернуть']]"
+        )
+        confirm_button.click(timeout=5000)
+
+    def expect_return_for_revision_unavailable(self) -> None:
+        """Слушатель-проверяющий не должен видеть действие «Вернуть на доработку»
+        (04 §8.2 п.2)."""
+        # TODO: уточнить после ветки
+        button = self.page.get_by_role("button", name="Вернуть на доработку")
+        expect(button).to_have_count(0)
+
+    def expect_returned_for_revision_mark(self) -> None:
+        """Пометка «доработано» у повторно сданной после возврата работы (04 §8.2 п.6)."""
+        # TODO: уточнить после ветки
+        mark = self.page.locator("xpath=//span[normalize-space()='Доработано']")
+        expect(mark).to_be_visible(timeout=15000)

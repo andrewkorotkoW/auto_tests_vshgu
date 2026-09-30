@@ -419,3 +419,117 @@ class AdminProgramsPage(BasePage):
 
     def listener_row(self, user_id: Union[int, str]) -> Locator:
         return self.page.locator(f"xpath=//a[contains(@href,'/admin/users/{user_id}')]")
+
+    # ── Взаимопроверка (p2p): настройки в потоке ─────────────────────────
+    # Функциональности ещё нет ни на одной ветке (docs/missions/2026-09-30_tz2026_p2p.md,
+    # docs/test_cases/p2p/02_stream_settings.md, 03_distribution.md, 05_external_reviewer.md).
+    # Методы — по аналогии с уже существующим блоком «Слушатели потока» этого класса
+    # (open_listeners_tab/add_listener: своя вкладка, модалка с мультиселектом по ФИО).
+    # TODO: уточнить после ветки — каждый локатор.
+
+    def open_peer_review_settings_tab(self) -> None:
+        tab = self.page.locator("a.courses-list-tabs__item", has_text="Взаимопроверка")  # TODO: уточнить после ветки
+        expect(tab).to_be_visible(timeout=15000)
+        tab.click(timeout=5000, force=True)
+
+    def add_peer_review_participant(self, user_full_name: str) -> None:
+        """Участник взаимопроверки — только слушатель этого потока (04 §2, 03 §5.1)."""
+        # TODO: уточнить после ветки — по аналогии с add_listener
+        add_button = self.page.get_by_role("button", name="Добавить участника")
+        expect(add_button).to_be_visible(timeout=15000)
+        add_button.click(timeout=5000)
+
+        select_field = self.page.locator(
+            "xpath=//div[contains(@class,'v-dialog__content--active')]"
+            "//label[normalize-space()='Выберите Пользователя']/ancestor::div[contains(@class,'v-input')][1]"
+        )
+        expect(select_field).to_be_visible(timeout=15000)
+        select_field.click(timeout=15000)
+        self.page.keyboard.type(user_full_name, delay=80)
+        self.page.wait_for_timeout(800)
+
+        option = self.page.locator(
+            "xpath=//div[contains(@class,'menuable__content__active')]"
+            f"//*[contains(normalize-space(),'{user_full_name}')]"
+        ).first
+        expect(option).to_be_visible(timeout=15000)
+        option.click(timeout=5000)
+
+        confirm_button = self.page.locator(
+            "xpath=//div[contains(@class,'v-dialog__content--active')]//button[.//span[normalize-space()='Добавить']]"
+        )
+        confirm_button.click(timeout=5000)
+
+    def select_manual_distribution_mode(self) -> None:
+        """Ручной режим распределения работ (04 §6.1) — авто-распределение не
+        запускается."""
+        # TODO: уточнить после ветки
+        radio = self.page.locator("xpath=//label[normalize-space()='Ручное распределение']/preceding::input[@type='radio'][1]")
+        radio.click(timeout=5000)
+
+    def select_automatic_distribution_mode(self) -> None:
+        """Автоматический режим распределения работ (04 §6.2)."""
+        # TODO: уточнить после ветки
+        radio = self.page.locator("xpath=//label[normalize-space()='Автоматическое распределение']/preceding::input[@type='radio'][1]")
+        radio.click(timeout=5000)
+
+    def set_works_per_listener(self, count: int) -> None:
+        """«Количество работ для проверки одним слушателем» в автоматическом режиме
+        (04 §6.2)."""
+        # TODO: уточнить после ветки
+        field = self.page.locator("xpath=//label[contains(text(),'Количество работ для проверки')]/following::input[@type='text'][1]")
+        expect(field).to_be_visible(timeout=15000)
+        field.fill(str(count), timeout=5000)
+
+    def set_minimum_reviews_per_work(self, count: int) -> None:
+        """Минимальное количество peer-проверок на одну работу — применяется
+        независимо от режима распределения (04 §6.2, §10.1)."""
+        # TODO: уточнить после ветки
+        field = self.page.locator("xpath=//label[contains(text(),'Минимальное количество проверок')]/following::input[@type='text'][1]")
+        expect(field).to_be_visible(timeout=15000)
+        field.fill(str(count), timeout=5000)
+
+    def save_peer_review_settings(self) -> None:
+        save_button = self.page.locator("xpath=//button[.//span[contains(text(),'Сохранить')]]")  # TODO: уточнить после ветки
+        save_button.click(timeout=5000)
+
+    # ── Внешний проверяющий по ссылке (04 §7) ────────────────────────────
+
+    def add_external_reviewer(self, full_name: str, email: str = "") -> None:
+        """Добавить внешнего проверяющего к P2P-ПЗ в потоке (ФИО обязательно, email
+        опционален, 04 §7 п.1–2)."""
+        # TODO: уточнить после ветки
+        add_button = self.page.get_by_role("button", name="Добавить внешнего проверяющего")
+        expect(add_button).to_be_visible(timeout=15000)
+        add_button.click(timeout=5000)
+
+        name_field = self.page.locator(
+            "xpath=//div[contains(@class,'v-dialog__content--active')]//label[normalize-space()='ФИО']/following::input[1]"
+        )
+        expect(name_field).to_be_visible(timeout=15000)
+        name_field.fill(full_name, timeout=5000)
+
+        if email:
+            email_field = self.page.locator(
+                "xpath=//div[contains(@class,'v-dialog__content--active')]//label[normalize-space()='Email']/following::input[1]"
+            )
+            email_field.fill(email, timeout=5000)
+
+        confirm_button = self.page.locator(
+            "xpath=//div[contains(@class,'v-dialog__content--active')]//button[.//span[normalize-space()='Добавить']]"
+        )
+        confirm_button.click(timeout=5000)
+
+    def external_reviewer_row(self, full_name: str) -> Locator:
+        # TODO: уточнить после ветки — несколько внешних с одинаковым ФИО различаются
+        # по внутреннему идентификатору ссылки (04 §7 п.6–7), не по этой строке таблицы
+        safe = full_name.replace("'", "")
+        return self.page.locator(f"xpath=//tr[.//td[contains(normalize-space(),'{safe}')]]")
+
+    def external_reviewer_link(self, full_name: str) -> str:
+        """Персональная ссылка внешнего проверяющего (04 §7 п.3)."""
+        # TODO: уточнить после ветки
+        row = self.external_reviewer_row(full_name)
+        expect(row).to_be_visible(timeout=15000)
+        link_field = row.locator("xpath=.//input[contains(@class,'external-link')]")
+        return link_field.get_attribute("value") or ""
