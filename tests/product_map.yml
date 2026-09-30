@@ -36,10 +36,15 @@ nodes:
   - {id: ext_certificates, label: Сертификаты, zone: ext, x: 185, y: 520, w: 130, h: 40, tests: [tests/api/certificates]}
   - {id: ext_dashboard, label: "Дашборд слушателя", zone: ext, x: 330, y: 520, w: 150, h: 40, tests: [tests/ui/dashboards]}
 
+  # p2p (docs/missions/2026-09-30_tz2026_p2p.md, каркас до разработки — tests: [] до появления ветки)
+  - {id: ext_pt_peer_review, label: "ПЗ · взаимопроверка", zone: ext, x: 40, y: 450, w: 130, h: 40, tests: []}
+  - {id: ext_external_review, label: "Внешняя проверка по ссылке", zone: ext, x: 315, y: 450, w: 150, h: 40, tests: []}
+
   - {id: rev_pt, label: "Практические задания", zone: rev, x: 560, y: 240, w: 190, h: 40, tests: []}
   - {id: rev_queue, label: "Новые / Отвечено", zone: rev, x: 560, y: 310, w: 190, h: 40, tests: []}
   - {id: rev_review, label: "Проверка ответа", zone: rev, x: 560, y: 380, w: 190, h: 40, tests: [tests/ui/practical_tasks/test_review_practical_task, tests/ui/practical_tasks/test_reviewer_sees_additional_materials, tests/api/users/teacher]}
   - {id: rev_proctoring, label: Прокторинг, zone: rev, x: 560, y: 450, w: 190, h: 40, tests: [tests/ui/proctoring, tests/api/proctoring]}
+  - {id: rev_peer_results, label: "Peer-проверки и итог", zone: rev, x: 560, y: 520, w: 190, h: 40, tests: []}
 
   - {id: adm_users, label: Пользователи, zone: adm, x: 840, y: 90, w: 150, h: 40, tests: [tests/api/users, tests/ui/users]}
   - {id: adm_programs, label: "База программ", zone: adm, x: 1010, y: 90, w: 150, h: 40, tests: [tests/api/programs]}
@@ -49,6 +54,7 @@ nodes:
   - {id: adm_stats, label: Статистика, zone: adm, x: 1180, y: 160, w: 150, h: 40, tests: [tests/ui/learning_statistics, tests/api/learning_statistics]}
   - {id: adm_activities, label: "Активности (контент)", zone: adm, x: 1010, y: 230, w: 150, h: 40, tests: [tests/api/create_activity]}
   - {id: adm_certificates, label: "Сертификаты (адм.)", zone: adm, x: 1180, y: 230, w: 150, h: 40, tests: [tests/api/certificates]}
+  - {id: adm_pt_p2p, label: "ПЗ · настройки взаимопроверки", zone: adm, x: 840, y: 230, w: 150, h: 40, tests: []}
   - {id: adm_pt, label: "ПЗ (адм.)", zone: adm, x: 840, y: 300, w: 150, h: 40, tests: [tests/ui/practical_tasks/test_create_practical_task, tests/ui/practical_tasks/test_add_practical_task_to_schedule, tests/api/create_activity/homeworks]}
   - {id: adm_test_constructor, label: "Конструктор тестов", zone: adm, x: 1010, y: 300, w: 150, h: 40, tests: [tests/ui/test_constructor]}
   - {id: adm_polls, label: "Опросы (адм.)", zone: adm, x: 1180, y: 300, w: 150, h: 40, tests: [tests/ui/polls, tests/api/polls]}
@@ -100,6 +106,12 @@ edges:
   - {from: ext_test, to: rev_proctoring}
   - {from: adm_mailings, to: ext_notifications}
   - {from: adm_tickets, to: ext_ticket}
+
+  # p2p (docs/missions/2026-09-30_tz2026_p2p.md)
+  - {from: ext_pt, to: ext_pt_peer_review}
+  - {from: ext_pt_peer_review, to: ext_external_review}
+  - {from: rev_pt, to: rev_peer_results}
+  - {from: adm_pt, to: adm_pt_p2p}
 
   - {from: int_buk, to: adm_users}
   - {from: int_cas, to: ext_login}

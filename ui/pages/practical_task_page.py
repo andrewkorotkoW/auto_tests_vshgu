@@ -122,3 +122,113 @@ class PracticalTaskPage(BasePage):
     def edit_answer(self, text: str) -> None:
         self.answer_textarea.fill(text, timeout=5000)
         expect(self.answer_textarea).to_have_value(text, timeout=10000)
+
+    # ── Взаимопроверка (p2p): «Работы на проверку» ──────────────────────
+    # Функциональности ещё нет ни на одной ветке (docs/missions/2026-09-30_tz2026_p2p.md,
+    # docs/test_cases/p2p/04_peer_review.md). Все селекторы ниже — предположение по
+    # аналогии с уже существующими блоками страницы (вкладки по normalize-space(),
+    # карточки по activity-card__title) и с ui/pages/reviewer_page.py (та же
+    # верхнеуровневая структура «список → открыть → форма → отправить»).
+    # TODO: уточнить после ветки — каждый локатор и структура формы критериев.
+
+    def open_peer_review_works_tab(self) -> None:
+        """Раздел «Работы на проверку» слушателя-проверяющего (04 §3.1, §6.1) — только
+        чужие назначенные работы, собственная работа не выводится."""
+        tab = self.page.locator("xpath=//span[normalize-space()='Работы на проверку']")  # TODO: уточнить после ветки
+        expect(tab).to_be_visible(timeout=15000)
+        tab.click(timeout=5000, force=True)
+
+    def peer_review_work_row(self, author_full_name: str) -> Locator:
+        # TODO: уточнить после ветки — структура строки/карточки чужой работы
+        return self.page.locator(
+            f"xpath=//div[contains(@class,'activity-card') and contains(.,'{author_full_name}')]"
+        )
+
+    def open_peer_review_work(self, author_full_name: str) -> None:
+        row = self.peer_review_work_row(author_full_name)
+        expect(row).to_be_visible(timeout=30000)
+        row.click(timeout=5000)
+
+    # ── Форма критериев (03 §7.4: шкала / ОиМ / МиМ / текст) ────────────
+
+    def select_scale_criterion_value(self, criterion_label: str, value: str) -> None:
+        # TODO: уточнить после ветки — вероятно v-select/radio-группа по значению шкалы
+        control = self.page.locator(
+            f"xpath=//label[contains(normalize-space(),'{criterion_label}')]/ancestor::div[contains(@class,'v-input')][1]"
+        )
+        expect(control).to_be_visible(timeout=15000)
+        control.click(timeout=5000)
+        option = self.page.locator(f"xpath=//div[contains(@class,'v-menu__content')]//*[normalize-space()='{value}']").first
+        expect(option).to_be_visible(timeout=10000)
+        option.click(timeout=5000)
+
+    def select_single_choice_criterion(self, criterion_label: str, option_text: str) -> None:
+        # TODO: уточнить после ветки — критерий «Одиночный выбор» (ОиМ, 03 §7.6)
+        option = self.page.locator(
+            f"xpath=//fieldset[.//legend[contains(normalize-space(),'{criterion_label}')]]"
+            f"//label[normalize-space()='{option_text}']"
+        )
+        expect(option).to_be_visible(timeout=15000)
+        option.click(timeout=5000)
+
+    def select_multiple_choice_criterion(self, criterion_label: str, option_texts: Iterable[str]) -> None:
+        # TODO: уточнить после ветки — критерий «Множественный выбор» (МиМ, 03 §7.7)
+        for option_text in option_texts:
+            checkbox = self.page.locator(
+                f"xpath=//fieldset[.//legend[contains(normalize-space(),'{criterion_label}')]]"
+                f"//label[normalize-space()='{option_text}']"
+            )
+            expect(checkbox).to_be_visible(timeout=15000)
+            checkbox.click(timeout=5000)
+
+    def fill_text_criterion(self, criterion_label: str, text: str) -> None:
+        # TODO: уточнить после ветки — критерий «Текстовое поле» (03 §7.8)
+        field = self.page.locator(
+            f"xpath=//label[contains(normalize-space(),'{criterion_label}')]/following::textarea[1]"
+        )
+        expect(field).to_be_visible(timeout=15000)
+        field.fill(text, timeout=5000)
+
+    def save_peer_review(self) -> None:
+        """Сохранить проверку без финального подтверждения — значения можно менять
+        повторно (04 §8.1)."""
+        # TODO: уточнить после ветки
+        button = self.page.get_by_role("button", name="Сохранить")
+        expect(button).to_be_visible(timeout=15000)
+        button.click(timeout=5000)
+
+    def confirm_peer_review(self) -> None:
+        """Финальное подтверждение проверки — после этого редактирование должно быть
+        заблокировано (04 §8.1)."""
+        # TODO: уточнить после ветки — отдельная кнопка/чекбокс подтверждения
+        button = self.page.get_by_role("button", name="Подтвердить")
+        expect(button).to_be_visible(timeout=15000)
+        button.click(timeout=5000)
+
+    def expect_peer_review_locked(self) -> None:
+        """После финального подтверждения обычное редактирование заблокировано —
+        форма критериев должна быть недоступна для правки (04 §8.1)."""
+        # TODO: уточнить после ветки — вероятно disabled-атрибут полей формы
+        form = self.page.locator("xpath=//form[.//legend]")  # форма критериев
+        expect(form).to_have_attribute("aria-disabled", "true", timeout=15000)
+
+    # ── Результат по своей работе (автор видит итог и значения по критериям) ──
+
+    def open_own_work_result(self) -> None:
+        """Автор ПЗ смотрит статус/итог/значения по критериям своей сданной работы
+        (04 §11, 10_author_view.md)."""
+        # TODO: уточнить после ветки
+        tab = self.page.locator("xpath=//span[normalize-space()='Результат проверки']")
+        expect(tab).to_be_visible(timeout=15000)
+        tab.click(timeout=5000, force=True)
+
+    def own_work_final_result(self) -> Locator:
+        # TODO: уточнить после ветки
+        return self.page.locator("xpath=//div[contains(@class,'peer-review-result')]//*[contains(@class,'final-result')]")
+
+    def expect_own_work_status(self, status: str) -> None:
+        status_locator = self.page.locator(
+            "xpath=//div[contains(@class,'activity-distance-status')]"
+            f"//span[normalize-space()='{status}']"
+        )
+        expect(status_locator).to_be_visible(timeout=30000)

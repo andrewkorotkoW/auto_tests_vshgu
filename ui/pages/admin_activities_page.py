@@ -8,7 +8,7 @@
 """
 import re
 from pathlib import Path
-from typing import Union
+from typing import Iterable, Union
 
 from playwright.sync_api import Page, Locator, expect
 from ui.pages.base_page import BasePage
@@ -260,3 +260,144 @@ class AdminActivitiesPage(BasePage):
         self.add_reviewer(reviewer_full_name)
         self.save()
         self.expect_created(name)
+
+    # ── Взаимопроверка (p2p): тумблер, штатные проверяющие, критерии ────
+    # Функциональности ещё нет ни на одной ветке (docs/missions/2026-09-30_tz2026_p2p.md,
+    # docs/test_cases/p2p/00_pt_card_settings.md, 01_criteria.md). Методы — по аналогии
+    # с add_teacher/add_reviewer этого же класса (мультиселект по ФИО через модалку).
+    # TODO: уточнить после ветки — каждый локатор.
+
+    @property
+    def peer_review_toggle(self) -> Locator:
+        return self.page.locator(
+            "xpath=//label[contains(normalize-space(),'Включить взаимопроверку')]/following::input[@type='checkbox'][1]"
+        )  # TODO: уточнить после ветки
+
+    def enable_peer_review(self) -> None:
+        """Включить тумблер «Включить взаимопроверку» — должен открыть блок
+        дополнительных настроек (штатные проверяющие, форма критериев, 04 §4)."""
+        expect(self.peer_review_toggle).to_be_visible(timeout=15000)
+        self.peer_review_toggle.click(timeout=5000)
+
+    def expect_peer_review_settings_visible(self) -> None:
+        # TODO: уточнить после ветки
+        block = self.page.locator("xpath=//div[contains(@class,'peer-review-settings')]")
+        expect(block).to_be_visible(timeout=15000)
+
+    def add_peer_reviewer(self, full_name: str) -> None:
+        """Штатный проверяющий взаимопроверки (04 §4.2) — отдельный список от обычного
+        проверяющего ПЗ (add_reviewer): назначение сюда должно автоматически выдавать
+        роль «Преподаватель», если её ещё нет (04 §3.1)."""
+        # TODO: уточнить после ветки — вероятно третья кнопка «button-admin ma-0» в блоке
+        # взаимопроверки, по аналогии с add_teacher (первая)/add_reviewer (вторая)
+        add_button = self.page.locator("xpath=(//button[contains(@class,'button-admin ma-0')])[3]")
+        add_button.click(timeout=5000)
+
+        select_field = self.page.locator(
+            "xpath=//div[contains(@class,'v-dialog__content--active')]"
+            "//label[contains(normalize-space(),'Штатный проверяющий')]/ancestor::div[contains(@class,'v-input')][1]"
+        )
+        expect(select_field).to_be_visible(timeout=15000)
+        select_field.click(timeout=15000)
+        self.page.keyboard.type(full_name, delay=30)
+        self.page.wait_for_timeout(800)
+
+        safe_name = full_name.replace("'", "")
+        option = self.page.locator(
+            "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
+            f"//div[@role='option' and .//*[contains(normalize-space(),'{safe_name}')]]"
+        )
+        expect(option).to_be_visible(timeout=15000)
+        option.click(timeout=5000)
+
+        confirm_button = self.page.locator(
+            "xpath=//div[contains(@class,'v-dialog__content--active')]//button[.//span[normalize-space()='Добавить']]"
+        )
+        confirm_button.click(timeout=5000)
+
+    # ── Конструктор критериев (03 §7: шкала / ОиМ / МиМ / текст) ─────────
+    # На этом этапе (кейсы до разработки) автотест не планируется — раздел manual,
+    # методы нужны только для подготовки данных UI-тестами peer-проверки.
+
+    def open_criteria_tab(self) -> None:
+        tab = self.page.locator("xpath=//span[normalize-space()='Критерии']")  # TODO: уточнить после ветки
+        expect(tab).to_be_visible(timeout=15000)
+        tab.click(timeout=5000, force=True)
+
+    def add_scale_criterion(self, label: str, options: Iterable[str], weight: int = 1) -> None:
+        """Критерий «Шкала» — количество вариантов не ограничено диапазоном 1–10
+        (03 §7.4–7.5)."""
+        # TODO: уточнить после ветки
+        add_button = self.page.get_by_role("button", name="Добавить критерий")
+        add_button.click(timeout=5000)
+        self.page.get_by_text("Шкала", exact=True).click(timeout=5000)
+        self._fill_criterion_label(label)
+        for option in options:
+            self._add_criterion_option(option)
+        self._fill_criterion_weight(weight)
+
+    def add_single_choice_criterion(self, label: str, options: Iterable[str]) -> None:
+        """Критерий «Одиночный выбор» (ОиМ, 03 §7.6)."""
+        # TODO: уточнить после ветки
+        add_button = self.page.get_by_role("button", name="Добавить критерий")
+        add_button.click(timeout=5000)
+        self.page.get_by_text("Одиночный выбор", exact=True).click(timeout=5000)
+        self._fill_criterion_label(label)
+        for option in options:
+            self._add_criterion_option(option)
+
+    def add_multiple_choice_criterion(self, label: str, options: Iterable[str]) -> None:
+        """Критерий «Множественный выбор» (МиМ, 03 §7.7)."""
+        # TODO: уточнить после ветки
+        add_button = self.page.get_by_role("button", name="Добавить критерий")
+        add_button.click(timeout=5000)
+        self.page.get_by_text("Множественный выбор", exact=True).click(timeout=5000)
+        self._fill_criterion_label(label)
+        for option in options:
+            self._add_criterion_option(option)
+
+    def add_text_criterion(self, label: str) -> None:
+        """Критерий «Текстовое поле» (03 §7.8) — не участвует в числовой агрегации."""
+        # TODO: уточнить после ветки
+        add_button = self.page.get_by_role("button", name="Добавить критерий")
+        add_button.click(timeout=5000)
+        self.page.get_by_text("Текстовое поле", exact=True).click(timeout=5000)
+        self._fill_criterion_label(label)
+
+    def _fill_criterion_label(self, label: str) -> None:
+        # TODO: уточнить после ветки
+        field = self.page.locator("xpath=(//label[contains(text(),'Название критерия')]/following::input[@type='text'])[last()]")
+        expect(field).to_be_visible(timeout=15000)
+        field.fill(label, timeout=5000)
+
+    def _add_criterion_option(self, option_text: str) -> None:
+        # TODO: уточнить после ветки
+        add_option_button = self.page.get_by_role("button", name="Добавить вариант").last
+        add_option_button.click(timeout=5000)
+        option_field = self.page.locator("xpath=(//input[contains(@class,'criterion-option')])[last()]")
+        option_field.fill(option_text, timeout=5000)
+
+    def _fill_criterion_weight(self, weight: int) -> None:
+        # TODO: уточнить после ветки
+        field = self.page.locator("xpath=(//label[contains(text(),'Вес')]/following::input[@type='text'])[last()]")
+        field.fill(str(weight), timeout=5000)
+
+    def save_criteria(self) -> None:
+        save_button = self.page.locator("xpath=//button[.//span[contains(text(),'Сохранить')]]")  # TODO: уточнить после ветки
+        save_button.click(timeout=5000)
+
+    def expect_add_criterion_unavailable(self) -> None:
+        """После первой полученной peer-проверки нельзя добавить новый критерий
+        (04 §5.2)."""
+        # TODO: уточнить после ветки
+        add_button = self.page.get_by_role("button", name="Добавить критерий")
+        expect(add_button).to_be_disabled(timeout=15000)
+
+    def expect_delete_criterion_unavailable(self, label: str) -> None:
+        """После первой полученной peer-проверки нельзя удалить существующий критерий,
+        но правка текста разрешена (04 §5.2)."""
+        # TODO: уточнить после ветки
+        delete_button = self.page.locator(
+            f"xpath=//div[contains(@class,'criterion') and contains(.,'{label}')]//button[@aria-label='delete']"
+        )
+        expect(delete_button).to_have_count(0)
