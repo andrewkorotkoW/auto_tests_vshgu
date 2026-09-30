@@ -46,3 +46,25 @@ class ActivityPage(BasePage):
         которая дожидается реального исчезновения тёмного оверлея тура (не только кнопки),
         иначе за оверлеем остаётся демо-заглушка вместо реального списка программ."""
         UserSidebarPage(self.page).pass_onboarding()
+
+    # ── МТС Линк: плеер записи в «Результатах активности» (часть 11) ────────────────
+    # Функциональности ещё нет ни на одной ветке (docs/missions/2026-09-30_tz2026_mts_link.md,
+    # docs/test_cases/mts_link/12_recording.md). «Результаты активности» как отдельный
+    # узел карты продукта не выделены (см. tests/product_map.yml) — судя по остальным
+    # методам этого класса, запись должна открываться там же, где слушатель завершает
+    # мероприятие («Моё обучение» → активити). Разведки в браузере в этой среде нет.
+    # TODO: уточнить после появления ветки — каждый локатор.
+
+    def recording_player(self):
+        return self.page.locator("[data-qa='mts-link-recording-player']")
+
+    def is_recording_player_visible(self) -> bool:
+        return self.recording_player().is_visible(timeout=settings.UI_TIMEOUT)
+
+    def play_recording_to_end(self) -> None:
+        """Досмотреть запись до конца — часть 11, раздел «Зачёт посещения по записи»."""
+        player = self.recording_player()
+        expect(player).to_be_visible(timeout=settings.UI_TIMEOUT)
+        player.click(timeout=settings.UI_TIMEOUT)
+        finished_marker = self.page.locator("[data-qa='mts-link-recording-finished']")
+        expect(finished_marker).to_be_visible(timeout=settings.UI_TIMEOUT * 6)

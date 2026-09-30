@@ -67,11 +67,30 @@ nodes:
   - {id: adm_superadmin, label: "Суперадминка / тенанты", zone: adm, x: 840, y: 510, w: 150, h: 40, tests: []}
   - {id: adm_experts, label: Эксперты, zone: adm, x: 1010, y: 510, w: 150, h: 40, tests: []}
 
+  # МТС Линк (docs/missions/2026-09-30_tz2026_mts_link.md, каркас до разработки —
+  # tests: [tests/api/mts_link, tests/ui/mts_link] уже даёт skip-покрытие, см. conftest.py).
+  # Свободная ячейка (1180, 510) занята adm_tenant_integration, для остальных двух — новая
+  # строка y=580 (adm zone: y 60..620, 580+40=620 — вплотную к нижней границе, не пересекает
+  # строку y=510 ни у одного из соседей).
+  - {id: adm_tenant_integration, label: "Тенант · МТС Линк", zone: adm, x: 1180, y: 510, w: 150, h: 40, tests: [tests/api/mts_link/test_tenant_settings]}
+  - {id: adm_event_mts, label: "Мероприятие МТС Линк", zone: adm, x: 840, y: 580, w: 150, h: 40, tests: [tests/ui/mts_link/test_event_type, tests/ui/mts_link/test_statuses, tests/ui/mts_link/test_retry, tests/api/mts_link/test_create, tests/api/mts_link/test_update, tests/api/mts_link/test_delete]}
+  - {id: adm_stream_attendance, label: "Таблица слушателей · посещение", zone: adm, x: 1010, y: 580, w: 150, h: 40, tests: [tests/ui/mts_link/test_attendance, tests/ui/mts_link/test_regression]}
+
   - {id: int_buk, label: БУК, zone: int, x: 840, y: 700, w: 110, h: 40, tests: [tests/api/buk, tests/ui/buk], target: adm_users}
   - {id: int_cas, label: CAS, zone: int, x: 60, y: 700, w: 110, h: 40, tests: [tests/api/cas, tests/ui/cas], target: ext_login}
   - {id: int_alpina, label: "Альпина / МИФ", zone: int, x: 185, y: 700, w: 130, h: 40, tests: [tests/api/alpina_and_mif, tests/ui/alpina_and_mif], target: ext_kb}
   - {id: int_lrs, label: "LRS / xAPI", zone: int, x: 40, y: 770, w: 110, h: 40, tests: [tests/api/create_activity/courses/tincan], target: ext_course}
   - {id: int_helpdesk, label: Helpdesk, zone: int, x: 330, y: 700, w: 130, h: 40, tests: [], target: ext_support}
+  # int_mts_link: y=700, x=510..650 — свободный промежуток между int_helpdesk (330..460)
+  # и int_buk (840..950) в той же строке, не пересекает ни один из них по x/y/w/h.
+  # target — только adm_tenant_integration: схема product_map.yml поддерживает одно
+  # значение target на узел (см. остальные int-узлы выше), второй стрелки во внешний
+  # «результаты активности» завести нельзя технически, а не по решению — подходящего
+  # подтверждённого узла для неё и не завели: в этой среде нет браузера для живой
+  # разведки реального экрана (--env develop), а среди существующих ext-узлов v5
+  # точного соответствия «Результатам активности» нет (см. также TODO в
+  # ui/pages/activity_page.py и tests/ui/mts_link/test_event_type.py).
+  - {id: int_mts_link, label: "МТС Линк", zone: int, x: 510, y: 700, w: 140, h: 40, tests: [tests/api/mts_link, tests/ui/mts_link], target: adm_tenant_integration}
 edges:
   - {from: ext_login, to: ext_onboarding}
   - {from: ext_onboarding, to: ext_lk}
