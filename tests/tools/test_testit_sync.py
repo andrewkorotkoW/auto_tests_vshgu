@@ -444,8 +444,11 @@ def test_apply_without_env_does_not_touch_network(tmp_path, monkeypatch, capsys)
 
 
 class FakeResponse:
-    def __init__(self, payload):
+    def __init__(self, payload, content=b"{}"):
         self._payload = payload
+        # requests.Response.content: пустые байты у 204 No Content — так update_work_item
+        # понимает, что тело PUT пустое и нужно дочитать item отдельным GET.
+        self.content = content
 
     def raise_for_status(self):
         pass
@@ -461,7 +464,11 @@ class FakeSession:
         self.headers = {}
         self.calls = []
         self.sections = []
+        self.work_items = {}
         self._next_id = 100
+        # Переключатель для теста пустого ответа PUT /workItems (204) — по умолчанию
+        # PUT отдаёт обновлённое тело, как у большинства реальных инстансов.
+        self.respond_empty_on_put = False
 
     def _new_id(self):
         self._next_id += 1
@@ -469,8 +476,10 @@ class FakeSession:
 
     def get(self, url, **kwargs):
         self.calls.append(("GET", url, None))
-        assert url.endswith("/sections")
-        return FakeResponse(self.sections)
+        if url.endswith("/sections"):
+            return FakeResponse(self.sections)
+        work_item_id = int(url.rsplit("/", 1)[-1])
+        return FakeResponse(self.work_items[work_item_id])
 
     def post(self, url, json=None, **kwargs):
         self.calls.append(("POST", url, json))
@@ -481,11 +490,15 @@ class FakeSession:
         if url.endswith("/workItems/search"):
             return FakeResponse([])
         if url.endswith("/workItems"):
-            return FakeResponse({"id": self._new_id(), **json})
+            item = {"id": self._new_id(), **json}
+            self.work_items[item["id"]] = item
+            return FakeResponse(item)
         raise AssertionError(f"unexpected POST {url}")
 
     def put(self, url, json=None, **kwargs):
         self.calls.append(("PUT", url, json))
+        if self.respond_empty_on_put:
+            return FakeResponse(None, content=b"")
         return FakeResponse(json)
 
 
@@ -546,6 +559,35 @@ def test_apply_rerun_updates_existing_by_stored_id_without_duplicate_create(tmp_
 
 
 SINGLE_CASE_DOC = AREA_DOC.split("### TC-WIDGETS-002")[0]
+
+
+def test_create_section_without_parent_id_nests_under_project_root_section(fake_client):
+    """GET /projects/{id}/sections отдаёт корневую секцию проекта (parentId=null) —
+    create_section(parent_id=None) обязан подставить её id, а не отправить parentId=null
+    (в реальном API это 400: секции верхнего уровня физически вложены в корневую)."""
+    client, session = fake_client
+    session.sections.append({"id": "root-1", "name": "Проект", "parentId": None})
+
+    client.create_section("widgets")
+
+    section_posts = [body for method, url, body in session.calls if method == "POST" and url.endswith("/sections")]
+    assert section_posts == [{"projectId": "42", "name": "widgets", "parentId": "root-1"}]
+
+
+def test_update_work_item_falls_back_to_get_when_put_response_is_empty(fake_client):
+    """PUT /workItems может вернуть 204 без тела — update_work_item обязан дочитать item
+    отдельным GET /workItems/{id}, а не упасть на пустом resp.json()."""
+    client, session = fake_client
+    session.work_items[555] = {"id": 555, "name": "Обновлённое имя"}
+    session.respond_empty_on_put = True
+
+    result = client.update_work_item("555", {"name": "Обновлённое имя", "projectId": "42"})
+
+    assert result == {"id": 555, "name": "Обновлённое имя"}
+    put_urls = [url for method, url, _ in session.calls if method == "PUT"]
+    get_urls = [url for method, url, _ in session.calls if method == "GET"]
+    assert put_urls == ["https://testit.example/api/v2/workItems"]
+    assert get_urls == ["https://testit.example/api/v2/workItems/555"]
 
 
 def test_apply_finds_existing_work_item_by_name_and_autotest_tag_when_id_not_stored(tmp_path, fake_client):
@@ -653,8 +695,8 @@ def test_apply_via_cli_with_requests_session_monkeypatched_updates_on_rerun_with
     create_calls_total = [c for c in backend.calls if c[0] == "POST" and c[1].endswith("/workItems")]
     assert len(create_calls_total) == 2  # второй прогон не добавил новых POST /workItems
 
-    update_calls = [c for c in backend.calls if c[0] == "PUT" and "/workItems/" in c[1]]
-    assert len(update_calls) == 2  # второй прогон ушёл именно в PUT /workItems/{id}
+    update_calls = [c for c in backend.calls if c[0] == "PUT" and c[1].endswith("/workItems")]
+    assert len(update_calls) == 2  # второй прогон ушёл именно в PUT /workItems (id — в теле)
 
     section_create_calls = [c for c in backend.calls if c[0] == "POST" and c[1].endswith("/sections")]
     assert len(section_create_calls) == 1  # секция создана единожды, второй прогон нашёл её через GET
