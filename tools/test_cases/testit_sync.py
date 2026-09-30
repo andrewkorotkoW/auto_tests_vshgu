@@ -60,6 +60,7 @@ AREA_STEM_PREFIX_RE = re.compile(r"^(\d+)_(.+)$")
 
 PRIORITY_MAP = {"high": "High", "medium": "Medium", "low": "Low"}
 DEFAULT_PRIORITY_API = "Medium"
+DEFAULT_DURATION_MS = 5 * 60 * 1000  # 5 минут — оценка по умолчанию для кейса из md
 
 
 # --------------------------------------------------------------------------------- парсинг
@@ -263,6 +264,10 @@ def build_work_item_payload(project_id: str | None, section_id: str | None, case
         "projectId": project_id,
         "sectionId": section_id,
         "entityTypeName": "TestCases",
+        # Обязательные поля по swagger инстанса (CreateWorkItemApiModel.required):
+        # state — NeedsWork/NotReady/Ready (черновики из md — NeedsWork), duration — мс.
+        "state": "NeedsWork",
+        "duration": DEFAULT_DURATION_MS,
         "name": case.title,
         "priority": PRIORITY_MAP.get(case.priority.lower(), DEFAULT_PRIORITY_API),
         "preconditionSteps": _precondition_steps(case),
@@ -364,16 +369,37 @@ class TestItClient:
     def find_section(self, name: str, parent_id: str | None = None) -> dict | None:
         """Ищет секцию и по имени, и по parentId — иначе одинаковые имена файлов в разных
         родительских секциях (например, области mts_link и p2p) склеились бы в одну."""
-        resp = self._session.get(self._url(f"/projects/{self.project_id}/sections"))
-        resp.raise_for_status()
-        for section in resp.json() or []:
-            if section.get("name") == name and section.get("parentId") == parent_id:
+        sections = self.list_sections()
+        root_id = self.root_section_id(sections) if parent_id is None else None
+        for section in sections:
+            if section.get("name") != name:
+                continue
+            # Секция «верхнего уровня» в Test IT лежит в корневой (parentId=root_id);
+            # инстансы без корневой (и моки) отдают parentId=null — принимаем оба.
+            if section.get("parentId") == parent_id or (parent_id is None and section.get("parentId") in (None, root_id)):
                 return section
         return None
 
+    def list_sections(self) -> list[dict]:
+        resp = self._session.get(self._url(f"/projects/{self.project_id}/sections"))
+        resp.raise_for_status()
+        return resp.json() or []
+
+    def root_section_id(self, sections: list[dict] | None = None) -> str | None:
+        """В Test IT у проекта есть корневая секция (parentId=null, имя проекта); секции
+        «верхнего уровня» на самом деле вложены в неё — создавать с parentId=null нельзя."""
+        for section in sections if sections is not None else self.list_sections():
+            if section.get("parentId") is None:
+                return section.get("id")
+        return None
+
     def create_section(self, name: str, parent_id: str | None = None) -> dict:
+        if parent_id is None:
+            parent_id = self.root_section_id()
+        # Test IT Public API v2: создание секции — POST /api/v2/sections (в
+        # /projects/{id}/sections только GET, иначе 405), см. swagger инстанса.
         resp = self._session.post(
-            self._url(f"/projects/{self.project_id}/sections"),
+            self._url("/sections"),
             json=build_section_payload(self.project_id, name, parent_id),
         )
         resp.raise_for_status()
