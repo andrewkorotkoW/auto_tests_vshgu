@@ -16,6 +16,7 @@
 - Автотест: tests/ui/p2p/test_regression.py::TestRegression::test_homework_without_p2p_keeps_standard_flow
 - Приоритет: high   Тип: ui   Роли: user, reviewer
 - Предусловия: -
+- Test IT: 9f41ae09-936f-437a-8516-862701685b86
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать обычное ПЗ без включения «Включить взаимопроверку», назначить в поток | ПЗ назначено |
@@ -26,6 +27,7 @@
 - Автотест: tests/ui/p2p/test_regression.py::TestRegression::test_group_homework_keeps_standard_flow_without_p2p
 - Приоритет: medium   Тип: ui   Роли: user, reviewer
 - Предусловия: -
+- Test IT: 9d72a6ff-8cd0-4cf1-81e1-cf5243208963
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать групповое ПЗ, назначить в поток и группу | ПЗ назначено |
@@ -36,6 +38,7 @@
 - Автотест: tests/api/p2p/test_regression.py::TestRegression::test_personal_assignment_keeps_standard_flow_without_p2p
 - Приоритет: medium   Тип: api   Роли: user, reviewer
 - Предусловия: -
+- Test IT: 448569b5-2782-4ce3-bda2-d8d67741572b
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Назначить ПЗ пользователю напрямую (без потока), без включения взаимопроверки | Назначение создано |
@@ -46,6 +49,7 @@
 - Автотест: tests/api/p2p/test_regression.py::TestRegression::test_single_homework_per_program_restriction_unchanged
 - Приоритет: medium   Тип: api   Роли: admin
 - Предусловия: -
+- Test IT: b9a6b316-4211-4ac7-b1bc-f4fb33fb67f4
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Назначить P2P-ПЗ в поток программы | Назначение создано |

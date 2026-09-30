@@ -426,9 +426,19 @@ class TestItClient:
         return resp.json()
 
     def update_work_item(self, work_item_id: str, payload: dict) -> dict:
-        resp = self._session.put(self._url(f"/workItems/{work_item_id}"), json={**payload, "id": work_item_id})
+        # Test IT Public API v2: обновление — PUT /api/v2/workItems с id в теле
+        # (на /workItems/{id} есть только GET/PATCH/DELETE, PUT даёт 405). Ответ может
+        # быть пустым (204) — тогда дочитываем item отдельным GET.
+        resp = self._session.put(self._url("/workItems"), json={**payload, "id": work_item_id})
         resp.raise_for_status()
-        return resp.json()
+        if resp.content:
+            try:
+                return resp.json()
+            except ValueError:
+                pass
+        got = self._session.get(self._url(f"/workItems/{work_item_id}"))
+        got.raise_for_status()
+        return got.json()
 
 
 # --------------------------------------------------------------------------------- --apply
