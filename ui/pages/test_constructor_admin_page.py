@@ -153,10 +153,15 @@ class ConstructorAdminPage(BasePage):
         expect(self.page.get_by_text("ФИО пользователя", exact=True)).to_be_visible(timeout=30000)
 
     def search_statistics_by_user_name(self, full_name: str) -> None:
+        """Фильтрация строк по ФИО на этой странице — клиентская (fill не порождает
+        новый `GET .../statistic` с именем в параметрах — подтверждено на develop),
+        поэтому `wait_for_load_state("networkidle")` здесь не ждёт результат поиска,
+        а виснет на 30с из-за открытого в админке websocket (тот же случай, что и в
+        AdminDashboardPage.read_map_totals). Последующий expect() в
+        assert_user_test_progress_visible сам дожидается перерисовки таблицы."""
         search_input = self.page.locator('[data-qa="km-search"]')
         expect(search_input).to_be_visible(timeout=30000)
         search_input.fill(full_name)
-        self.page.wait_for_load_state("networkidle", timeout=30000)
 
     def assert_user_test_progress_visible(self, full_name: str, progress: int) -> None:
         row = self.page.locator("tr", has_text=full_name)
