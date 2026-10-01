@@ -4,8 +4,11 @@
 раннер test_hub при запуске прогона. Без них модуль не делает ничего (никаких print, сетевых
 вызовов и патча allure.step), обычные локальные/стендовые прогоны не меняются.
 """
+import base64
 import os
 import sys
+import threading
+import time
 from functools import wraps
 
 import allure
@@ -22,11 +25,42 @@ TH_RUN_TOKEN = os.environ.get("TH_RUN_TOKEN")
 
 ENABLED = bool(TH_URL and TH_RUN_ID and TH_RUN_TOKEN)
 
+
+def _env_flag(name, default):
+    """Булев env-флаг с default при отсутствии/пустой переменной: "0"/"false"/"no"
+    (без учёта регистра) — явное выключение, всё остальное — включение."""
+    value = os.environ.get(name)
+    if value is None or value.strip() == "":
+        return default
+    return value.strip().lower() not in ("0", "false", "no")
+
+
+def _env_int(name, default):
+    value = os.environ.get(name)
+    if value is None or value.strip() == "":
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
 MAX_FRAMES_PER_TEST = 40
 FRAME_MAX_WIDTH = 1280
 FRAME_HTTP_TIMEOUT = 3
 
 PAGE_FIXTURE_NAMES = ("page", "admin_page", "user_page")
+
+# Живая трансляция (screencast) по умолчанию выключена: раннер test_hub явно включает её
+# через TH_LIVE=1 только для прогонов с флагом «Эфир» (разметка [TH] и кадры шагов работают
+# независимо от неё в любом случае).
+LIVE_ENABLED = ENABLED and _env_flag("TH_LIVE", False)
+TH_LIVE_FPS = _env_int("TH_LIVE_FPS", 3)
+
+MAX_LIVE_ERRORS = 20
+LIVE_HTTP_TIMEOUT = 2
+LIVE_MAX_WIDTH = 960
+LIVE_MAX_HEIGHT = 600
 
 # Состояние текущего теста (один процесс = один тест выполняется в один момент времени,
 # в т.ч. под pytest-xdist — там на процесс-воркер приходится свой импорт этого модуля).
@@ -36,6 +70,10 @@ _state = {
     "frame_count": 0,
     "frame_limit_logged": False,
     "end_emitted": False,
+    "live": None,
+    "live_current_step": "",
+    "live_error_count": 0,
+    "live_disabled": False,
 }
 
 _original_step = allure.step
@@ -109,6 +147,9 @@ def _on_step_start(title):
     _th_print(f"[TH] step {nodeid} {step_no} {title}")
     if item is not None:
         _maybe_capture_frame(item, nodeid, step_no)
+        if LIVE_ENABLED:
+            _state["live_current_step"] = title
+            _sync_live_session(item)
 
 
 def _find_active_page(item):
@@ -177,6 +218,157 @@ def _maybe_capture_frame(item, nodeid, step_no):
     _send_frame(nodeid, step_no, png_bytes)
 
 
+def _sync_live_session(item):
+    """Вызывается на каждый _on_step_start: открывает screencast на активной странице,
+    если его ещё нет, и переоткрывает его, если активная страница сменилась (новый
+    контекст для гостя/попап). Ничего не делает, если трансляция уже отключена для
+    этого теста после серии сетевых ошибок (см. _live_sender_loop)."""
+    if _state.get("live_disabled"):
+        return
+    try:
+        page = _find_active_page(item)
+        if page is None:
+            return
+
+        current = _state.get("live")
+        if current is not None:
+            if current.get("page") is page:
+                return
+            _stop_live_session(current)
+            _state["live"] = None
+
+        _state["live"] = _start_live_session(item.nodeid, page)
+    except Exception as exc:  # noqa: BLE001 — трансляция не должна ронять тест
+        logger.info(f"[test_hub] ошибка синхронизации трансляции: {exc}")
+
+
+def _start_live_session(nodeid, page):
+    try:
+        if page.is_closed():
+            return None
+    except Exception:  # noqa: BLE001 — страница могла быть в непредсказуемом состоянии
+        return None
+
+    try:
+        session = page.context.new_cdp_session(page)
+    except Exception as exc:  # noqa: BLE001 — страница могла закрыться/не поддержать CDP
+        logger.info(f"[test_hub] не удалось открыть CDP-сессию трансляции для {nodeid}: {exc}")
+        return None
+
+    slot = {"frame": None, "lock": threading.Lock()}
+
+    def _on_frame(params):
+        try:
+            session.send("Page.screencastFrameAck", {"sessionId": params.get("sessionId")})
+        except Exception:  # noqa: BLE001 — без ack поток встанет, но тест падать не должен
+            pass
+        try:
+            data = params.get("data")
+            if data:
+                frame_bytes = base64.b64decode(data)
+                with slot["lock"]:
+                    slot["frame"] = frame_bytes
+        except Exception as exc:  # noqa: BLE001
+            logger.info(f"[test_hub] ошибка обработки кадра трансляции для {nodeid}: {exc}")
+
+    try:
+        session.on("Page.screencastFrame", _on_frame)
+        session.send(
+            "Page.startScreencast",
+            {
+                "format": "jpeg",
+                "quality": 50,
+                "maxWidth": LIVE_MAX_WIDTH,
+                "maxHeight": LIVE_MAX_HEIGHT,
+                "everyNthFrame": 2,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.info(f"[test_hub] не удалось запустить screencast для {nodeid}: {exc}")
+        try:
+            session.detach()
+        except Exception:  # noqa: BLE001
+            pass
+        return None
+
+    stop_event = threading.Event()
+    thread = threading.Thread(target=_live_sender_loop, args=(nodeid, slot, stop_event), daemon=True)
+    thread.start()
+
+    return {"page": page, "session": session, "slot": slot, "stop_event": stop_event, "thread": thread}
+
+
+def _live_sender_loop(nodeid, slot, stop_event):
+    interval = 1.0 / TH_LIVE_FPS if TH_LIVE_FPS > 0 else 0.0
+    last_sent = None
+    while not stop_event.is_set():
+        loop_start = time.time()
+        with slot["lock"]:
+            frame = slot["frame"]
+
+        if frame is not None and frame is not last_sent:
+            last_sent = frame
+            step_title = _state.get("live_current_step") or ""
+            if _send_live_frame(nodeid, step_title, frame):
+                _state["live_error_count"] = 0
+            else:
+                _state["live_error_count"] = _state.get("live_error_count", 0) + 1
+                if _state["live_error_count"] >= MAX_LIVE_ERRORS:
+                    logger.info(
+                        f"[test_hub] трансляция для {nodeid} отключена после "
+                        f"{_state['live_error_count']} сетевых ошибок подряд"
+                    )
+                    _state["live_disabled"] = True
+                    stop_event.set()
+                    break
+
+        elapsed = time.time() - loop_start
+        stop_event.wait(max(0.0, interval - elapsed) if interval else 0.05)
+
+
+def _send_live_frame(nodeid, step_title, jpeg_bytes):
+    try:
+        requests.post(
+            f"{TH_URL}/api/runs/{TH_RUN_ID}/live",
+            data={"nodeid": nodeid, "ts": time.time(), "step": step_title},
+            files={"file": ("live.jpg", jpeg_bytes, "image/jpeg")},
+            headers={"Authorization": f"Bearer {TH_RUN_TOKEN}"},
+            timeout=LIVE_HTTP_TIMEOUT,
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001 — сетевая ошибка не должна ронять тест
+        logger.info(f"[test_hub] не удалось отправить живой кадр {nodeid}: {exc}")
+        return False
+
+
+def _stop_live_session(session_state):
+    if not session_state:
+        return
+
+    try:
+        session_state["stop_event"].set()
+    except Exception:  # noqa: BLE001
+        pass
+
+    thread = session_state.get("thread")
+    if thread is not None:
+        try:
+            thread.join(timeout=2)
+        except Exception:  # noqa: BLE001
+            pass
+
+    session = session_state.get("session")
+    if session is not None:
+        try:
+            session.send("Page.stopScreencast")
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            session.detach()
+        except Exception:  # noqa: BLE001
+            pass
+
+
 def _classify_report(report):
     """passed|failed|skipped|xfailed для текущей фазы отчёта, либо None, если по этой фазе
     итог теста ещё не определён (например, setup прошёл успешно — ждём фазу call)."""
@@ -222,9 +414,15 @@ def pytest_runtest_protocol(item, nextitem):
     _state["frame_count"] = 0
     _state["frame_limit_logged"] = False
     _state["end_emitted"] = False
+    _state["live"] = None
+    _state["live_current_step"] = ""
+    _state["live_error_count"] = 0
+    _state["live_disabled"] = False
     try:
         yield
     finally:
+        _stop_live_session(_state.get("live"))
+        _state["live"] = None
         _state["item"] = None
 
 
