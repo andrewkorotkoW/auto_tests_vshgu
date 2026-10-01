@@ -1,4 +1,6 @@
 import os
+import time
+from pathlib import Path
 
 import allure
 import pytest
@@ -41,8 +43,68 @@ from config.settings import settings
 from config.environments import ENVIRONMENTS, ensure_prod_allowed, get_session, get_storage_state_path
 from utils.logger import logger
 from tools.test_cases.testit_sync import DEFAULT_DOCS_DIR, iter_area_files
+import utils.test_hub_plugin as test_hub_plugin
 
 pytest_plugins = ["utils.test_hub_plugin"]
+
+VIDEO_SIZE = {"width": 1280, "height": 720}
+
+
+def _video_recording_enabled():
+    """Запись видео теста включена только для прогонов test_hub (TH_URL/TH_RUN_ID/TH_RUN_TOKEN
+    заданы) либо явно через TH_VIDEO=1 — обычные локальные/стендовые прогоны без них не
+    создают видеофайлов."""
+    return test_hub_plugin.ENABLED or os.environ.get("TH_VIDEO") == "1"
+
+
+def _video_dir():
+    run_id = os.environ.get("TH_RUN_ID") or "local"
+    return Path(__file__).resolve().parent / "workspace" / "video" / run_id
+
+
+def _is_primary_page_fixture(request, fixture_name):
+    """Среди page/admin_page/user_page, запрошенных тестом, определяет, какая из них
+    основная (первая по PAGE_FIXTURE_NAMES) — видео шлём только для неё, остальные
+    контексты (например, второй собеседник в UI-тесте с двумя страницами) просто
+    удаляем без отправки."""
+    funcargs = request.node.funcargs
+    for name in test_hub_plugin.PAGE_FIXTURE_NAMES:
+        if funcargs.get(name) is not None:
+            return name == fixture_name
+    return False
+
+
+def _finalize_test_video(request, fixture_name, page, started_at):
+    """Вызывается в teardown page/admin_page/user_page уже после context.close() — путь
+    видео доступен только тогда. Прикладывает видео в allure для упавших тестов (см.
+    pytest_runtest_makereport/item.rep_call), затем отправляет его test_hub (только для
+    основного контекста теста) либо удаляет файл."""
+    try:
+        video = page.video
+        video_path = video.path() if video is not None else None
+    except Exception as exc:  # noqa: BLE001 — видео не должно ронять тест
+        logger.info(f"[test_hub] не удалось получить путь видео {request.node.nodeid}: {exc}")
+        return
+
+    if not video_path or not os.path.exists(video_path):
+        return
+
+    duration_ms = int((time.monotonic() - started_at) * 1000)
+
+    rep_call = getattr(request.node, "rep_call", None)
+    if rep_call is not None and rep_call.failed:
+        try:
+            allure.attach.file(video_path, name="video", attachment_type=allure.attachment_type.WEBM)
+        except Exception as exc:  # noqa: BLE001 — приложение к отчёту не должно ронять тест
+            logger.info(f"[test_hub] не удалось приложить видео к allure: {exc}")
+
+    if _is_primary_page_fixture(request, fixture_name):
+        test_hub_plugin.handle_test_video(request.node.nodeid, video_path, duration_ms)
+    else:
+        try:
+            os.remove(video_path)
+        except OSError:  # noqa: BLE001 — не критично, если файл уже удалён
+            pass
 
 
 def pytest_addoption(parser):
@@ -102,10 +164,17 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
-    """Скриншот Playwright-страницы при падении UI-теста, прикреплённый в allure."""
+    """Скриншот Playwright-страницы при падении UI-теста, прикреплённый в allure.
+
+    Также сохраняет отчёт фазы call в item.rep_call (стандартный pytest-идиом) — фикстуры
+    page/admin_page/user_page читают его в teardown, чтобы приложить видео в allure только
+    для упавших тестов."""
     outcome = yield
     report = outcome.get_result()
-    if report.when != "call" or not report.failed:
+    if report.when != "call":
+        return
+    item.rep_call = report
+    if not report.failed:
         return
 
     page = item.funcargs.get("page") or item.funcargs.get("admin_page") or item.funcargs.get("user_page")
@@ -433,37 +502,57 @@ def browser():
         browser.close()
 
 @pytest.fixture
-def page(browser):
-    context = browser.new_context(viewport={"width": 1366, "height": 768})
+def page(browser, request):
+    video_enabled = _video_recording_enabled()
+    context_kwargs = {"viewport": {"width": 1366, "height": 768}}
+    if video_enabled:
+        video_dir = _video_dir()
+        video_dir.mkdir(parents=True, exist_ok=True)
+        context_kwargs["record_video_dir"] = str(video_dir)
+        context_kwargs["record_video_size"] = VIDEO_SIZE
+    context = browser.new_context(**context_kwargs)
     page = context.new_page()
+    started_at = time.monotonic()
     yield page
     context.close()
+    if video_enabled:
+        _finalize_test_video(request, "page", page, started_at)
 
 
-def _authenticated_page(browser, env, role):
+def _authenticated_page(browser, env, role, request, fixture_name):
     """Открывает страницу с уже применённым Playwright storage_state, полученным
     из авторизованной requests.Session (см. config/environments.get_storage_state_path) —
     без ручного логина через форму в каждом тесте."""
     storage_state_path = get_storage_state_path(env, role=role)
-    context = browser.new_context(
-        viewport={"width": 1366, "height": 768},
-        storage_state=str(storage_state_path),
-    )
+    video_enabled = _video_recording_enabled()
+    context_kwargs = {
+        "viewport": {"width": 1366, "height": 768},
+        "storage_state": str(storage_state_path),
+    }
+    if video_enabled:
+        video_dir = _video_dir()
+        video_dir.mkdir(parents=True, exist_ok=True)
+        context_kwargs["record_video_dir"] = str(video_dir)
+        context_kwargs["record_video_size"] = VIDEO_SIZE
+    context = browser.new_context(**context_kwargs)
     page = context.new_page()
+    started_at = time.monotonic()
     yield page
     context.close()
+    if video_enabled:
+        _finalize_test_video(request, fixture_name, page, started_at)
 
 
 @pytest.fixture
-def admin_page(browser, env):
+def admin_page(browser, env, request):
     """Страница Playwright, уже авторизованная под администратором окружения."""
-    yield from _authenticated_page(browser, env, "admin")
+    yield from _authenticated_page(browser, env, "admin", request, "admin_page")
 
 
 @pytest.fixture
-def user_page(browser, env):
+def user_page(browser, env, request):
     """Страница Playwright, уже авторизованная под обычным пользователем (слушателем)."""
-    yield from _authenticated_page(browser, env, "user")
+    yield from _authenticated_page(browser, env, "user", request, "user_page")
 
 @pytest.fixture
 def onboarding_endpoint(api_client):
