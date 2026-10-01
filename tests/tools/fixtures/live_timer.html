@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>live timer fixture</title>
+<style>
+  body { margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  #box { width: 200px; height: 200px; font: bold 48px sans-serif; color: #fff;
+         display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+  <div id="box">0</div>
+  <script>
+    var counter = 0;
+    var box = document.getElementById("box");
+    function tick() {
+      counter += 1;
+      box.textContent = String(counter);
+      var hue = (counter * 37) % 360;
+      box.style.backgroundColor = "hsl(" + hue + ", 80%, 50%)";
+    }
+    tick();
+    setInterval(tick, 100);
+  </script>
+</body>
+</html>
