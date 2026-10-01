@@ -51,9 +51,10 @@ FRAME_HTTP_TIMEOUT = 3
 
 PAGE_FIXTURE_NAMES = ("page", "admin_page", "user_page")
 
-# Живая трансляция (screencast) — включена по умолчанию вместе с остальным плагином,
-# TH_LIVE=0 отключает только её (разметка [TH] и кадры шагов продолжают работать как раньше).
-LIVE_ENABLED = ENABLED and _env_flag("TH_LIVE", True)
+# Живая трансляция (screencast) по умолчанию выключена: раннер test_hub явно включает её
+# через TH_LIVE=1 только для прогонов с флагом «Эфир» (разметка [TH] и кадры шагов работают
+# независимо от неё в любом случае).
+LIVE_ENABLED = ENABLED and _env_flag("TH_LIVE", False)
 TH_LIVE_FPS = _env_int("TH_LIVE_FPS", 3)
 
 MAX_LIVE_ERRORS = 20
