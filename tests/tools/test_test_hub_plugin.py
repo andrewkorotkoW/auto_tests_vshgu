@@ -21,6 +21,7 @@ import io
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote
 
 import allure
 import pytest
@@ -504,3 +505,65 @@ def test_api_test_without_page_creates_no_frames(plugin_env, frame_server, th_st
         f"[TH] step {item.nodeid} 1 create user via api",
         f"[TH] step {item.nodeid} 2 check response",
     ]
+
+
+# ---------- 8. handle_test_video ----------
+
+def test_handle_test_video_disabled_does_nothing(plugin_env, tmp_path):
+    """Без TH_* env (ENABLED=False) функция не должна ничего делать — ни фоновый поток,
+    ни удаление файла (conftest.py сам решает, звать её вообще или нет, но функция
+    дополнительно подстрахована)."""
+    video_path = tmp_path / "video.webm"
+    video_path.write_bytes(b"fake webm data")
+
+    with plugin_env() as module:
+        thread = module.handle_test_video("tests/test_ui.py::test_x", str(video_path), 1500)
+
+    assert thread is None
+    assert video_path.exists()
+
+
+def test_handle_test_video_sent_with_multipart_and_file_removed(plugin_env, frame_server, tmp_path):
+    video_path = tmp_path / "video.webm"
+    video_path.write_bytes(b"webmdata123")
+    nodeid = "tests/test_ui.py::test_login"
+
+    with plugin_env(url=_base_url(frame_server), run_id="run7", run_token="tok7") as module:
+        thread = module.handle_test_video(nodeid, str(video_path), 2500)
+        assert isinstance(thread, threading.Thread)
+        thread.join(timeout=5)
+
+    assert not video_path.exists()
+    assert len(frame_server.received) == 1
+    record = frame_server.received[0]
+    assert unquote(record["path"]) == f"/api/runs/run7/tests/{nodeid}/video"
+    assert record["authorization"] == "Bearer tok7"
+    assert record["duration_ms"] == "2500"
+    assert record["file"]["content"] == b"webmdata123"
+
+
+def test_handle_test_video_network_error_keeps_file(plugin_env, tmp_path, th_stdout):
+    """Недоступный TH_URL не должен ронять тест и файл должен остаться на диске —
+    conftest.py не трогает его повторно, но видео не теряется."""
+    closed_port_server = ThreadingHTTPServer(("127.0.0.1", 0), _FrameHandler)
+    dead_url = _base_url(closed_port_server)
+    closed_port_server.server_close()
+
+    video_path = tmp_path / "video.webm"
+    video_path.write_bytes(b"webmdata123")
+
+    with plugin_env(url=dead_url, run_id="run1", run_token="tok") as module:
+        thread = module.handle_test_video("tests/test_ui.py::test_flaky_network", str(video_path), 1000)
+        thread.join(timeout=5)
+
+    assert video_path.exists()
+
+
+def test_handle_test_video_missing_file_does_not_raise(plugin_env, frame_server):
+    """Файл видео мог не записаться (например, Playwright не успел) — ничего не отправляется,
+    исключение не выходит из фонового потока."""
+    with plugin_env(url=_base_url(frame_server), run_id="run1", run_token="tok") as module:
+        thread = module.handle_test_video("tests/test_ui.py::test_x", "/no/such/video.webm", 1000)
+        thread.join(timeout=5)
+
+    assert frame_server.received == []

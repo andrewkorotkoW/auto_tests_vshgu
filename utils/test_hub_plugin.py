@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 from functools import wraps
+from urllib.parse import quote
 
 import allure
 import pytest
@@ -48,6 +49,7 @@ def _env_int(name, default):
 MAX_FRAMES_PER_TEST = 40
 FRAME_MAX_WIDTH = 1280
 FRAME_HTTP_TIMEOUT = 3
+VIDEO_HTTP_TIMEOUT = 10
 
 PAGE_FIXTURE_NAMES = ("page", "admin_page", "user_page")
 
@@ -216,6 +218,44 @@ def _maybe_capture_frame(item, nodeid, step_no):
         logger.info(f"[test_hub] не удалось приложить кадр к allure: {exc}")
 
     _send_frame(nodeid, step_no, png_bytes)
+
+
+def handle_test_video(nodeid, video_path, duration_ms):
+    """Отправляет видео завершённого теста test_hub в фоновом потоке — conftest.py не должен
+    ждать загрузку (файл может быть десятки МБ), а сетевая ошибка не должна ронять тест."""
+    if not ENABLED:
+        return None
+    thread = threading.Thread(target=_send_video, args=(nodeid, video_path, duration_ms), daemon=True)
+    thread.start()
+    return thread
+
+
+def _send_video(nodeid, video_path, duration_ms):
+    try:
+        with open(video_path, "rb") as f:
+            content = f.read()
+    except OSError as exc:  # noqa: BLE001 — файл мог не записаться/уже быть удалён
+        logger.info(f"[test_hub] не удалось прочитать видео теста {nodeid}: {exc}")
+        return
+
+    url = f"{TH_URL}/api/runs/{TH_RUN_ID}/tests/{quote(nodeid, safe='/')}/video"
+    try:
+        response = requests.post(
+            url,
+            data={"duration_ms": duration_ms},
+            files={"file": (os.path.basename(video_path), content, "video/webm")},
+            headers={"Authorization": f"Bearer {TH_RUN_TOKEN}"},
+            timeout=VIDEO_HTTP_TIMEOUT,
+        )
+        response.raise_for_status()
+    except Exception as exc:  # noqa: BLE001 — сетевая ошибка не должна ронять тест
+        logger.info(f"[test_hub] не удалось отправить видео теста {nodeid}: {exc}")
+        return
+
+    try:
+        os.remove(video_path)
+    except OSError:  # noqa: BLE001 — не критично, если файл уже удалён
+        pass
 
 
 def _sync_live_session(item):
