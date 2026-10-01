@@ -42,4 +42,12 @@ Allure-вложения прогона — `workspace/runs/52/` в репози�
 
 ## Список (упавшие и сломанные тесты прогона #52)
 
-_Заполняется после завершения прогона #52._
+Итог прогона #52 (завершён 01.10.2026 16:29): passed 233, failed 4, broken 5, skipped 200, xfailed 23. Упавшие/сломанные (уникальные nodeid; один тест с повторным запуском считается один раз):
+
+- broken: `tests/ui/courses/tincan/knowledge_base/test_knowledge_base_flow.py::TestKnowledgeBaseFlow::test_create_course_and_view_in_ui`
+- broken: `tests/ui/knowledge_base/user_achievements/test_user_gets_achievement_by_material.py::TestUserGetsAchievementByMaterial::test_user_gets_achievement_by_material[article]`
+- broken: `tests/ui/test_constructor/test_10_admin_sees_progress_without_additional_questions_in_statistics.py::TestAdminSeesProgressWithoutAdditionalQuestionsInStatistics::test_admin_sees_progress_without_additional_questions_in_statistics`
+- failed: `tests/api/cas/test_external_cas_sync_users_api.py::TestExternalCasSyncUsersAPI::test_sync_user`
+- failed: `tests/ui/cas/admin/test_admin_cas_users.py::TestAdminCasUsers::test_admin_check_cas_user`
+- failed: `tests/ui/knowledge_base/test_create_article_and_verify_in_user_ui.py::TestCreateArticleAndVerifyInUserUi::test_create_article_and_verify_in_user_ui`
+
