@@ -1,7 +1,7 @@
 """Пользовательская страница «База знаний» (/library): поиск и открытие материала,
 прохождение материала (статья/аудио/видео/книга/файл/курс) и страница «Достижения»."""
 import re
-from urllib.parse import unquote
+from urllib.parse import unquote_plus
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, expect
 
@@ -49,7 +49,7 @@ class UserKnowledgeBasePage(BasePage):
             self.page.keyboard.press("Enter")
             self.wait_loaded()
             self.page.wait_for_timeout(1000)
-            if query in unquote(self.page.url):
+            if query in unquote_plus(self.page.url):
                 return
         raise AssertionError(f"Поиск не применил фильтр '{query}': url={self.page.url}")
 
