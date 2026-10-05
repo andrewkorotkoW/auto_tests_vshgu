@@ -7,7 +7,9 @@ from api.client import ApiClient
 from api.helpers.expectations import expect_status
 from utils.logger import logger
 
-_CSRF_META_RE = re.compile(r'<meta name="csrf-token" content="([^"]+)">')
+# На develop мета-тег самозакрывающийся (`content="..."/>`), на других сборках может быть `">` —
+# допускаем оба варианта, иначе _csrf_token() не находит токен ни на одной странице.
+_CSRF_META_RE = re.compile(r'<meta name="csrf-token" content="([^"]+)"\s*/?>')
 _ROW_ID_RE = re.compile(r"/(\d+)(?:/edit|/show)?[\"']")
 
 
