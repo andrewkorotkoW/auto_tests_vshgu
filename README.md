@@ -1070,22 +1070,30 @@ create/{id}/edit/{id}/show + `POST`/`PUT`/`DELETE`. Пользовательск
 (`/api/v1/tickets/*`) сюда не входит — она покрыта отдельно, см. `docs/test_cases/tickets.md`,
 `tests/api/tickets`, `tests/ui/tickets/user`.
 
-**Кейсы написаны, автотестов с проверками пока нет.** `docs/test_cases/helpdesk/{tickets,groups,
-users,applicants,templates,dashboards}.md` — 48 кейсов (33 помечены `- Автотест: <nodeid>`, 15
-принципиально ручных), синхронизированы в Test IT «ВШГУ v.3» (раздел Helpdesk, id в md) и
-импортированы в test_hub (проект `VSHGU`, разделы `helpdesk/*`). Готова инфраструктура для
-автоматизации — `api/endpoints/helpdesk.py` (CSRF/DataTables-механика Backpack CRUD, методы групп/
-шаблонов/поиска/назначения ролей/списка тикетов), генераторы данных
-(`generate_helpdesk_*_payload` в `api/helpers/data_generator.py`), page-объекты
-`ui/pages/helpdesk_*.py` — но самих файлов `tests/api/helpdesk/`, `tests/ui/helpdesk/` с ассертами
-в репозитории ещё нет:
+**33 автотеста реализованы** (из 48 кейсов в `docs/test_cases/helpdesk/{tickets,groups,users,
+applicants,templates,dashboards}.md`, 15 оставшихся — принципиально ручные), синхронизированы в
+Test IT «ВШГУ v.3» (раздел Helpdesk, id в md) и импортированы в test_hub (проект `VSHGU`, разделы
+`helpdesk/*`). API-тесты — `tests/api/helpdesk/` (22 теста: группы/шаблоны/заявители/пользователи/
+тикеты, CRUD + негативные), UI — `tests/ui/helpdesk/admin/` (11 тестов: навигация по разделам
+меню, создание/удаление группы и шаблона, назначение роли, переход в карточку обучения заявителя).
+Используют `HelpdeskEndpoint` (`api/endpoints/helpdesk.py` — CSRF/DataTables-механика Backpack
+CRUD), генераторы данных (`generate_helpdesk_*_payload` в `api/helpers/data_generator.py`),
+page-объекты `ui/pages/helpdesk_*.py`.
+
+Запуск (нужен `HEADLESS=1` для UI-части, других стендов для хелпдеска нет — только `--env develop`):
 
 ```
-pytest tests/api/helpdesk tests/ui/helpdesk --env develop -q
-# ERROR: file or directory not found: tests/api/helpdesk
+HEADLESS=1 pytest tests/api/helpdesk tests/ui/helpdesk --env develop -q
 ```
 
-Когда тесты появятся — запускать только их тем же способом (`--env develop`, других стендов для
-хелпдеска нет). Известный кандидат в дефект с разведки: `POST /admin/user/search` с ФИО из
-нескольких слов (пробел в `search[value]`) стабильно отдаёт 500 — зафиксирован в кейсе
-`TC-HELPDESK_USERS-008`, см. отчёт миссии и `docs/helpdesk_recon.md` §5.
+Фактический итог прогона (06.10.2026): **9 passed, 23 xfailed, 1 xpassed, 0 failed** — часть тестов
+помечена `xfail(strict=False)` из-за дефектов стенда, не кода автотестов (полный список nodeid и
+причин — `docs/reports/2026-10-05_helpdesk_mission.md`, раздел 3), в т.ч.:
+
+- `POST /admin/user/search` стабильно отдаёт `500` на любой запрос без совпадения с сид-данными
+  (не только на многословное ФИО, как предполагала разведка) — блокирует поиск/назначение роли
+  новому пользователю и в API, и в UI;
+- CSRF-токен на develop не находится регэкспом `HelpdeskEndpoint._csrf_token` (разметка
+  `<meta .../>` вместо `<meta ...>`) — блокирует create/update/delete у групп и шаблонов;
+- формы создания группы/шаблона не связывают `<label>` с `<input>` — `get_by_label` в UI-тестах не
+  находит поля.
