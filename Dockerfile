@@ -16,8 +16,9 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # Результаты allure и кэш сессий выносятся наружу через volume (см. docker-compose.yml).
-VOLUME ["/tests/results", "/tests/.cache"]
+# VOLUME ["/tests/results", "/tests/.cache"]
 
 # Без ENTRYPOINT: GitLab CI должен запускать в контейнере shell, а команда прогона задаётся явно.
 # Локально: docker run … auto_tests_vshgu scripts/run.sh --env develop
-CMD ["scripts/run.sh", "--env", "develop"]
+# CMD ["scripts/run.sh", "--env", "develop"]
+CMD ["/bin/bash"]
