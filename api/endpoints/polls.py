@@ -1,0 +1,138 @@
+from typing import Dict, List
+from api.client import ApiClient
+from utils.logger import logger
+from api.helpers.expectations import expect_status
+
+
+class PollsEndpoint:
+    """Методы для работы с опросами (type=poll)."""
+
+    def __init__(self, client: ApiClient):
+        self.client = client
+
+    def create(self, payload: dict) -> Dict:
+        """Создание опроса. Возвращает данные созданного опроса."""
+        resp = self.client.post("/tests", json=payload)
+        expect_status(resp, (200, 201))
+        data = resp.json()["data"]
+        data["id"] = data["content_id"]
+        logger.info(f"Poll created: ID={data['id']}, name={data.get('name')}")
+        return data
+
+    def get(self, poll_id: int) -> Dict:
+        """Получение опроса по ID."""
+        resp = self.client.get(f"/tests/{poll_id}")
+        expect_status(resp, 200)
+        return resp.json()["data"]
+
+    def update(self, poll_id: int, payload: dict) -> Dict:
+        """Обновление опроса (PUT)."""
+        resp = self.client.put(f"/tests/{poll_id}", json=payload)
+        expect_status(resp, (200, 201))
+        data = resp.json()["data"]
+        data["id"] = data.get("content_id", poll_id)
+        logger.info(f"Poll updated: ID={data['id']}, name={data.get('name')}")
+        return data
+
+    def delete(self, poll_id: int) -> bool:
+        """Удаление опроса."""
+        return self.mass_delete([poll_id])
+
+    def mass_delete(self, content_ids: list) -> bool:
+        """Массовое удаление опросов."""
+        payload = {"contents_ids": content_ids}
+        resp = self.client.delete("/tests", json=payload)
+        success = resp.status_code in (200, 204)
+        if success:
+            logger.info(f"Polls deleted: {content_ids}")
+        else:
+            logger.warning(f"Polls delete failed: {resp.status_code} {resp.text[:200]}")
+        return success
+
+    def create_question(self, content_id: int, question: dict) -> Dict:
+        """Создание вопроса для опроса. В отличие от теста, вопросы опросов (и АОС)
+        обязательно требуют поле group — без него бэкенд отвечает 422 «должен быть
+        привязан к группе» (см. api.helpers.data_generator.generate_question_payload/
+        generate_constructor_question_payload)."""
+        payload = {
+            "content_id": content_id,
+            "question": question
+        }
+        resp = self.client.put("/tests/questions/store", json=payload)
+        expect_status(resp, (200, 201))
+        data = resp.json()
+        logger.info(f"Question created for poll {content_id}")
+        return data
+
+    def get_questions(self, content_id: int) -> List[Dict]:
+        """Список вопросов опроса (для конструктора: найти дефолтный вопрос/группу
+        перед настройкой последовательности или добавлением вопроса из банка)."""
+        resp = self.client.get(f"/tests/questions/{content_id}")
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
+
+    def set_sequence_questions(self, poll_data: dict, is_active: bool, is_valid: bool = True) -> Dict:
+        """Включение/выключение последовательности вопросов по ответам
+        (settings.sequence_questions) через PUT /tests/{id} — принимает «сырые» данные
+        опроса/АОС (PollsEndpoint.create/get, AosEndpoint.create/get: content_id, type,
+        name, name_client, topic, cover_uuid, description, settings)."""
+        settings = dict(poll_data.get("settings") or {})
+        settings["sequence_questions"] = {"is_active": is_active, "is_valid": is_valid}
+        if is_active:
+            settings["shuffle_questions"] = {"is_active": False}
+        content_id = poll_data.get("content_id", poll_data.get("id"))
+        payload = {
+            "content_id": content_id,
+            "type": poll_data.get("type", "poll"),
+            "name": poll_data["name"],
+            "name_client": poll_data.get("name_client", poll_data["name"]),
+            "topic": poll_data.get("topic") or "",
+            "cover_uuid": poll_data.get("cover_uuid"),
+            "description": poll_data.get("description") or "",
+            "settings": settings,
+        }
+        return self.update(content_id, payload)
+
+    def get_assignment_uuid(self, content_id: int) -> str:
+        """Получить assignment_uuid для контента (опрос/тест) через инд. трек."""
+        resp = self.client.get(f"/my-personal-training/distant/{content_id}")
+        expect_status(resp, 200)
+        data = resp.json()["data"]["attributes"]
+        assignment_uuid = data["assignment_uuid"]
+        logger.info(f"Assignment UUID: {assignment_uuid} for content {content_id}")
+        return assignment_uuid
+
+    def launch(self, assignment_id: str, content_id: int) -> Dict:
+        """Запуск опроса."""
+        resp = self.client.post(f"/assignments/{assignment_id}/contents/{content_id}/launch")
+        expect_status(resp, (200, 201))
+        logger.info(f"Poll launched: assignment={assignment_id}, content={content_id}")
+        return resp.json()
+
+    def get_current_try(self, content_id: int, assignment_id: str) -> Dict:
+        """Получить текущую попытку опроса."""
+        resp = self.client.get(f"/tests/current/try/{content_id}/{assignment_id}")
+        expect_status(resp, 200)
+        return resp.json()
+
+    def assign_activities(self, content_ids: list, user_ids: list) -> bool:
+        """Назначение активностей (опросов) пользователям (инд. трек)."""
+        payload = {
+            "data": {
+                "attributes": {
+                    "content_ids": content_ids,
+                    "user_ids": user_ids
+                }
+            }
+        }
+        resp = self.client.post("/users/content/distant/assign-activities", json=payload)
+        success = resp.status_code in (200, 201)
+        if success:
+            logger.info(f"Activities {content_ids} assigned to users {user_ids}")
+        else:
+            logger.warning(f"Assign activities failed: {resp.status_code} {resp.text[:200]}")
+        return success
+
+    def delete(self, poll_id: int) -> bool:
+        return self.mass_delete([poll_id])
+
