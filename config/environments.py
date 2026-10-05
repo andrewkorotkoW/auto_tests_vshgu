@@ -9,8 +9,10 @@ import json
 import os
 import re
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Optional, Tuple
+from urllib.parse import urljoin, urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -145,6 +147,83 @@ def _extract_csrf_token(html: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
+class _TenantLinkParser(HTMLParser):
+    """Извлекает ссылки выбора организации из страницы tenant-select."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self._in_tenant_form = False
+        self._tenant_form_depth = 0
+        self._current_href = None
+        self._current_text = []
+        self.links = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        classes = set((attrs.get("class") or "").split())
+
+        if "tenant-form" in classes:
+            self._in_tenant_form = True
+            self._tenant_form_depth = 1
+        elif self._in_tenant_form:
+            self._tenant_form_depth += 1
+
+        if self._in_tenant_form and tag == "a":
+            self._current_href = attrs.get("href")
+            self._current_text = []
+
+    def handle_data(self, data):
+        if self._current_href is not None:
+            self._current_text.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self._current_href is not None:
+            text = " ".join("".join(self._current_text).split())
+            self.links.append((text, self._current_href))
+            self._current_href = None
+            self._current_text = []
+
+        if self._in_tenant_form:
+            self._tenant_form_depth -= 1
+            if self._tenant_form_depth == 0:
+                self._in_tenant_form = False
+
+
+def _select_tenant_if_required(session: requests.Session, response: requests.Response, env: Environment):
+    """Завершает web-сессию выбором ВШГУ, если сервер показал tenant-select."""
+    if "/auth/tenant/select" not in response.url and "tenant-form" not in response.text:
+        return response
+
+    parser = _TenantLinkParser()
+    parser.feed(response.text)
+    if not parser.links:
+        raise LoginError("Сервер показал выбор организации, но ссылки тенантов не найдены")
+
+    target_domain = urlparse(env.ui_base_url).hostname or ""
+
+    def link_score(link):
+        text, href = link
+        value = f"{text} {href}".lower()
+        return (
+            (3 if target_domain.lower() in value else 0)
+            + (2 if re.search(r"вшгу|высшая школа государственного управления", value, re.I) else 0)
+        )
+
+    tenant_text, tenant_href = max(parser.links, key=link_score)
+    if link_score((tenant_text, tenant_href)) == 0 and len(parser.links) > 1:
+        raise LoginError("Не удалось однозначно выбрать тенант ВШГУ после авторизации")
+
+    selected = session.get(
+        urljoin(response.url, tenant_href),
+        headers={"Referer": response.url},
+        timeout=30,
+        allow_redirects=True,
+    )
+    if selected.status_code >= 400:
+        raise LoginError(f"Не удалось выбрать тенант ВШГУ: HTTP {selected.status_code}")
+    return selected
+
+
 def login(env: Environment, email: str, password: str) -> requests.Session:
     """Логинится на портале так же, как это делает браузер: получает CSRF-токен
     со страницы /auth/main и отправляет POST /auth/login формой. Сессионная
@@ -171,6 +250,7 @@ def login(env: Environment, email: str, password: str) -> requests.Session:
             "(неверные учётные данные или сработала защита от логина)."
         )
 
+    _select_tenant_if_required(session, response, env)
     return session
 
 
