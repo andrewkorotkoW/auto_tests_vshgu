@@ -1058,3 +1058,34 @@ pytest tests/tools -m tools -q
 и сиды части 12, ответить на блокирующие вопросы плана (раздел 4), включить `MTS_LINK_READY=1`
 (и `MTS_LINK_TENANT_ID`) на тестовом стенде — тесты начнут выполняться реальными шагами без
 изменения кода каркаса.
+
+## 18. Helpdesk: что покрыто, как запускать
+
+Миссия `docs/plans/2026-10-05_helpdesk_cases_mission.md`, итоговый отчёт —
+`docs/reports/2026-10-05_helpdesk_mission.md`. Хелпдеск — отдельная admin-панель (разведка:
+`docs/helpdesk_recon.md`), сервер-рендерящаяся Laravel Backpack-админка на
+`https://helpdesk-develop.d2.devspark.ru` (общая сессия с develop), без JSON REST API — список
+`GET /admin/<entity>`, подгрузка строк `POST /admin/<entity>/search` (DataTables), CRUD через
+create/{id}/edit/{id}/show + `POST`/`PUT`/`DELETE`. Пользовательская часть тикетов
+(`/api/v1/tickets/*`) сюда не входит — она покрыта отдельно, см. `docs/test_cases/tickets.md`,
+`tests/api/tickets`, `tests/ui/tickets/user`.
+
+**Кейсы написаны, автотестов с проверками пока нет.** `docs/test_cases/helpdesk/{tickets,groups,
+users,applicants,templates,dashboards}.md` — 48 кейсов (33 помечены `- Автотест: <nodeid>`, 15
+принципиально ручных), синхронизированы в Test IT «ВШГУ v.3» (раздел Helpdesk, id в md) и
+импортированы в test_hub (проект `VSHGU`, разделы `helpdesk/*`). Готова инфраструктура для
+автоматизации — `api/endpoints/helpdesk.py` (CSRF/DataTables-механика Backpack CRUD, методы групп/
+шаблонов/поиска/назначения ролей/списка тикетов), генераторы данных
+(`generate_helpdesk_*_payload` в `api/helpers/data_generator.py`), page-объекты
+`ui/pages/helpdesk_*.py` — но самих файлов `tests/api/helpdesk/`, `tests/ui/helpdesk/` с ассертами
+в репозитории ещё нет:
+
+```
+pytest tests/api/helpdesk tests/ui/helpdesk --env develop -q
+# ERROR: file or directory not found: tests/api/helpdesk
+```
+
+Когда тесты появятся — запускать только их тем же способом (`--env develop`, других стендов для
+хелпдеска нет). Известный кандидат в дефект с разведки: `POST /admin/user/search` с ФИО из
+нескольких слов (пробел в `search[value]`) стабильно отдаёт 500 — зафиксирован в кейсе
+`TC-HELPDESK_USERS-008`, см. отчёт миссии и `docs/helpdesk_recon.md` §5.
