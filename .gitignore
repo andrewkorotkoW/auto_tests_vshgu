@@ -1,0 +1,37 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+allure-results/
+allure-report/
+allure-history/
+allure-2.32.0/
+
+# Результаты scripts/run.sh|.bat: results/<env>/<timestamp>/, results/<env>/allure-history/, results/<env>/allure-report/
+results/
+.pytest_cache/
+.idea/
+.vscode/
+
+# Allure run-папки
+allure-results-*/
+
+# Состояние авторизации (токены!)
+auth_state.json
+
+results/
+
+# Кэш авторизованных сессий/storage_state для окружений (config/environments.py)
+.cache/
+
+*.log
+utils/.env
+
+# Манифесты реальных прогонов test_data_generation/generate.py (созданные id на develop/stage) —
+# только рабочие артефакты, в репозитории не нужны.
+test_data_generation/manifests/*.json
+
+# План tools/test_cases/testit_sync.py --dry-run (workspace/testit_export.json) — локальный
+# рабочий артефакт с реальным TESTIT_PROJECT_ID из .env, в репозитории не нужен.
+workspace/
