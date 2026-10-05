@@ -1547,3 +1547,126 @@ def generate_buk_user_payload(
         "birth_date": birth_date,
         "user_id": user_id,
     }
+
+
+def generate_helpdesk_group_payload(
+    name: str = None,
+    prefix: str = None,
+    email: str = None,
+    imap_password: str = "autotest-fake-password",
+    imap_host: str = "imap.autotest.invalid",
+    imap_port: int = 993,
+    imap_encryption: str = "ssl",
+    smtp_host: str = "smtp.autotest.invalid",
+    smtp_port: int = 465,
+    smtp_encryption: str = "ssl",
+    users: list = None,
+) -> dict:
+    """Payload для POST /admin/group (создание группы хелпдеска, api.endpoints.helpdesk.HelpdeskEndpoint.create_group).
+
+    IMAP/SMTP — заведомо фиктивные (хост в зарезервированной для тестов зоне
+    .invalid, см. RFC 2606): группу создают только автотесты, реальные почтовые
+    реквизиты системных групп трогать нельзя (см. docs/helpdesk_recon.md,
+    правило миссии). Поле users (`users_collection[]` — единственное имя поля
+    формы, подтверждённое разведкой буквально по DOM) опционально, по умолчанию
+    без пользователей.
+
+    Остальные ключи (name/prefix/email/imap_*/smtp_*) — конвенция Laravel
+    Backpack CRUD (snake_case от названия колонки), не подтверждены разведкой
+    буквально — при первом реальном создании группы проверить, что сервер
+    принял форму (не 422), и поправить при расхождении."""
+    suffix = unique_suffix()
+    if not name:
+        name = f"Автотест_группа_{suffix}"
+    if not prefix:
+        prefix = f"autotest{int(time.time() * 1000)}"[:20]
+    if not email:
+        email = f"auto_test_group_{suffix}@autotest.invalid"
+    payload = {
+        "name": name,
+        "prefix": prefix,
+        "email": email,
+        "imap_password": imap_password,
+        "imap_host": imap_host,
+        "imap_port": imap_port,
+        "imap_encryption": imap_encryption,
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+        "smtp_encryption": smtp_encryption,
+    }
+    if users:
+        payload["users_collection"] = users
+    return payload
+
+
+def generate_helpdesk_template_payload(
+    name: str = None,
+    content: str = None,
+    keywords: str = None,
+    group_ids: list = None,
+) -> dict:
+    """Payload для POST /admin/mail-template (создание шаблона ответа,
+    api.endpoints.helpdesk.HelpdeskEndpoint.create_template).
+
+    group_ids — ID групп хелпдеска для select2-поля «Группа» (множественный
+    выбор); по умолчанию пустой список (создание без группы не проверялось
+    сабмитом формы на стенде — если оно окажется обязательным, передайте ID
+    группы, созданной generate_helpdesk_group_payload())."""
+    suffix = unique_suffix()
+    if not name:
+        name = f"Автотест_шаблон_{suffix}"
+    if not content:
+        content = f"<p>Автотест текст шаблона {suffix}</p>"
+    if not keywords:
+        keywords = f"автотест,{suffix}"
+    payload = {"name": name, "content": content, "keywords": keywords}
+    if group_ids:
+        payload["group_ids"] = group_ids
+    return payload
+
+
+def generate_helpdesk_applicant_payload(
+    surname: str = None,
+    name: str = None,
+    patronymic: str = None,
+    email: str = None,
+    phone: str = None,
+    stream_id: int = None,
+    user_id: int = None,
+) -> dict:
+    """Payload для POST /admin/identity (добавление заявителя,
+    api.endpoints.helpdesk.HelpdeskEndpoint.add_applicant).
+
+    surname несёт маркер auto_test_ (по аналогии с email — см. random_email) —
+    чтобы запись было легко найти через поиск и отличить от реальных заявителей.
+    stream_id/user_id — опциональные поля формы (Волна/ID пользователя), по
+    умолчанию не передаются."""
+    if not surname:
+        surname = f"auto_test_{unique_suffix()}"
+    random_name, random_surname, random_patronymic = random_user_data()
+    name = name or random_name
+    patronymic = patronymic or random_patronymic
+    email = email or random_email()
+    phone = phone or random_phone()
+    payload = {"surname": surname, "name": name, "patronymic": patronymic, "email": email, "phone": phone}
+    if stream_id is not None:
+        payload["stream_id"] = stream_id
+    if user_id is not None:
+        payload["user_id"] = user_id
+    return payload
+
+
+def generate_helpdesk_role_assignment_payload(admin: bool = False, support: bool = False, group_admin: bool = False) -> dict:
+    """Payload для POST /admin/user/{id}/assign-role (api.endpoints.helpdesk.HelpdeskEndpoint.assign_role)
+    — ровно три роли, имена полей `roles[...]` подтверждены разведкой буквально
+    (см. docs/helpdesk_recon.md, кейс 9592). Как и обычный HTML-чекбокс, не
+    отмеченная роль в payload вообще не передаётся (а не передаётся как "0") —
+    так ведёт себя браузер при сабмите формы."""
+    payload = {}
+    if admin:
+        payload["roles[admin]"] = "1"
+    if support:
+        payload["roles[support]"] = "1"
+    if group_admin:
+        payload["roles[group_admin]"] = "1"
+    return payload
