@@ -52,6 +52,8 @@ def _restart_close_restart_complete(page: Page, onboarding: OnboardingPage) -> N
 
     with allure.step("3. Закрываем онбординг крестиком на 2-м слайде"):
         onboarding.close_onboarding()
+        expect(page.locator("[data-qa='onboarding-popup-close']")).not_to_be_visible(timeout=10000)
+        page.wait_for_timeout(800)
 
     with allure.step("4. Запускаем повторный онбординг снова и проходим до конца"):
         onboarding.restart_onboarding()

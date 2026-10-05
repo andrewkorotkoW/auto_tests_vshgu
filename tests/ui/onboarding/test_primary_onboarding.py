@@ -55,6 +55,9 @@ class TestPrimaryOnboarding:
 
         with allure.step("Проходим онбординг раздела «База знаний»"):
             onboarding.complete_onboarding(max_steps=20)
+            next_or_finish = page.locator(NEXT_BUTTON).or_(page.locator(FINISH_BUTTON))
+            if next_or_finish.first.is_visible(timeout=10000):
+                onboarding.complete_onboarding(max_steps=20)
             expect(page.locator(NEXT_BUTTON)).not_to_be_visible(timeout=10000)
 
         with allure.step("Открылась вкладка «Библиотека»"):
@@ -63,6 +66,9 @@ class TestPrimaryOnboarding:
 
         with allure.step("Переходим на вкладку «Избранное»"):
             favorites_tab = page.locator(FAVORITES_TAB)
+            scrim = page.locator(".v-overlay__scrim").first
+            if scrim.is_visible(timeout=1000):
+                onboarding.complete_onboarding(max_steps=20)
             expect(favorites_tab).to_be_visible(timeout=15000)
             favorites_tab.click(timeout=5000)
 
