@@ -30,12 +30,24 @@ class AdminDashboardPage(BasePage):
         )
 
     def search(self, name: str) -> None:
+        """Поиск по списку программ/курсов. Таблица перечитывается по XHR
+        `GET /statistics/{programs|courses}/?filters[name]=...`; без ожидания этого
+        ответа следующий шаг читает ещё старую (нефильтрованную) таблицу — на k8s v2
+        (медленный ответ) `find_row` находил строку в нефильтрованном списке, а
+        `count() == 1` видел 20 строк, и клик по ссылке курса попадал в перерисовку
+        (та же гонка, что у `search_listeners`)."""
         search_input = self.page.locator("input[data-qa='km-search']").or_(
             self.page.locator("input[placeholder='Поиск']")
         )
         expect(search_input.first).to_be_visible(timeout=15000)
-        search_input.first.fill(name, timeout=5000)
-        search_input.first.press("Enter")
+        with self.page.expect_response(
+            lambda r: "/statistics/" in r.url
+            and ("filters%5Bname%5D" in r.url or "filters[name]" in r.url)
+            and r.status == 200,
+            timeout=30000,
+        ):
+            search_input.first.fill(name, timeout=5000)
+            search_input.first.press("Enter")
 
     def row(self, entity_name: str) -> Locator:
         safe = entity_name.replace("'", "")
