@@ -17,24 +17,22 @@ class TestUserTincanIndividualFlow:
     @pytest.mark.ui
     @pytest.mark.smoke
     @pytest.mark.xfail(
-        reason=(
-            "Известный дефект стенда develop (тот же класс, что в "
-            "tests/ui/homework/individual/test_ui_homework_flow.py, "
-            "tests/ui/proctoring/individual/test_proctoring_flow.py и "
-            "tests/ui/polls/individual/test_poll_flow.py): после API-назначения через "
-            "/users/content/distant/assign-activities (ответ 200) раздел «Индивидуальное "
-            "обучение» слушателя не показывает назначенный курс — карточка с его именем не "
-            "появляется в UI."
-        ),
         strict=False,
+        reason=(
+            "Стенд develop (06.10.2026): плеер курса (/xapi/drivers/cmi5, новая вкладка) грузит пакет "
+            "из /static/content/<uuid>/… и получает 502 Bad Gateway от nginx — «Перейти к изучению» "
+            "не появляется. Прежняя причина xfail («курс не показывается в инд. обучении») была "
+            "ошибкой page-объекта (не переключалась вкладка «Курсы и тесты», тур подменял карточки "
+            "демо-данными) — исправлено, курс отображается и открывается."
+        ),
     )
-    def test_user_tincan_individual(self, page, api_client, created_user):
+    def test_user_tincan_individual(self, page, api_client, prepared_user):
         from api.endpoints.tincan import TincanEndpoint
         tincan_ep = TincanEndpoint(api_client)
 
         # ========== API ==========
-        with allure.step("1. Создать пользователя"):
-            user = created_user()
+        with allure.step("1. Создать пользователя (с закрытым онбордингом — иначе тур подменяет карточки демо-данными)"):
+            user = prepared_user()
 
         with allure.step("2. Создать курс"):
             from api.helpers.data_generator import generate_tincan_payload
@@ -82,3 +80,36 @@ class TestUserTincanIndividualFlow:
             tincan_ep.mass_delete([course_id])
 
         logger.info("Tincan Individual — курс пройден!")
+
+
+    @allure.title("Инд. обучение: в карточке курса отображается доп. файл (как в потоке)")
+    @allure.severity(allure.severity_level.NORMAL)
+    @pytest.mark.ui
+    @pytest.mark.xfail(
+        strict=False,
+        reason=(
+            "Кандидат в дефект (develop, 06.10.2026): у курса, назначенного через инд. обучение "
+            "(/users/content/distant/assign-activities), в карточке на вкладке «Курсы и тесты» нет "
+            "блока файлов (span.files-table__text) — отображаются только название, срок, описание "
+            "и «Начать». Page-объект потока ожидает файл в карточке (span.files-table__text), но "
+            "потоковый тест сейчас сам xfail по навигации — сравнить с потоком вживую не удалось; "
+            "уточнить у разработки, должны ли доп. файлы показываться в инд. обучении."
+        ),
+    )
+    def test_individual_course_shows_additional_file(self, page, api_client, prepared_user):
+        from api.endpoints.tincan import TincanEndpoint
+        from api.helpers.data_generator import generate_tincan_payload
+        tincan_ep = TincanEndpoint(api_client)
+        user = prepared_user()
+        course = tincan_ep.create(generate_tincan_payload(
+            archive_uuid=tincan_ep.upload_archive(), cover_uuid=tincan_ep.upload_cover(),
+            sub_files_uuids=[tincan_ep.upload_sub_file()],
+        ))
+        try:
+            tincan_ep.assign_activities([course["id"]], [user["id"]])
+            LoginPage(page).login(user["email"], user["password"])
+            UserSidebarPage(page).dismiss_popups()
+            tincan_page = TincanPage(page)
+            tincan_page.start_tincan_individual(expect_sub_file=True)
+        finally:
+            tincan_ep.mass_delete([course["id"]])
