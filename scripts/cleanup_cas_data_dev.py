@@ -70,7 +70,9 @@ def test_cleanup_cas_data_dev(env, api_client, users_endpoint, programs_endpoint
     pids = set()
     for pat in ("Автотест программа", "API-test_"):
         pids.update(_page_ids(api_client, f"/programs?filters[name]={pat}", "name", pat))
-    ok = sum(_safe(programs_endpoint.delete, p) for p in pids)
+    # одиночный DELETE /programs/{id} на develop отвечает 405 — только массовое удаление (как в cleanup_autotest_data_dev)
+    pids = sorted(pids)
+    ok = len(pids) if pids and _safe(programs_endpoint.mass_delete, pids) else 0
     rep["programs"] = f"{ok}/{len(pids)}"
     auids = _page_ids(api_client, "/users?filters[email]=auto_test", "email", "auto_test")
     ok = sum(_safe(users_endpoint.delete, u) for u in auids)
