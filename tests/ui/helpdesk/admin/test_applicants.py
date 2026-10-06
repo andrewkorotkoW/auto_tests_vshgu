@@ -24,7 +24,7 @@ from ui.pages.helpdesk_applicants_page import HelpdeskApplicantsPage
 @allure.severity(allure.severity_level.NORMAL)
 @pytest.mark.ui
 @pytest.mark.develop
-def test_navigate_to_user_education_tab(admin_page, helpdesk_ui_base_url, applicant_with_education_stream):
+def test_navigate_to_user_education_tab(admin_page, env, helpdesk_ui_base_url, applicant_with_education_stream):
     if applicant_with_education_stream is None:
         pytest.xfail(
             "На develop не нашлось ни одного заявителя с реально назначенным потоком "
@@ -40,7 +40,9 @@ def test_navigate_to_user_education_tab(admin_page, helpdesk_ui_base_url, applic
     with allure.step("Кликнуть «Управление обучением» — открывается карточка пользователя ВШГУ в новой вкладке"):
         new_page = page.go_to_vshgu_user_education()
 
-    assert "global-develop.d2.devspark.ru" in new_page.url
+    expected_host = env.global_base_url.split('/api/')[0].split('://', 1)[1]  # global-<стенд>, не захардкоженный develop
+
+    assert expected_host in new_page.url
     assert "/assigment/education" in new_page.url
     new_page.close()
 
