@@ -49,6 +49,16 @@ pytest_plugins = ["utils.test_hub_plugin"]
 
 VIDEO_SIZE = {"width": 1280, "height": 720}
 
+# k8s-стенды v2 заметно медленнее develop: дашборд хелпдеска (/admin/dashboard, графики Highcharts)
+# и страница достижений грузятся дольше 30 с (прогон 06.10.2026, qa_analysis/cases/K8S_v2_2026-10-06).
+# Страницы отрисовываются, поэтому для k8s поднимаем таймаут навигации до 60 с; develop/stage — без изменений.
+K8S_NAVIGATION_TIMEOUT_MS = 60000
+
+
+def _apply_env_timeouts(context, env):
+    if env.name == "k8s":
+        context.set_default_navigation_timeout(K8S_NAVIGATION_TIMEOUT_MS)
+
 
 def _video_recording_enabled():
     """Запись видео теста включена только для прогонов test_hub (TH_URL/TH_RUN_ID/TH_RUN_TOKEN
@@ -503,7 +513,7 @@ def browser():
         browser.close()
 
 @pytest.fixture
-def page(browser, request):
+def page(browser, env, request):
     video_enabled = _video_recording_enabled()
     context_kwargs = {"viewport": {"width": 1366, "height": 768}}
     if video_enabled:
@@ -512,6 +522,7 @@ def page(browser, request):
         context_kwargs["record_video_dir"] = str(video_dir)
         context_kwargs["record_video_size"] = VIDEO_SIZE
     context = browser.new_context(**context_kwargs)
+    _apply_env_timeouts(context, env)
     page = context.new_page()
     started_at = time.monotonic()
     yield page
@@ -536,6 +547,7 @@ def _authenticated_page(browser, env, role, request, fixture_name):
         context_kwargs["record_video_dir"] = str(video_dir)
         context_kwargs["record_video_size"] = VIDEO_SIZE
     context = browser.new_context(**context_kwargs)
+    _apply_env_timeouts(context, env)
     page = context.new_page()
     started_at = time.monotonic()
     yield page
