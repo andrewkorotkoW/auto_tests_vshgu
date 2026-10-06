@@ -1070,30 +1070,45 @@ create/{id}/edit/{id}/show + `POST`/`PUT`/`DELETE`. Пользовательск
 (`/api/v1/tickets/*`) сюда не входит — она покрыта отдельно, см. `docs/test_cases/tickets.md`,
 `tests/api/tickets`, `tests/ui/tickets/user`.
 
-**33 автотеста реализованы** (из 48 кейсов в `docs/test_cases/helpdesk/{tickets,groups,users,
-applicants,templates,dashboards}.md`, 15 оставшихся — принципиально ручные), синхронизированы в
-Test IT «ВШГУ v.3» (раздел Helpdesk, id в md) и импортированы в test_hub (проект `VSHGU`, разделы
-`helpdesk/*`). API-тесты — `tests/api/helpdesk/` (22 теста: группы/шаблоны/заявители/пользователи/
-тикеты, CRUD + негативные), UI — `tests/ui/helpdesk/admin/` (11 тестов: навигация по разделам
-меню, создание/удаление группы и шаблона, назначение роли, переход в карточку обучения заявителя).
-Используют `HelpdeskEndpoint` (`api/endpoints/helpdesk.py` — CSRF/DataTables-механика Backpack
-CRUD), генераторы данных (`generate_helpdesk_*_payload` в `api/helpers/data_generator.py`),
-page-объекты `ui/pages/helpdesk_*.py`.
+**51 автотест реализован** (44 из 48 кейсов в `docs/test_cases/helpdesk/{tickets,groups,users,
+applicants,templates,dashboards}.md` — у каждого в md строка `- Автотест: <nodeid>`; оставшиеся 4
+кейса про зачисление активити заявителя и фильтры дашборда помечены `- Статус: ждёт подтверждения
+владельца функционала`, не автоматизируются), синхронизированы в Test IT «ВШГУ v.3» (раздел
+Helpdesk, id в md) и импортированы в test_hub (проект `VSHGU`, разделы `helpdesk/*`). API-тесты —
+`tests/api/helpdesk/` (29 тестов: группы/шаблоны/заявители/пользователи/тикеты/справочники, CRUD +
+негативные), UI — `tests/ui/helpdesk/admin/` (22 теста: навигация по разделам меню, CRUD
+справочников, создание/удаление группы и шаблона, назначение роли, карточка пользователя и
+заявителя, настройка колонок таблицы тикетов, переход в карточку обучения заявителя). Используют
+`HelpdeskEndpoint` (`api/endpoints/helpdesk.py` — CSRF/DataTables-механика Backpack CRUD),
+генераторы данных (`generate_helpdesk_*_payload` в `api/helpers/data_generator.py`), page-объекты
+`ui/pages/helpdesk_*.py`.
 
-Запуск (нужен `HEADLESS=1` для UI-части, других стендов для хелпдеска нет — только `--env develop`):
+Запуск (нужен `HEADLESS=1` для UI-части, других стендов для хелпдеска нет — только `--env develop`;
+API и UI стоит запускать отдельными командами — совместный прогон укладывается в несколько минут,
+но может превысить таймаут одной foreground-команды):
 
 ```
-HEADLESS=1 pytest tests/api/helpdesk tests/ui/helpdesk --env develop -q
+HEADLESS=1 pytest tests/api/helpdesk --env develop -q
+HEADLESS=1 pytest tests/ui/helpdesk --env develop -q
 ```
 
-Фактический итог прогона (06.10.2026): **9 passed, 23 xfailed, 1 xpassed, 0 failed** — часть тестов
-помечена `xfail(strict=False)` из-за дефектов стенда, не кода автотестов (полный список nodeid и
-причин — `docs/reports/2026-10-05_helpdesk_mission.md`, раздел 3), в т.ч.:
+Фактический итог прогона (06.10.2026, после фикса инфраструктуры и автоматизации всех 10 оставшихся
+ручных кейсов из плана): **39 passed, 12 xfailed, 0 xpassed, 0 failed** (29 API: 19 passed/10 xfailed;
+22 UI: 20 passed/2 xfailed) — часть тестов помечена `xfail(strict=False)` из-за дефектов стенда, не
+кода автотестов (полный список nodeid и причин — `docs/reports/2026-10-05_helpdesk_mission.md`,
+раздел 3), в т.ч.:
 
 - `POST /admin/user/search` стабильно отдаёт `500` на любой запрос без совпадения с сид-данными
   (не только на многословное ФИО, как предполагала разведка) — блокирует поиск/назначение роли
   новому пользователю и в API, и в UI;
-- CSRF-токен на develop не находится регэкспом `HelpdeskEndpoint._csrf_token` (разметка
-  `<meta .../>` вместо `<meta ...>`) — блокирует create/update/delete у групп и шаблонов;
-- формы создания группы/шаблона не связывают `<label>` с `<input>` — `get_by_label` в UI-тестах не
-  находит поля.
+- `GroupCrudController::store()`/`update()` при успешном создании/обновлении группы с
+  `Accept: application/json` возвращает `JsonResponse` вместо `RedirectResponse` — Laravel бросает
+  `TypeError` (500), хотя группа реально создаётся/обновляется в БД; блокирует весь API CRUD групп;
+- `assign-role` на несуществующего пользователя отвечает `500` (`TypeError` в
+  `RolesRepository::hasOneOfRoles()`), а не `404`;
+- создание записи «Чёрного списка адресов» падает на сервере `500` при валидации уникальности email.
+
+CSRF-регэксп `HelpdeskEndpoint._csrf_token` и несвязанные `<label>`/`<input>` в формах групп и
+шаблонов, из-за которых раньше падали эти и другие тесты, исправлены в рамках этой миссии
+(`ui/pages/helpdesk_*.py`, `api/endpoints/helpdesk.py`) — подробности и список исправленных nodeid в
+отчёте, раздел 3.

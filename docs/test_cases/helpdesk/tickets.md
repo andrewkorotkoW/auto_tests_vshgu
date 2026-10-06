@@ -34,6 +34,7 @@
 | 2 | Отфильтровать по известной теме через `search[value]` | `recordsFiltered` уменьшается, в `data` остаются только строки с этой темой |
 
 ### TC-HELPDESK_TICKETS-003 Справочник «Категории» — просмотр, создание, редактирование, удаление
+- Автотест: tests/ui/helpdesk/admin/test_dictionaries.py::test_dictionary_crud[category]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
 - Требование: docs/helpdesk_recon.md п.3 (подтверждено на стенде: `/admin/dict/category/view/list-category`)
@@ -46,6 +47,7 @@
 | 4 | Удалить созданную категорию через иконку-корзину и подтвердить в модальном окне | Категория пропадает из списка |
 
 ### TC-HELPDESK_TICKETS-004 Справочник «Теги» — просмотр, создание, редактирование, удаление
+- Автотест: tests/ui/helpdesk/admin/test_dictionaries.py::test_dictionary_crud[tag]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
 - Требование: docs/helpdesk_recon.md п.3 (подтверждено: `/admin/tag`)
@@ -58,6 +60,7 @@
 | 4 | Удалить созданный тег через иконку-корзину и подтвердить в модальном окне | Тег пропадает из списка |
 
 ### TC-HELPDESK_TICKETS-005 Справочник «Типы заявителей» — просмотр, создание, редактирование, удаление
+- Автотест: tests/ui/helpdesk/admin/test_dictionaries.py::test_dictionary_crud[applicant_type]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
 - Требование: docs/helpdesk_recon.md п.3 (подтверждено: `/admin/dict/applicant_type`)
@@ -70,6 +73,7 @@
 | 4 | Удалить созданный тип через иконку-корзину и подтвердить в модальном окне | Тип пропадает из списка |
 
 ### TC-HELPDESK_TICKETS-006 Справочник «Типы контактов» — просмотр, создание, редактирование, удаление
+- Автотест: tests/ui/helpdesk/admin/test_dictionaries.py::test_dictionary_crud[request_source]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
 - Требование: docs/helpdesk_recon.md п.3 (подтверждено: `/admin/dict/request_source`)
@@ -82,6 +86,7 @@
 | 4 | Удалить созданный тип через иконку-корзину и подтвердить в модальном окне | Тип пропадает из списка |
 
 ### TC-HELPDESK_TICKETS-007 Справочник «Типы обращений» — просмотр, создание, редактирование, удаление
+- Автотест: tests/ui/helpdesk/admin/test_dictionaries.py::test_dictionary_crud[request_type]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
 - Требование: docs/helpdesk_recon.md п.3 (подтверждено: `/admin/dict/request_type`)
@@ -94,6 +99,7 @@
 | 4 | Удалить созданный тип через иконку-корзину и подтвердить в модальном окне | Тип пропадает из списка |
 
 ### TC-HELPDESK_TICKETS-008 Справочник «Типы результата» — просмотр, создание, редактирование, удаление
+- Автотест: tests/ui/helpdesk/admin/test_dictionaries.py::test_dictionary_crud[processing_result]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: Заголовок страницы фактически «Результаты обработки» (пункт меню — «Типы результата»), это косметическое расхождение, не блокер
 - Требование: docs/helpdesk_recon.md п.3, п.5 (подтверждено: `/admin/dict/processing_result`)
@@ -106,6 +112,7 @@
 | 4 | Удалить созданную запись через иконку-корзину и подтвердить в модальном окне | Запись пропадает из списка |
 
 ### TC-HELPDESK_TICKETS-009 Справочник «Черный список адресов» — просмотр, создание, редактирование, удаление
+- Автотест: tests/ui/helpdesk/admin/test_dictionaries.py::test_dictionary_crud[blacklist]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
 - Требование: docs/helpdesk_recon.md п.3 (подтверждено: `/admin/blacklist`)
