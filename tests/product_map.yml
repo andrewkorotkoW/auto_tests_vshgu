@@ -98,14 +98,15 @@ nodes:
   # ui/pages/activity_page.py и tests/ui/mts_link/test_event_type.py).
   - {id: int_mts_link, label: "МТС Линк", zone: int, x: 510, y: 700, w: 140, h: 40, tests: [tests/api/mts_link, tests/ui/mts_link], target: adm_tenant_integration}
 
-  # mobile: первый зелёный тест покрывает вход + список программ (tests/ui/mobile/test_mobile_login_my_programs);
-  # остальные четыре узла — кандидаты для следующей задачи (dwight), tests: [] до появления тестов.
+  # mobile: все шесть узлов покрыты тестами с маркером pytest.mark.mobile (зелёные по
+  # факту прогона --mobile/MOBILE=1 на develop). mobile_profile — тест xfail (кандидат
+  # в дефект вёрстки, не ошибка теста, см. docs/mobile/layout_facts.md п.5).
   - {id: mobile_login, label: "Вход (/auth/main)", zone: mobile, x: 60, y: 900, w: 190, h: 40, tests: [tests/ui/mobile/test_mobile_login_my_programs]}
   - {id: mobile_my_programs, label: "Список программ (/education)", zone: mobile, x: 270, y: 900, w: 190, h: 40, tests: [tests/ui/mobile/test_mobile_login_my_programs]}
-  - {id: mobile_activity, label: Активити, zone: mobile, x: 480, y: 900, w: 190, h: 40, tests: []}
-  - {id: mobile_program_certificate, label: "Карточка программы / сертификат", zone: mobile, x: 690, y: 900, w: 220, h: 40, tests: []}
-  - {id: mobile_profile, label: Профиль, zone: mobile, x: 930, y: 900, w: 190, h: 40, tests: []}
-  - {id: mobile_notifications, label: "Уведомления (/portal-notifications)", zone: mobile, x: 1140, y: 900, w: 190, h: 40, tests: []}
+  - {id: mobile_activity, label: Активити, zone: mobile, x: 480, y: 900, w: 190, h: 40, tests: [tests/ui/mobile/test_mobile_activity_simple_test]}
+  - {id: mobile_program_certificate, label: "Карточка программы / сертификат", zone: mobile, x: 690, y: 900, w: 220, h: 40, tests: [tests/ui/mobile/test_mobile_program_card]}
+  - {id: mobile_profile, label: Профиль, zone: mobile, x: 930, y: 900, w: 190, h: 40, tests: [tests/ui/mobile/test_mobile_profile_and_certificates]}
+  - {id: mobile_notifications, label: "Уведомления (/portal-notifications)", zone: mobile, x: 1140, y: 900, w: 190, h: 40, tests: [tests/ui/mobile/test_mobile_notifications]}
 edges:
   - {from: ext_login, to: ext_onboarding}
   - {from: ext_onboarding, to: ext_lk}
