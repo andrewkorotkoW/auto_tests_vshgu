@@ -1,19 +1,12 @@
 """Мобильная вёрстка (Pixel 7): слушатель открывает «Профиль» (нижняя панель вкладок)
 и пробует увидеть вкладку «Мои сертификаты».
 
-xfail: см. docs/mobile/layout_facts.md п.5 — клик по нижней вкладке «Профиль» не меняет
-URL (переключение внутреннего состояния SPA, не роутер) и работает только со страницы
-«Моё обучение» (/education корень); после клика содержимое вкладки «Профиль» не
-отрисовывается — бесконечный спиннер `.v-progress-circular` (воспроизведено дважды в
-разведке michael/dwight). Нет ни одного UI page object/селектора для раздела
-«Профиль»/«Мои сертификаты» даже на desktop (grep по ui/pages/*.py ничего не находит) —
-дописывать его в рамках этой задачи не предмет (задача запрещает новые/переработанные
-page objects), поэтому тест фиксирует наблюдаемое поведение напрямую через локаторы
-нижней панели и общий спиннер, а не новый метод в page object.
-
-Данные — assigned_user + prepare_user_for_tests_via_api, как и в остальных мобильных
-тестах набора (тот же способ подготовки «данных о себе», без которого онбординг
-блокирует страницу)."""
+Разведка 06.10 (michael/dwight) считала, что после клика по «Профиль» висит бесконечный
+спиннер; перепроверка 07.10 на develop: клик с /education ведёт на /profile/<id>, содержимое
+отрисовывается за ~3 с без спиннера и ошибок в сети — ошибкой было ожидание email, которого
+на мобильной вкладке «Профиль» нет. Page object для раздела «Профиль» не существует и на
+desktop, поэтому локаторы нижней панели здесь напрямую.
+"""
 import re
 
 import allure
@@ -34,16 +27,6 @@ class TestMobileProfileAndCertificates:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.mobile
-    @pytest.mark.xfail(
-        reason=(
-            "Мобильная вкладка «Профиль» (нижняя панель, a.bottom-bar__link) после клика "
-            "с /education не отрисовывает содержимое — бесконечный спиннер "
-            ".v-progress-circular, подтверждено в разведке (docs/mobile/layout_facts.md п.5); "
-            "«Мои сертификаты» как подвкладка профиля недостижима тем же путём. Кандидат в "
-            "дефект мобильной вёрстки, не ошибка теста."
-        ),
-        strict=False,
-    )
     def test_mobile_profile_tab_shows_content(self, page, env, api_client, prepared_user, is_mobile):
         assert is_mobile, "Тест должен запускаться с --mobile/MOBILE=1 — иначе он не проверяет мобильную вёрстку"
         allure.dynamic.parameter("device", "Pixel 7")
@@ -66,10 +49,26 @@ class TestMobileProfileAndCertificates:
             with allure.step("4. Клик по вкладке «Профиль» нижней панели"):
                 profile_tab = page.locator("a.bottom-bar__link", has_text="Профиль").first
                 expect(profile_tab).to_be_visible(timeout=15000)
-                profile_tab.click(force=True)
+                # Клик сразу после загрузки /education — no-op (обработчик нижней панели ещё не
+                # навешан, URL не меняется — так и родилась версия про «бесконечный спиннер»).
+                # Ждём тишины в сети, кликаем и проверяем переход на /profile/<id>; при no-op —
+                # один повторный клик.
+                page.wait_for_load_state("networkidle", timeout=15000)
+                page.wait_for_timeout(1000)
+                for _ in range(2):
+                    profile_tab.click()
+                    try:
+                        expect(page).to_have_url(re.compile(r".*/profile/\d+.*"), timeout=10000)
+                        break
+                    except AssertionError:
+                        continue
+                expect(page).to_have_url(re.compile(r".*/profile/\d+.*"), timeout=5000)
 
-            with allure.step("5. Содержимое вкладки «Профиль» должно отрисоваться (ФИО/email)"):
-                expect(page.get_by_text(user["email"], exact=False)).to_be_visible(timeout=20000)
+            with allure.step("5. Содержимое вкладки «Профиль» должно отрисоваться (ФИО, роль «Слушатель»)"):
+                # На мобильной вкладке «Профиль» email не показывается (только ФИО, роль, регион,
+                # QR-код, рассылка) — проверено 07.10 на develop, см. layout_facts.md п.5.
+                expect(page.get_by_text(user["surname"], exact=False).first).to_be_visible(timeout=20000)
+                expect(page.get_by_text("Слушатель", exact=True).first).to_be_visible(timeout=10000)
 
             with allure.step("6. Открыть подвкладку «Мои сертификаты»"):
                 certificates_tab = page.locator("xpath=//span[normalize-space()='Мои сертификаты']").first
