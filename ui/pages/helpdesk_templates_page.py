@@ -4,7 +4,14 @@
 
 Поле «Группа» на форме создания — select2 с множественным выбором; метод
 select_groups опционален и используется только если тесту нужно связать
-шаблон с конкретной Автотест_* группой."""
+шаблон с конкретной Автотест_* группой.
+
+Поля заполняются по `bp-field-name` (HelpdeskAdminPage.field), а не по
+подписи (<label> не связан с полем, как и у групп, см. ui/pages/
+helpdesk_groups_page.py). «Содержимое» — WYSIWYG-редактор Quill
+(`.ql-editor[contenteditable]`), а не textarea — синхронизирует скрытый
+`input[name=content]` при изменении, Playwright `.fill()` поддерживает
+contenteditable-элементы напрямую."""
 from playwright.sync_api import expect
 
 from ui.pages.helpdesk_base_page import HelpdeskAdminPage
@@ -15,13 +22,13 @@ class HelpdeskTemplatesPage(HelpdeskAdminPage):
 
     def fill_create_form(self, payload: dict) -> None:
         """payload — как из generate_helpdesk_template_payload(): name/content/keywords."""
-        self.page.get_by_label("Наименование", exact=True).fill(payload["name"])
-        self.page.get_by_label("Содержимое", exact=True).fill(payload["content"])
-        self.page.get_by_label("Ключевые слова", exact=True).fill(payload["keywords"])
+        self.field("name").fill(payload["name"])
+        self.page.locator('[bp-field-name="content"] .ql-editor').fill(payload["content"])
+        self.field("keywords").fill(payload["keywords"])
 
     def select_groups(self, group_names: list) -> None:
         """Выбрать группу(ы) в select2-поле «Группа» по названию (опционально)."""
-        combobox = self.page.locator("div[role=combobox]:has(label:text-is('Группа'))").first
+        combobox = self.page.locator('[bp-field-name="groups"] [role=combobox]').first
         for group_name in group_names:
             combobox.click()
             option = self.page.get_by_role("option", name=group_name)
