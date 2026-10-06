@@ -425,8 +425,17 @@ def browser():
     # HEADLESS=1 (по умолчанию в Docker, см. Dockerfile) — без окна браузера;
     # локально по умолчанию окно открывается, как и раньше.
     headless = os.getenv("HEADLESS", "0").lower() in ("1", "true", "yes")
+    launch_args = []
+    # Рабочая раскладка Windows: экран 4 расположен над основным экраном 1.
+    # Переменные оставлены как override на случай другой рабочей станции.
+    window_position = os.getenv("PW_WINDOW_POSITION", "8,-1080")
+    window_size = os.getenv("PW_WINDOW_SIZE", "1366,768")
+    if not headless and window_position:
+        launch_args.append(f"--window-position={window_position}")
+    if not headless and window_size:
+        launch_args.append(f"--window-size={window_size}")
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
+        browser = p.chromium.launch(headless=headless, args=launch_args)
         yield browser
         browser.close()
 

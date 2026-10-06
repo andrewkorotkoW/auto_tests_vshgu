@@ -70,11 +70,22 @@ class UserSidebarPage(BasePage):
 
     def dismiss_popups(self) -> None:
         """Закрыть то, что перекрывает страницу после входа: анкета «заполните данные о себе»
-        (чекбокс согласия + «Отправить»), cookie-баннер («Принимаю»), онбординг.
+        (чекбокс согласия + «Отправить»), уведомление об отказе от рассылки,
+        cookie-баннер («Принимаю»), онбординг.
         Всё опционально: чего нет — пропускаем."""
         page = self.page
         self.remove_tech_banner()
         self.dismiss_anketa()
+        try:
+            notice = page.locator(
+                "div.v-dialog:has-text('Вы отказались от получения информационных писем')"
+            ).first
+            notice.wait_for(state="visible", timeout=5000)
+            notice.locator("button:has-text('Понятно')").first.click(timeout=5000)
+            self.wait_hidden(notice, timeout=10000)
+            logger.info("Уведомление об отказе от рассылки закрыто")
+        except Exception:  # noqa: BLE001 — уведомление показывается не у всех пользователей
+            pass
         try:
             accept = page.locator("button:has-text('Принимаю')").first
             accept.wait_for(state="visible", timeout=3000)

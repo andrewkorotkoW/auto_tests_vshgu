@@ -65,9 +65,10 @@ class LoginPage(BasePage):
 
     def handle_modal(self):
         """Обработать модальное окно после логина."""
-        modal = self.page.locator(
-            ".personal-data-modal, .v-dialog, [class*=modal]"
-        ).filter(has_text="Отправить")
+        # В новой разметке один диалог содержит вложенные card/container с тем
+        # же текстом. Берём корневой dialog, иначе Playwright получает strict mode
+        # violation на трёх совпадениях.
+        modal = self.page.get_by_role("dialog").filter(has_text="Отправить").first
 
         try:
             modal.wait_for(state="visible", timeout=3000)

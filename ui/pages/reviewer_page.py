@@ -17,9 +17,15 @@ class ReviewerPage(BasePage):
         super().__init__(page)
 
     def open_practical_tasks_section(self) -> None:
-        link = self.page.locator(
-            "xpath=//div[contains(@class,'nav-item__wrapper') and .//span[normalize-space()='Практические задания']]"
-        )
+        # После входа роль проверяющего может сразу получить очередь ПЗ.
+        # В этом случае повторный поиск пункта меню только добавляет хрупкость.
+        if re.search(r"/homeworks(?:/|$)", self.page.url):
+            return
+
+        # Оболочка и форматирование текста пункта меню отличаются между
+        # версиями портала. Ищем стабильный текст без требования exact: первая
+        # видимая строка находится в боковой навигации раньше вкладки раздела.
+        link = self.page.get_by_text("Практические задания", exact=False).first
         expect(link).to_be_visible(timeout=15000)
         link.click(timeout=5000)
         expect(self.page).to_have_url(re.compile(r".*/homeworks.*"), timeout=15000)

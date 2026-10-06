@@ -54,7 +54,8 @@ class TestReviewPracticalTask:
     @pytest.mark.practical_tasks
     def test_review_practical_task(
         self, page, browser, env, api_client, tincan_endpoint, assignments_endpoint,
-        assigned_user, created_module, created_homework, created_user, register_practical_homework,
+        users_endpoint, assigned_user, created_module, created_homework, created_user,
+        register_practical_homework,
     ):
         homework_id = None
 
@@ -64,6 +65,7 @@ class TestReviewPracticalTask:
                 user = assigned["user"]
                 stream = assigned["stream"]
                 reviewer = created_user()
+                users_endpoint.assign_roles(reviewer["id"], [4])
                 module = created_module(program_id=stream["program_id"], stream_id=stream["id"])
 
                 cover_uuid = tincan_endpoint.upload_cover(str(TEST_DATA_DIR / "practical_task_cover.png"))
