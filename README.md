@@ -1163,8 +1163,8 @@ CLI-опций. Мобильный профиль контекста — кон�
 `test_mobile_login_my_programs.py` (вход → «Моё обучение» показывает назначенную программу),
 `test_mobile_activity_simple_test.py` (активити — прохождение простейшего теста из 3 вопросов),
 `test_mobile_program_card.py` (карточка программы после прохождения активити),
-`test_mobile_notifications.py` (`/portal-notifications`) — зелёные стабильно; `test_mobile_profile_and_certificates.py`
-(вкладка «Профиль» нижней панели) — `xfail` (зависающий спиннер `.v-progress-circular`, подтверждённый
-кандидат в дефект, см. `layout_facts.md` п. 5). Каждый тест ставит
+`test_mobile_notifications.py` (`/portal-notifications`), `test_mobile_profile_and_certificates.py`
+(вкладка «Профиль» нижней панели и подвкладка «Мои сертификаты») — все пять зелёные стабильно
+(версия про «зависающий спиннер» на «Профиле» не подтвердилась 07.10, см. `layout_facts.md` п. 5). Каждый тест ставит
 `allure.dynamic.parameter("device", "Pixel 7")` и прикладывает финальный скриншот в Allure — не только
 при падении.
