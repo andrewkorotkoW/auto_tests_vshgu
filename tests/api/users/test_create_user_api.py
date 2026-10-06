@@ -56,41 +56,46 @@ class TestCreateUserAPI:
     @allure.severity(allure.severity_level.NORMAL)
     @allure.tag("api", "positive", "region")
     @pytest.mark.api
-    def test_create_user_with_specific_region(self, created_user):
-        """Создание с регионом Москва (33) и муниципалитетом Южный округ (2310)."""
+    def test_create_user_with_specific_region(self, created_user, api_client):
+        """Создание с регионом и муниципалитетом из справочника ТЕКУЩЕГО стенда: пары id
+        различаются между стендами (на develop municipality 158 — Москва, на k8s v2 — Комсомольск-
+        на-Амуре/регион 87), поэтому берём первый муниципалитет с привязкой к региону."""
 
-        with allure.step("1. Создать пользователя с регионом 33 и муниципалитетом 2310"):
-            user = created_user(region_id=1, municipality_id=158)
+        with allure.step("0. Взять пару регион/муниципалитет у существующего пользователя стенда"):
+            # municipality_id формы — идентификатор сущности (у пользователя приходит вместе с
+            # dictionary_id), а не id записи /dictionaries, поэтому справочник тут не подходит.
+            region_id = municipality_id = None
+            rows = api_client.get("/users?per-page=20&page=1").json().get("data", [])
+            for row in rows:  # в списке регион/муниципалитет не приходят — читаем карточки
+                a = api_client.get(f"/users/{row['id']}").json().get("data", {}).get("attributes", {})
+                mun, reg = a.get("municipality") or {}, a.get("region") or {}
+                if mun.get("municipality_id") and reg.get("region_id"):
+                    region_id, municipality_id = reg["region_id"], mun["municipality_id"]
+                    break
+            if not municipality_id:
+                pytest.skip("На стенде нет пользователя с заполненными регионом и муниципалитетом")
+            logger.info(f"Образец со стенда: регион {region_id}, муниципалитет {municipality_id}")
+
+        with allure.step(f"1. Создать пользователя с регионом {region_id} и муниципалитетом {municipality_id}"):
+            user = created_user(region_id=region_id, municipality_id=municipality_id)
             attrs = user["attributes"]
 
         with allure.step("2. Проверить регион"):
             if "region" in attrs and attrs["region"]:
                 region = attrs["region"]
-                assert region["region_id"] == 1
+                assert region["region_id"] == region_id, region
                 allure.attach(str(region), "Данные региона", allure.attachment_type.JSON)
                 logger.info(f"✓ Регион: {region['region_name']}")
             elif "region_id" in attrs:
-                assert attrs["region_id"] == 1
+                assert attrs["region_id"] == region_id
                 allure.attach(str(attrs["region_id"]), "region_id", allure.attachment_type.TEXT)
 
         with allure.step("3. Проверить муниципалитет"):
             if "municipality" in attrs and attrs["municipality"]:
                 mun = attrs["municipality"]
-                assert mun["municipality_id"] == 158
+                assert mun["municipality_id"] == municipality_id, mun
                 allure.attach(str(mun), "Данные муниципалитета", allure.attachment_type.JSON)
                 logger.info(f"✓ Муниципалитет: {mun['name']}")
-            elif "municipality_id" in attrs:
-                assert attrs["municipality_id"] == 158
-                allure.attach(str(attrs["municipality_id"]), "municipality_id", allure.attachment_type.TEXT)
-
-        allure.dynamic.description(f"""
-        <h3>✅ Пользователь с регионом:</h3>
-        <ul>
-            <li><b>ID:</b> {user['id']}</li>
-            <li><b>Регион:</b> 1 (Москва)</li>
-            <li><b>Муниципалитет:</b> 158 (Восточный округ)</li>
-        </ul>
-        """)
 
     @allure.title("Создание пользователя с кастомной датой рождения")
     @allure.severity(allure.severity_level.NORMAL)
