@@ -49,6 +49,57 @@ pytest_plugins = ["utils.test_hub_plugin"]
 
 VIDEO_SIZE = {"width": 1280, "height": 720}
 
+# playwright.devices["Pixel 7"] для playwright==1.44.0 (см. requirements.txt) — значения
+# статичны для конкретной версии пакета, поэтому зафиксированы константой: запускать
+# отдельный driver-процесс (sync_playwright()) только чтобы прочитать этот словарь на
+# каждое открытие страницы избыточно. При обновлении playwright в requirements.txt стоит
+# сверить дескриптор заново (python -c "from playwright.sync_api import sync_playwright as s; print(s().start().devices['Pixel 7'])").
+MOBILE_DEVICE = {
+    "user_agent": (
+        "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/125.0.6422.26 Mobile Safari/537.36"
+    ),
+    "viewport": {"width": 412, "height": 839},
+    "device_scale_factor": 2.625,
+    "is_mobile": True,
+    "has_touch": True,
+}
+
+
+def _is_mobile_mode(request) -> bool:
+    """Мобильный профиль контекста включается флагом --mobile ИЛИ MOBILE=1 (чтобы
+    управлять режимом из test_hub через переменную окружения, без передачи CLI-опций) —
+    оба пути равнозначны."""
+    if request.config.getoption("--mobile"):
+        return True
+    return os.environ.get("MOBILE", "0").lower() in ("1", "true", "yes")
+
+
+def _context_kwargs(request, storage_state=None):
+    """Единая сборка kwargs для browser.new_context(): viewport/видео — desktop
+    1366x768 (как раньше, без мобильного режима — байт в байт), в мобильном режиме
+    (_is_mobile_mode) — Pixel 7 (MOBILE_DEVICE), включая запись видео под размер
+    устройства. Используется в page/_authenticated_page и tests/ui/dictionaries/conftest.py
+    — единственное место, где решается desktop/mobile viewport, вместо трёх копий."""
+    if _is_mobile_mode(request):
+        context_kwargs = dict(MOBILE_DEVICE)
+        context_kwargs["viewport"] = dict(MOBILE_DEVICE["viewport"])
+        video_size = dict(MOBILE_DEVICE["viewport"])
+    else:
+        context_kwargs = {"viewport": {"width": 1366, "height": 768}}
+        video_size = VIDEO_SIZE
+
+    if storage_state is not None:
+        context_kwargs["storage_state"] = str(storage_state) if isinstance(storage_state, Path) else storage_state
+
+    if _video_recording_enabled():
+        video_dir = _video_dir()
+        video_dir.mkdir(parents=True, exist_ok=True)
+        context_kwargs["record_video_dir"] = str(video_dir)
+        context_kwargs["record_video_size"] = video_size
+
+    return context_kwargs
+
 # k8s-стенды v2 заметно медленнее develop: дашборд хелпдеска (/admin/dashboard, графики Highcharts)
 # и страница достижений грузятся дольше 30 с (прогон 06.10.2026, qa_analysis/cases/K8S_v2_2026-10-06).
 # Страницы отрисовываются, поэтому для k8s поднимаем таймаут навигации до 60 с; develop/stage — без изменений.
@@ -124,6 +175,13 @@ def pytest_addoption(parser):
         default=os.getenv("ENV", "develop"),
         choices=list(ENVIRONMENTS.keys()),
         help="Окружение для запуска тестов: develop, stage или prod",
+    )
+    parser.addoption(
+        "--mobile",
+        action="store_true",
+        default=False,
+        help="Мобильный профиль контекста (Pixel 7) вместо desktop 1366x768. "
+             "Равнозначно переменной окружения MOBILE=1 (см. conftest._is_mobile_mode).",
     )
 
 
@@ -514,20 +572,13 @@ def browser():
 
 @pytest.fixture
 def page(browser, env, request):
-    video_enabled = _video_recording_enabled()
-    context_kwargs = {"viewport": {"width": 1366, "height": 768}}
-    if video_enabled:
-        video_dir = _video_dir()
-        video_dir.mkdir(parents=True, exist_ok=True)
-        context_kwargs["record_video_dir"] = str(video_dir)
-        context_kwargs["record_video_size"] = VIDEO_SIZE
-    context = browser.new_context(**context_kwargs)
+    context = browser.new_context(**_context_kwargs(request))
     _apply_env_timeouts(context, env)
     page = context.new_page()
     started_at = time.monotonic()
     yield page
     context.close()
-    if video_enabled:
+    if _video_recording_enabled():
         _finalize_test_video(request, "page", page, started_at)
 
 
@@ -536,24 +587,35 @@ def _authenticated_page(browser, env, role, request, fixture_name):
     из авторизованной requests.Session (см. config/environments.get_storage_state_path) —
     без ручного логина через форму в каждом тесте."""
     storage_state_path = get_storage_state_path(env, role=role)
-    video_enabled = _video_recording_enabled()
-    context_kwargs = {
-        "viewport": {"width": 1366, "height": 768},
-        "storage_state": str(storage_state_path),
-    }
-    if video_enabled:
-        video_dir = _video_dir()
-        video_dir.mkdir(parents=True, exist_ok=True)
-        context_kwargs["record_video_dir"] = str(video_dir)
-        context_kwargs["record_video_size"] = VIDEO_SIZE
-    context = browser.new_context(**context_kwargs)
+    context = browser.new_context(**_context_kwargs(request, storage_state=storage_state_path))
     _apply_env_timeouts(context, env)
     page = context.new_page()
     started_at = time.monotonic()
     yield page
     context.close()
-    if video_enabled:
+    if _video_recording_enabled():
         _finalize_test_video(request, fixture_name, page, started_at)
+
+
+@pytest.fixture
+def is_mobile(request) -> bool:
+    """True, если прогон идёт в мобильном профиле (--mobile или MOBILE=1) — для
+    мобильных веток в page objects (`if page.viewport_size["width"] < 768` работает
+    только внутри теста, где страница уже открыта; эта фикстура доступна и раньше)."""
+    return _is_mobile_mode(request)
+
+
+@pytest.fixture
+def build_context_kwargs(request):
+    """Даёт другим conftest.py (например tests/ui/dictionaries/conftest.py) доступ к
+    _context_kwargs через фикстуру, а не `import conftest` — у пары desktop/mobile
+    conftest.py в репозитории одинаковое имя файла без __init__.py в директориях, и
+    голый `import conftest` из вложенного conftest.py резолвится в себя же (self-import),
+    а не в корневой модуль, из-за того как pytest регистрирует одноимённые conftest.py
+    в sys.modules при import-mode=prepend."""
+    def _build(storage_state=None):
+        return _context_kwargs(request, storage_state=storage_state)
+    return _build
 
 
 @pytest.fixture
