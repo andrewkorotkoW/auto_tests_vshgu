@@ -85,6 +85,8 @@ def second_user_page(browser, env, created_user, build_context_kwargs):
     session = login(env, user["email"], user["password"])
     storage_state = build_storage_state(env, session)
     context = browser.new_context(**build_context_kwargs(storage_state))
+    from conftest import _apply_env_timeouts
+    _apply_env_timeouts(context, env)
     page = context.new_page()
     yield page
     context.close()

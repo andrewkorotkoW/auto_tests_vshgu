@@ -100,6 +100,16 @@ def _context_kwargs(request, storage_state=None):
 
     return context_kwargs
 
+# k8s-стенды v2 заметно медленнее develop: дашборд хелпдеска (/admin/dashboard, графики Highcharts)
+# и страница достижений грузятся дольше 30 с (прогон 06.10.2026, qa_analysis/cases/K8S_v2_2026-10-06).
+# Страницы отрисовываются, поэтому для k8s поднимаем таймаут навигации до 60 с; develop/stage — без изменений.
+K8S_NAVIGATION_TIMEOUT_MS = 60000
+
+
+def _apply_env_timeouts(context, env):
+    if env.name == "k8s":
+        context.set_default_navigation_timeout(K8S_NAVIGATION_TIMEOUT_MS)
+
 
 def _video_recording_enabled():
     """Запись видео теста включена только для прогонов test_hub (TH_URL/TH_RUN_ID/TH_RUN_TOKEN
@@ -561,8 +571,9 @@ def browser():
         browser.close()
 
 @pytest.fixture
-def page(browser, request):
+def page(browser, env, request):
     context = browser.new_context(**_context_kwargs(request))
+    _apply_env_timeouts(context, env)
     page = context.new_page()
     started_at = time.monotonic()
     yield page
@@ -577,6 +588,7 @@ def _authenticated_page(browser, env, role, request, fixture_name):
     без ручного логина через форму в каждом тесте."""
     storage_state_path = get_storage_state_path(env, role=role)
     context = browser.new_context(**_context_kwargs(request, storage_state=storage_state_path))
+    _apply_env_timeouts(context, env)
     page = context.new_page()
     started_at = time.monotonic()
     yield page
