@@ -28,22 +28,6 @@ class TestAdminChecksProgramAndCourseDashboards:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.dashboards
-    @pytest.mark.xfail(
-        reason=(
-            "Нестабильно на develop: из 3 прогонов (бюджет исчерпан) — 1 упал на "
-            "find_row('program_name') с 'element(s) not found' через 30с ожидания "
-            "(таблица /admin/learning-statistics/programs после поиска не показала "
-            "строку, хотя dashboards_endpoint.wait_for_program_row уже подтвердил её "
-            "наличие через API до открытия UI — похоже на лаг между /statistics/programs "
-            "и тем, что отдаёт поиск в таблице), 1 упал в setup на "
-            "requests.exceptions.ConnectionError при POST /programs (обрыв соединения "
-            "стендом), 1 прошёл чисто за 62.8с без ретраев. Разведочным прогоном "
-            "(отдельный скрипт, не в репо) подтверждено, что механизм поиска/рендера "
-            "строки в целом рабочий — строка с верными значениями появляется за ~8с — "
-            "т.е. это не дефект теста/Page Object, а нестабильность стенда develop."
-        ),
-        strict=False,
-    )
     def test_admin_checks_program_and_course_dashboards(self, dashboards_admin_page, dashboard_data, env):
         dashboard_page = AdminDashboardPage(dashboards_admin_page)
 
