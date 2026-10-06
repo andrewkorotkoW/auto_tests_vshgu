@@ -9,11 +9,14 @@ tests/ui/test_constructor/test_08_*), а не через нижнюю панел
 это сознательно обходит мобильную навигацию (бургер-меню/нижняя панель), которая не
 предмет этого экрана (вход→список программ уже покрыт test_mobile_login_my_programs).
 
-Facts: docs/mobile/layout_facts.md п.3 — после клика «Начать» страница вопроса иногда
-на долю секунды показывает плейсхолдеры («Заголовок вопроса…», «Выберите ответ..»)
-вместо реального текста, поэтому ждём реальный текст вопроса отдельным ожиданием
-(page.wait_for_function), а не полагаемся на networkidle/game page object (не трогаем
-ConstructorPlayerPage — ждём в теле теста).
+Facts: docs/mobile/layout_facts.md п.3 — то, что предыдущая разведка приняла за
+временный плейсхолдер рендера («Заголовок вопроса…», «Выберите ответ..»), оказалось
+реальным вопросом: POST /tests при создании теста сам добавляет один вопрос-заглушку
+с этим текстом (подтверждено отдельным вызовом GET /tests/questions/{id} сразу после
+создания — вопрос присутствует в ответе API, не только в DOM). Итого на экране не
+3 вопроса, а 4 (1 авто + 3 созданных), и `shuffle_questions=True` по умолчанию в
+generate_test_payload перемешивает их порядок — поэтому отвечаем по вопросу, который
+реально виден на экране в моменте, а не по ожидаемому тексту/порядку.
 """
 import allure
 import pytest
@@ -72,15 +75,26 @@ class TestMobileActivitySimpleTest:
             player.open_by_content_id(env.ui_base_url, test_id)
             player.start()
 
-        with allure.step("4. Ответить на все вопросы теста"):
-            for question_text in question_texts:
-                # Дождаться реального текста вопроса, а не плейсхолдера «Заголовок вопроса…»
-                # (см. layout_facts.md п.3) — иначе get_by_text(exact=True) ниже не найдёт элемент.
-                page.get_by_text(question_text, exact=True).wait_for(state="visible", timeout=30000)
-                page.get_by_text("Правильный ответ", exact=True).wait_for(state="visible", timeout=15000)
-                player.answer_question("Правильный ответ")
-                next_btn = page.get_by_role("button", name="Следующий вопрос")
-                finish_btn = page.get_by_role("button", name="Завершить").first
+        with allure.step("4. Ответить на все вопросы теста (включая авто-вопрос-заглушку, порядок перемешан)"):
+            # 4 вопроса на экране (1 авто-заглушка + 3 созданных, см. докстринг модуля),
+            # shuffle_questions=True — порядок непредсказуем, поэтому отвечаем по вопросу,
+            # который виден в моменте, а не по ожидаемому тексту question_texts[i].
+            correct_answer = page.get_by_text("Правильный ответ", exact=True).first
+            placeholder_answer = page.get_by_text("Выберите ответ..", exact=True).first
+            next_btn = page.get_by_role("button", name="Следующий вопрос")
+            finish_btn = page.get_by_role("button", name="Завершить").first
+            for _ in range(len(question_texts) + 1):
+                if finish_btn.is_visible(timeout=1000):
+                    break
+                # Дождаться рендера текущего вопроса (любого из двух возможных видов),
+                # а не бить двумя короткими is_visible() подряд — на мобильном рендер
+                # следующего вопроса после клика «Следующий вопрос» не мгновенный.
+                expect(correct_answer.or_(placeholder_answer)).to_be_visible(timeout=20000)
+                if correct_answer.is_visible():
+                    correct_answer.click()
+                else:
+                    placeholder_answer.click()
+                page.get_by_role("button", name="Ответить").click()
                 expect(next_btn.or_(finish_btn)).to_be_visible(timeout=30000)
                 if next_btn.is_visible(timeout=500):
                     next_btn.click()

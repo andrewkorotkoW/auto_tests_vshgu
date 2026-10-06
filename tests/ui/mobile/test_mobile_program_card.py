@@ -8,6 +8,11 @@
 tests/ui/tests/stream/test_user_test_stream_flow.py), навигация по экрану —
 существующие методы PracticalTaskPage (open_programs_list/open_program/
 open_courses_and_tests_tab), без новых page objects.
+
+POST /tests при создании сам добавляет один вопрос-заглушку («Заголовок вопроса…»,
+оба варианта «Выберите ответ..», см. docs/mobile/layout_facts.md п.3) — на экране
+плеера не 1 вопрос, а 2, и `shuffle_questions=True` по умолчанию перемешивает
+порядок, поэтому отвечаем по вопросу, который реально виден на экране в моменте.
 """
 import allure
 import pytest
@@ -61,9 +66,24 @@ class TestMobileProgramCard:
             player = ConstructorPlayerPage(page)
             player.open_by_content_id(env.ui_base_url, test_id)
             player.start()
-            page.get_by_text(question["text"], exact=True).wait_for(state="visible", timeout=30000)
-            page.get_by_text("Правильный ответ", exact=True).wait_for(state="visible", timeout=15000)
-            player.answer_question("Правильный ответ")
+
+            correct_answer = page.get_by_text("Правильный ответ", exact=True).first
+            placeholder_answer = page.get_by_text("Выберите ответ..", exact=True).first
+            next_btn = page.get_by_role("button", name="Следующий вопрос")
+            finish_btn = page.get_by_role("button", name="Завершить").first
+            for _ in range(2):  # авто-вопрос-заглушка + наш созданный вопрос
+                if finish_btn.is_visible(timeout=1000):
+                    break
+                expect(correct_answer.or_(placeholder_answer)).to_be_visible(timeout=20000)
+                if correct_answer.is_visible():
+                    correct_answer.click()
+                else:
+                    placeholder_answer.click()
+                page.get_by_role("button", name="Ответить").click()
+                expect(next_btn.or_(finish_btn)).to_be_visible(timeout=30000)
+                if next_btn.is_visible(timeout=500):
+                    next_btn.click()
+
             player.finish_test()
             expect(page.get_by_text("Ваш результат:", exact=False)).to_be_visible(timeout=30000)
             player.finish_result_screen()
