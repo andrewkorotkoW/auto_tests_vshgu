@@ -26,7 +26,23 @@ from api.client import ApiClient
 from api.endpoints.helpdesk import HelpdeskEndpoint
 from ui.pages.helpdesk_users_page import HelpdeskUsersPage
 
-HELPDESK_UI_BASE_URL = "https://helpdesk-develop.d2.devspark.ru"
+HELPDESK_BASE_URL_DEFAULT = "https://helpdesk-develop.d2.devspark.ru"
+
+def _helpdesk_base_url(env) -> str:
+    """Хост хелпдеска для текущего стенда: явный HELPDESK_URL, иначе portal-<stand> → helpdesk-<stand>
+    (develop → helpdesk-develop.d2.devspark.ru, k8s → helpdesk-k8s-release.v2.gosedu.ru); сессионная
+    кука общая для поддомена, отдельный логин не нужен."""
+    import os
+    explicit = os.getenv("HELPDESK_URL")
+    if explicit:
+        return explicit.rstrip("/")
+    ui = env.ui_base_url.rstrip("/")
+    if "://portal-" in ui:
+        return ui.replace("://portal-", "://helpdesk-")
+    if "://portal." in ui:
+        return ui.replace("://portal.", "://helpdesk.")
+    return HELPDESK_BASE_URL_DEFAULT
+
 
 _STREAM_SELECT_RE = re.compile(r"Программы и потоки.*?</select>", re.S)
 _STREAM_OPTION_RE = re.compile(r'<option[^>]*value="(\d+)"[^>]*>')
@@ -34,14 +50,14 @@ _SHOW_ID_RE = re.compile(r"/admin/identity/(\d+)/show")
 
 
 @pytest.fixture
-def helpdesk_ui_base_url() -> str:
-    return HELPDESK_UI_BASE_URL
+def helpdesk_ui_base_url(env) -> str:
+    return _helpdesk_base_url(env)
 
 
 @pytest.fixture
 def helpdesk_endpoint(env, admin_session):
     """Только read-only использование в этом пакете (см. докстринг модуля)."""
-    client = ApiClient(session=admin_session, base_url=HELPDESK_UI_BASE_URL, cookie_name=env.cookie_name)
+    client = ApiClient(session=admin_session, base_url=_helpdesk_base_url(env), cookie_name=env.cookie_name)
     return HelpdeskEndpoint(client)
 
 

@@ -11,12 +11,28 @@ from api.endpoints.helpdesk import HelpdeskEndpoint
 from api.helpers.data_generator import generate_helpdesk_group_payload, generate_helpdesk_template_payload
 from utils.logger import logger
 
-HELPDESK_BASE_URL = "https://helpdesk-develop.d2.devspark.ru"
+HELPDESK_BASE_URL_DEFAULT = "https://helpdesk-develop.d2.devspark.ru"
+
+def _helpdesk_base_url(env) -> str:
+    """Хост хелпдеска для текущего стенда: явный HELPDESK_URL, иначе portal-<stand> → helpdesk-<stand>
+    (develop → helpdesk-develop.d2.devspark.ru, k8s → helpdesk-k8s-release.v2.gosedu.ru); сессионная
+    кука общая для поддомена, отдельный логин не нужен."""
+    import os
+    explicit = os.getenv("HELPDESK_URL")
+    if explicit:
+        return explicit.rstrip("/")
+    ui = env.ui_base_url.rstrip("/")
+    if "://portal-" in ui:
+        return ui.replace("://portal-", "://helpdesk-")
+    if "://portal." in ui:
+        return ui.replace("://portal.", "://helpdesk.")
+    return HELPDESK_BASE_URL_DEFAULT
+
 
 
 @pytest.fixture
 def helpdesk_client(env, admin_session):
-    return ApiClient(session=admin_session, base_url=HELPDESK_BASE_URL, cookie_name=env.cookie_name)
+    return ApiClient(session=admin_session, base_url=_helpdesk_base_url(env), cookie_name=env.cookie_name)
 
 
 @pytest.fixture
@@ -28,7 +44,7 @@ def helpdesk_endpoint(helpdesk_client):
 def user_helpdesk_endpoint(env, user_session):
     """HelpdeskEndpoint от имени обычного пользователя портала без ролей хелпдеска —
     для негативных проверок доступа."""
-    client = ApiClient(session=user_session, base_url=HELPDESK_BASE_URL, cookie_name=env.cookie_name)
+    client = ApiClient(session=user_session, base_url=_helpdesk_base_url(env), cookie_name=env.cookie_name)
     return HelpdeskEndpoint(client)
 
 
