@@ -27,6 +27,7 @@ class TestMobileLoginMyPrograms:
     @pytest.mark.mobile
     def test_mobile_login_my_programs(self, page, env, api_client, assigned_user, is_mobile):
         assert is_mobile, "Тест должен запускаться с --mobile/MOBILE=1 — иначе он не проверяет мобильную вёрстку"
+        allure.dynamic.parameter("device", "Pixel 7")
 
         with allure.step("1. Подготовить пользователя, назначенного на поток с программой"):
             assigned = assigned_user()
