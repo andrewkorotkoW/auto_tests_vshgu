@@ -2,7 +2,7 @@ import allure
 import pytest
 
 from api.helpers.data_generator import generate_helpdesk_group_payload
-from tests.api.helpdesk._known_defects import CSRF_TOKEN_DEFECT_REASON
+from tests.api.helpdesk._known_defects import GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON
 
 
 @allure.feature("Хелпдеск: Группы")
@@ -13,7 +13,7 @@ class TestGroupsApi:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=CSRF_TOKEN_DEFECT_REASON)
+    @pytest.mark.xfail(strict=False, reason=GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON)
     def test_create_group(self, helpdesk_endpoint, created_helpdesk_group):
         group = created_helpdesk_group()
 
@@ -25,7 +25,7 @@ class TestGroupsApi:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=CSRF_TOKEN_DEFECT_REASON)
+    @pytest.mark.xfail(strict=False, reason=GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON)
     def test_view_group(self, helpdesk_endpoint, created_helpdesk_group):
         group = created_helpdesk_group()
 
@@ -38,7 +38,7 @@ class TestGroupsApi:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=CSRF_TOKEN_DEFECT_REASON)
+    @pytest.mark.xfail(strict=False, reason=GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON)
     def test_update_group(self, helpdesk_endpoint, created_helpdesk_group):
         group = created_helpdesk_group()
         new_payload = dict(group["payload"])
@@ -57,7 +57,7 @@ class TestGroupsApi:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=CSRF_TOKEN_DEFECT_REASON)
+    @pytest.mark.xfail(strict=False, reason=GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON)
     def test_delete_group(self, helpdesk_endpoint):
         payload = generate_helpdesk_group_payload()
         resp = helpdesk_endpoint.create_group(payload)

@@ -1,8 +1,6 @@
 import allure
 import pytest
 
-from tests.api.helpdesk._known_defects import CSRF_TOKEN_DEFECT_REASON
-
 
 @allure.feature("Хелпдеск: Шаблоны")
 @allure.story("Негативные сценарии")
@@ -12,7 +10,6 @@ class TestTemplatesNegativeApi:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=CSRF_TOKEN_DEFECT_REASON)
     def test_create_template_missing_required_fields(self, helpdesk_endpoint):
         resp = helpdesk_endpoint.create_template({})
         assert resp.status_code == 422, f"Ожидался 422, получено {resp.status_code}: {resp.text[:300]}"

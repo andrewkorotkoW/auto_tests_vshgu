@@ -4,28 +4,15 @@ docs/test_cases/helpdesk/templates.md TC-HELPDESK_TEMPLATES-003). Шаблон �
 «Группа» на форме создания опционально (`data-allows-null="true"`, подтверждено по DOM
 `/admin/mail-template/create`) — выбор группы в этом тесте не требуется.
 
-ОБНАРУЖЕННЫЙ ДЕФЕКТ (тот же, что в test_groups.py::test_create_group, подтверждён живым
-прогоном Playwright headless на develop, НЕ правим — ui/pages/helpdesk_templates_page.py
-защищена условиями задачи): `HelpdeskTemplatesPage.fill_create_form()` использует
-`page.get_by_label(<подпись>, exact=True)`, но в реальной разметке
-`/admin/mail-template/create` подписи («Наименование», «Содержимое», «Ключевые слова») —
-обычные `<label>` без `for` и без обёртки вокруг поля, Playwright не может связать
-подпись с полем — `get_by_label(...)` находит 0 элементов, `fill_create_form()` падает
-по таймауту на первом поле."""
+Исходный дефект (тот же, что был у групп — labels без for/id, get_by_label не находил
+поля) исправлен в ui/pages/helpdesk_templates_page.py задачей t1: fill_create_form()
+переведён на локатор по bp-field-name, «Содержимое» заполняется через Quill
+contenteditable (.ql-editor), а не textarea."""
 import allure
 import pytest
 
 from api.helpers.data_generator import generate_helpdesk_template_payload
 from ui.pages.helpdesk_templates_page import HelpdeskTemplatesPage
-
-_LABEL_DEFECT_REASON = (
-    "Дефект вёрстки формы /admin/mail-template/create (не в зоне правки — "
-    "ui/pages/helpdesk_templates_page.py защищена условиями задачи): подписи полей "
-    "(<label>Наименование</label> и т.д.) не связаны с <input>/<textarea> ни через for/id, "
-    "ни через обёртку, поэтому page.get_by_label(..., exact=True), который использует "
-    "fill_create_form(), стабильно находит 0 элементов. Тот же паттерн, что у групп "
-    "(см. test_groups.py). Подтверждено живым прогоном Playwright headless на develop."
-)
 
 
 @allure.feature("Хелпдеск: Шаблоны")
@@ -34,7 +21,6 @@ _LABEL_DEFECT_REASON = (
 @allure.severity(allure.severity_level.CRITICAL)
 @pytest.mark.ui
 @pytest.mark.develop
-@pytest.mark.xfail(strict=False, reason=_LABEL_DEFECT_REASON)
 def test_create_template(admin_page, helpdesk_ui_base_url):
     page = HelpdeskTemplatesPage(admin_page)
     page.open(helpdesk_ui_base_url)
