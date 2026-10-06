@@ -2,7 +2,7 @@ import allure
 import pytest
 
 from api.helpers.data_generator import generate_helpdesk_role_assignment_payload
-from tests.api.helpdesk._known_defects import CSRF_TOKEN_DEFECT_REASON, USER_SEARCH_500_DEFECT_REASON
+from tests.api.helpdesk._known_defects import USER_SEARCH_500_DEFECT_REASON
 
 
 @allure.feature("Хелпдеск: Пользователи")
@@ -15,8 +15,9 @@ class TestUsersApi:
     @pytest.mark.develop
     @pytest.mark.xfail(
         strict=False,
-        reason=f"{USER_SEARCH_500_DEFECT_REASON} find_user_by_email падает первым (тот же поиск), "
-        f"не доходя до assign_role(), который дополнительно заблокирован CSRF-дефектом: {CSRF_TOKEN_DEFECT_REASON}",
+        reason=f"{USER_SEARCH_500_DEFECT_REASON} find_user_by_email (тот же поиск) падает первым, не "
+        "доходя до assign_role() — контракт форм (CSRF/Accept) здесь уже не блокирует: сам assign_role "
+        "работал бы, если бы поиск пользователя не 500-ил.",
     )
     def test_assign_role(self, helpdesk_endpoint, created_user):
         user = created_user()

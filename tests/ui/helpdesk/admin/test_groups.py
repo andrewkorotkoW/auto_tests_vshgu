@@ -2,39 +2,15 @@
 TC-HELPDESK_GROUPS-003/007). Группа — своя Автотест_* с фиктивными IMAP/SMTP (см.
 api.helpers.data_generator.generate_helpdesk_group_payload), системные группы не трогаем.
 
-ОБНАРУЖЕННЫЙ ДЕФЕКТ (подтверждён живым прогоном Playwright headless на develop,
-безопасен для отчёта, НЕ правим — ui/pages/helpdesk_groups_page.py защищена условиями
-задачи): `HelpdeskGroupsPage.fill_create_form()` ищет поля через
-`page.get_by_label(<подпись>, exact=True)`, но в реальной разметке формы
-`/admin/group/create` `<label>Название</label>` — не обёрнутый label без атрибута `for`,
-просто сосед `<input>` без `id` (стандартный рендер поля Laravel Backpack CRUD, без
-ручной доработки `for`/`aria-labelledby`). Поэтому у Playwright нет способа связать
-подпись с полем: `get_by_label(...)` стабильно находит 0 элементов и
-`fill_create_form()`/`create_group()` падает по таймауту на самом первом поле
-(`Locator.fill: Timeout 30000ms exceeded... waiting for get_by_label("Название")`).
-Это тот же паттерн разметки, что и у шаблонов (см. test_templates.py) — похоже на
-общий дефект вёрстки форм Backpack CRUD в хелпдеске, а не на что-то специфичное для
-группы.
-
-Второй, независимый дефект (см. также test_navigation.py): даже если бы labels были
-исправлены, `row()`/`delete_row()` из `HelpdeskAdminPage` (ui/pages/helpdesk_base_page.py)
-искали бы строку внутри `#crudTable` — а у /admin/group реальный id таблицы с динамическим
-хеш-суффиксом (`crudTable_<hash>`), не статический `#crudTable` — то есть `create_group()`
-(финальная проверка строки) и `delete_group()` не сработали бы и после фикса labels."""
+Исходный дефект (labels без for/id — get_by_label не находил поля; динамический id
+#crudTable_<hash> у таблицы групп) исправлен в ui/pages/helpdesk_groups_page.py и
+ui/pages/helpdesk_base_page.py задачей t1: fill_create_form() переведён на локатор по
+bp-field-name, table()/row() — на table.dataTable с фильтром непустого tbody."""
 import allure
 import pytest
 
 from api.helpers.data_generator import generate_helpdesk_group_payload
 from ui.pages.helpdesk_groups_page import HelpdeskGroupsPage
-
-_LABEL_DEFECT_REASON = (
-    "Дефект вёрстки формы /admin/group/create (не в зоне правки — ui/pages/helpdesk_groups_page.py "
-    "защищена условиями задачи): <label>Название</label> и аналогичные подписи полей — не связаны "
-    "с <input> ни через for/id, ни через обёртку (просто соседние элементы в одном div), поэтому "
-    "page.get_by_label(..., exact=True), который использует fill_create_form(), стабильно находит "
-    "0 элементов. Подтверждено живым прогоном Playwright headless на develop: "
-    "Locator.fill падает по таймауту 30с на get_by_label(\"Название\")."
-)
 
 
 @allure.feature("Хелпдеск: Группы")
@@ -43,7 +19,6 @@ _LABEL_DEFECT_REASON = (
 @allure.severity(allure.severity_level.CRITICAL)
 @pytest.mark.ui
 @pytest.mark.develop
-@pytest.mark.xfail(strict=False, reason=_LABEL_DEFECT_REASON)
 def test_create_group(admin_page, helpdesk_ui_base_url):
     page = HelpdeskGroupsPage(admin_page)
     page.open(helpdesk_ui_base_url)
@@ -64,10 +39,6 @@ def test_create_group(admin_page, helpdesk_ui_base_url):
 @allure.severity(allure.severity_level.CRITICAL)
 @pytest.mark.ui
 @pytest.mark.develop
-@pytest.mark.xfail(
-    strict=False,
-    reason=f"Предусловие (своя тестовая группа) недостижимо: {_LABEL_DEFECT_REASON}",
-)
 def test_delete_group(admin_page, helpdesk_ui_base_url):
     page = HelpdeskGroupsPage(admin_page)
     page.open(helpdesk_ui_base_url)
