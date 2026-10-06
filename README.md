@@ -1115,16 +1115,31 @@ CSRF-регэксп `HelpdeskEndpoint._csrf_token` и несвязанные `<l
 
 ## 19. Мобильная вёрстка
 
-Миссия `docs/plans/2026-10-06_mobile_android_mission.md` (часть 1), факты по вёрстке —
-`docs/mobile/layout_facts.md`, отчёт — `docs/reports/2026-10-06_mobile_mission.md`. Приложение
-«ДПО ПА» — WebView-оболочка вокруг `portal.gosedu.ru`, поэтому автотесты мобильной вёрстки — это
-обычный Playwright с профилем контекста Pixel 7, без Appium/эмулятора (решение и разбор apk — в
-плане, «Факты про приложение»).
+Миссия `docs/plans/2026-10-06_mobile_android_mission.md` (часть 1), отчёт —
+`docs/reports/2026-10-06_mobile_mission.md`. Приложение «ДПО ПА» — WebView-оболочка вокруг
+`portal.gosedu.ru`, поэтому автотесты мобильной вёрстки — это обычный Playwright с профилем
+контекста Pixel 7, без Appium/эмулятора (решение и разбор apk — в плане, «Факты про приложение»).
 
-Запуск: `MOBILE=1 HEADLESS=1 pytest -m mobile --env develop` (или `pytest --mobile --env develop`
-для конкретного теста/файла — опция и переменная окружения равнозначны, см.
-`conftest.py::_is_mobile_mode`). Без флага/переменной поведение `page`/`admin_page`/`user_page` не
-меняется ни на байт (desktop viewport 1366×768).
+`docs/mobile/layout_facts.md` — снятые на develop расхождения мобильной вёрстки с desktop по шести
+экранам: 1. вход (`/auth/main`), 2. список программ (`/education`), 3. активити — тест/опрос
+(`/testing/player`), 4. карточка программы (сертификат по этому сценарию отдельно не проверен —
+блокер не мобильный, см. п. 4 файла), 5. профиль, 6. уведомления (`/portal-notifications`). Каждый
+пункт — это кандидат в xfail/дефект мобильной вёрстки; прежде чем автоматизировать новый мобильный
+экран, стоит проверить, не описаны ли там уже его особенности (например, у «Профиля» нет
+отдельного URL и клик по вкладке работает только со страницы списка программ).
+
+```bash
+MOBILE=1 HEADLESS=1 pytest -m mobile --env develop
+pytest --mobile --env develop tests/ui/mobile/test_mobile_login_my_programs.py   # конкретный тест/файл
+```
+
+Опция `--mobile` и переменная окружения `MOBILE=1` равнозначны (см.
+`conftest.py::_is_mobile_mode`) — второй путь нужен, чтобы включать режим из test_hub без передачи
+CLI-опций. Мобильный профиль контекста — константа `MOBILE_DEVICE` в `conftest.py`:
+`playwright.devices["Pixel 7"]` для версии playwright из `requirements.txt` (viewport 412×839,
+`device_scale_factor` 2.625, `is_mobile`/`has_touch` True, мобильный `user_agent`), видео-запись —
+под тот же размер. Без флага/переменной поведение `page`/`admin_page`/`user_page` не меняется ни на
+байт (desktop viewport 1366×768, видео 1280×720).
 
 Как добавить мобильный тест:
 
