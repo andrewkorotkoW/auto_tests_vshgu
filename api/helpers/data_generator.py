@@ -1577,7 +1577,11 @@ def generate_helpdesk_group_payload(
     принял форму (не 422), и поправить при расхождении."""
     suffix = unique_suffix()
     if not name:
-        name = f"Автотест_группа_{suffix}"
+        # Короткое имя (<= 30 символов): таблица хелпдеска обрезает длинные значения
+        # многоточием, а page-объект матчит строку по первым 30 символам — с полным
+        # suffix (master_1791275123456) все группы одного прогона совпадали по префиксу
+        # и «удалённая» строка оставалась видимой за счёт соседней (06.10.2026).
+        name = f"Автотест_группа_{suffix[-10:]}"
     if not prefix:
         prefix = f"autotest{int(time.time() * 1000)}"[:20]
     if not email:
@@ -1614,7 +1618,8 @@ def generate_helpdesk_template_payload(
     группы, созданной generate_helpdesk_group_payload())."""
     suffix = unique_suffix()
     if not name:
-        name = f"Автотест_шаблон_{suffix}"
+        # <= 30 символов — см. комментарий в generate_helpdesk_group_payload (обрезка в таблице)
+        name = f"Автотест_шаблон_{suffix[-10:]}"
     if not content:
         content = f"<p>Автотест текст шаблона {suffix}</p>"
     if not keywords:
