@@ -119,11 +119,11 @@ ENVIRONMENTS = {
     ),
 }
 
-# Произвольный стенд «k8s» (релизные k8s-стенды: portal-k8s-release.d9.darkarow.ru и т.п.).
+# Произвольный стенд «k8s» (релизные k8s-стенды: portal-k8s-release.v2.gosedu.ru, раньше d9.darkarow.ru).
 # База — STAND_URL (его передаёт test_hub для стенда) или K8S_UI_URL; API и глобальная админка
 # выводятся из хоста портала (portal-… → global-…). Кука сессии у таких стендов называется
 # «develop» (снимок develop), учётки — те же, что на develop (см. get_credentials).
-_K8S_UI = (os.getenv("K8S_UI_URL") or os.getenv("STAND_URL") or "https://portal-k8s-release.d9.darkarow.ru").rstrip("/")
+_K8S_UI = (os.getenv("K8S_UI_URL") or os.getenv("STAND_URL") or "https://portal-k8s-release.v2.gosedu.ru").rstrip("/")
 ENVIRONMENTS["k8s"] = _build_environment(
     "k8s",
     cookie_name=os.getenv("K8S_COOKIE_NAME", "develop"),
