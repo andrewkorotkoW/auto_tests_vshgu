@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from config.environments import ENVIRONMENTS
+from config.environments import ENVIRONMENTS, active_env
 
 load_dotenv()
 
@@ -12,10 +12,22 @@ _stage = ENVIRONMENTS["stage"]
 class Settings:
     # Алиасы на develop/stage из слоя окружений (config/environments.py) —
     # оставлены, чтобы не ломать код, который уже импортирует settings.BASE_URL и т.п.
-    BASE_URL = _develop.api_base_url
-    UI_BASE_URL = _develop.ui_base_url
+    # BASE_URL/UI_BASE_URL/GLOBAL_BASE_URL — адреса АКТИВНОГО окружения (--env), а не develop:
+    # иначе LoginPage.login() без base_url и page.goto(f"{settings.UI_BASE_URL}…") в UI-тестах
+    # уходили на develop даже при --env k8s (06.10.2026: 8 ложных падений на k8s v2).
+    @property
+    def BASE_URL(self):
+        return active_env().api_base_url
+
+    @property
+    def UI_BASE_URL(self):
+        return active_env().ui_base_url
+
+    @property
+    def GLOBAL_BASE_URL(self):
+        return active_env().global_base_url
+
     DEVELOP_COOKIE = _develop.cookie
-    GLOBAL_BASE_URL = _develop.global_base_url
     CAS_AUTH_TOKEN = _develop.cas_auth_token
     EXTERNAL_SYSTEM_CLIENT_TOKEN = _develop.external_system_client_token
     LPD_JWT_TOKEN = _develop.lpd_jwt_token or "токен_по_умолчанию"

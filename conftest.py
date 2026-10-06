@@ -40,7 +40,7 @@ from api.helpers.data_generator import (
 
 )
 from config.settings import settings
-from config.environments import ENVIRONMENTS, ensure_prod_allowed, get_session, get_storage_state_path
+from config.environments import ENVIRONMENTS, ensure_prod_allowed, get_session, get_storage_state_path, set_active_env
 from utils.logger import logger
 from tools.test_cases.testit_sync import DEFAULT_DOCS_DIR, iter_area_files
 import utils.test_hub_plugin as test_hub_plugin
@@ -119,6 +119,7 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     env_name = config.getoption("--env")
+    set_active_env(ENVIRONMENTS[env_name])
     markexpr = config.getoption("-m") or ""
     try:
         ensure_prod_allowed(env_name, markexpr)

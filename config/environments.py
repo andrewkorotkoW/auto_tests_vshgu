@@ -341,3 +341,19 @@ def get_storage_state_path(env: Environment, role: str = "default") -> Path:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(build_storage_state(env, session)))
     return path
+
+
+# ---------------------------------------------------------------------------
+# Активное окружение прогона (--env), чтобы код вне фикстур (page-объекты,
+# settings.UI_BASE_URL) не был намертво привязан к develop. Выставляется в
+# conftest.pytest_configure; до этого (импорт вне pytest) — develop.
+_ACTIVE_ENV: Optional["Environment"] = None
+
+
+def set_active_env(env: "Environment") -> None:
+    global _ACTIVE_ENV
+    _ACTIVE_ENV = env
+
+
+def active_env() -> "Environment":
+    return _ACTIVE_ENV or ENVIRONMENTS["develop"]
