@@ -1,76 +1,66 @@
-# Миссия: мобильное тестирование Android-приложения ВШГУ (Appium) + вкладка «Мобильный» в офисе
+# Миссия: мобильная вёрстка портала (Playwright, профиль Pixel 7) + ручной чек-лист Android-оболочки
 
-Записано 06.10.2026. Черновик — ждём apk от разработчиков. Решения владельца (06.10): тестируем
-полноценное нативное приложение (не мобильный веб); входа в админку в приложении нет; учётки те же,
-что на портале; требований по устройствам нет — берём одно «универсальное» (Pixel 6, Android 13);
-приоритетные сценарии — прохождение активностей, выдача сертификатов, отображение данных;
-мобильные тесты живут в этом репозитории (`tests/mobile/`), запуск через test_hub.
+Записано 06.10.2026, решение владельца вечером 06.10. Первый черновик (Appium + эмулятор + вкладка
+в офисе) отменён после разбора apk — см. «Факты про приложение».
 
-## Окружение на машине (проверено 06.10)
+## Факты про приложение «ДПО ПА» (`app-release.apk`, 06.10)
 
-- macOS 12.7.6, Intel i7-6700HQ, 16 ГБ. Аппаратное ускорение эмулятора: Hypervisor.Framework — OK
-  (`emulator -accel-check`). Один эмулятор одновременно; параллельно с Playwright-прогонами — тяжело.
-- Android SDK: `~/Library/Android/sdk` (emulator 31.3.10, adb 1.0.41, platforms 31–33). Переменные
-  `ANDROID_SDK_ROOT`/`ANDROID_HOME` в окружении не выставлены — задавать в `.env`/фикстурах.
-- AVD `Pixel_6_API_33` (1080×2400, 420 dpi, 2 ГБ RAM, образ `system-images;android-33;google_apis;x86_64`)
-  создан вручную (`~/.android/avd/Pixel_6_API_33.*`), потому что `tools/bin/avdmanager` не работает на
-  Java 18. **Сам образ android-33 на диске пустой (обрыв скачивания) — нужно докачать 1,5 ГБ**
-  (`https://dl.google.com/android/repository/sys-img/google_apis/x86_64-33_r12.zip` или через SDK Manager
-  в Android Studio). Рабочие сейчас только старые AVD на API 26 (Android 8).
-- Запуск эмулятора без окна: `emulator -avd Pixel_6_API_33 -no-window -no-audio -no-boot-anim
-  -gpu swiftshader_indirect`; готовность — `adb shell getprop sys.boot_completed` == 1.
-- Node: системный v12 — не годится для Appium; ставится `node@18` через Homebrew
-  (`/usr/local/opt/node@18/bin`). Appium 2 + драйвер `uiautomator2` — глобально через npm этого Node.
-  Картинка экрана: `scrcpy` (brew) для живого окна, `adb exec-out screencap -p` для скриншотов в отчёт.
-- Python-клиент: `Appium-Python-Client` (в `.venv`), Allure уже есть.
+- Пакет `ru.gosedu.vshgu`, versionName 3.0.1 (versionCode 8), Kotlin, 2,9 МБ, minSdk 21, targetSdk 34.
+- Это **WebView-оболочка**: один экран `com.ranepa.gspm.MainActivity` с `android.webkit.WebView`, который
+  открывает `https://portal.gosedu.ru/` (прод, адрес зашит в код; переключателя окружений, deep links,
+  intent-экстра для URL нет). Первый экран — `/auth/main?uri-callback=/` (вход портала). Входа в админку нет.
+- Своего у оболочки: `assets/offline.html` («Нет подключения»), камера и выбор файла (`CAMERA`,
+  `READ_MEDIA_IMAGES`, FileProvider), уведомления (`POST_NOTIFICATIONS`, системный запрос при первом запуске),
+  обработка «назад». Весь функционал курсов/сертификатов/профиля — это портал в мобильной вёрстке.
+- Проверено на эмуляторах: Android 8 — белый экран, в логе `X509Util: Trust anchor ... not found`
+  (старое хранилище без корня GlobalSign R6, которым подписан `*.gosedu.ru`); при ошибке SSL оболочка показывает
+  белый экран, а не `offline.html` — замечание разработчикам. Android 13 — страница входа грузится
+  (WebView 103), `screencap` при `-gpu swiftshader_indirect -no-window` отдаёт белый PNG (артефакт захвата,
+  `uiautomator dump` видит диалог уведомлений) — для скриншотов с эмулятора нужен другой `-gpu`/devtools.
+- Вывод: отдельный Appium-проект под оболочку не окупается. Автотесты — мобильный веб в Playwright,
+  оболочка — ручной чек-лист раз в релиз. Окружение для Appium всё же установлено на случай разбора багов
+  оболочки: Node 18 `~/.local/node18`, Appium 2.19 + uiautomator2 4.2.9, scrcpy 5.0 `~/.local/scrcpy`,
+  AVD `Pixel_6_API_33` (образ `system-images;android-33;google_apis;x86_64`), `ANDROID_SDK_ROOT=~/Library/Android/sdk`.
 
-## Исходные данные (ждём)
+## Часть 1 — мобильный профиль в auto_tests_vshgu
 
-- apk приложения: источник, окружение, на которое оно ходит (develop), `applicationId`, `minSdk`.
-  Проверить: `aapt dump badging app.apk | head`, установка `adb install -r app.apk`, запуск.
-- Авторизация в приложении: тот же логин/пароль, что на портале develop (`.env`, `get_credentials`).
-  Нет ли СМС/внешнего провайдера — если есть, нужен обход для тестового стенда.
-- Исходники приложения — «вроде есть, данных пока нет». Без них селекторы по `resource-id` не
-  гарантированы: сначала снять дерево через `uiautomator dump`/Appium Inspector и зафиксировать в
-  `docs/mobile/ui_tree.md`, затем писать page objects.
-- Ручных кейсов по мобилке в Test IT нет (не указаны) — кейсы пишем сами по `docs/test_cases/TEMPLATE.md`
-  в `docs/test_cases/mobile/*.md` (`TC-MOBILE-<ОБЛАСТЬ>-NNN`).
+1. Единая сборка параметров контекста. Сейчас `viewport 1366×768` задаётся в трёх местах
+   (`conftest.py::page`, `conftest.py::_authenticated_page`, `tests/ui/dictionaries/conftest.py:87`). Вынести в
+   `conftest.py::_context_kwargs(request, storage_state=None)`; в мобильном режиме подмешивать
+   `playwright.devices["Pixel 7"]` (viewport 412×915, `device_scale_factor`, `is_mobile`, `has_touch`,
+   `user_agent`). Включение: опция `--mobile` **или** `MOBILE=1` (чтобы работало из test_hub через env),
+   в `pytest.ini`/README зафиксировать. Видео-запись (`record_video_size`) в мобильном режиме — под размер
+   устройства. Desktop-поведение без флага не менять ни на байт.
+2. Маркер `mobile` в `pytest.ini` + область `mobile` в `tests/product_map.yml`. Маркером помечаются только
+   тесты, проверенные в мобильной вёрстке на develop (по факту прогона с `--mobile`, не «на глаз»).
+3. Первый набор (то, что видит пользователь приложения; админка исключена): вход (`/auth/main`), список
+   назначенных программ и статусы (`/my-programs`), открытие активити и прохождение простейшего теста/опроса,
+   карточка программы и сертификат после завершения, профиль, уведомления (`/portal-notifications`).
+   Данные готовить теми же API-фикстурами, что и в desktop UI-тестах (`created_user`, `created_program`,
+   `assignments_endpoint`, `prepared_user`).
+4. Мобильная навигация отличается (бургер-меню, нижняя панель, скрытые колонки) — сначала снять на develop в
+   viewport Pixel 7 скриншоты шести экранов и зафиксировать различия в `docs/mobile/layout_facts.md`; затем
+   добавить в page objects мобильные ветки (`if page.viewport_size["width"] < 768` или фикстура `is_mobile`),
+   а не копировать page objects. Тесты, которые в мобильной вёрстке в принципе не проходят (например, нет
+   элемента в меню) — xfail с причиной и запись в `layout_facts.md`, это кандидаты в дефекты.
+5. Allure: в мобильном режиме `allure.dynamic.parameter("device", "Pixel 7")`, скриншот в конце каждого
+   теста (не только при падении) — владелец смотрит именно вёрстку. Папка результатов — как у остальных.
+6. README §19 «Мобильная вёрстка»: запуск `MOBILE=1 HEADLESS=1 pytest -m mobile --env develop`, как добавить
+   тест в набор, где факты по вёрстке.
 
-## Часть 1 — каркас мобильных тестов (auto_tests_vshgu)
+## Часть 2 — ручной чек-лист оболочки (md → test_hub)
 
-1. `config/mobile.py` + `.env.example`: `ANDROID_SDK_ROOT`, `MOBILE_AVD=Pixel_6_API_33`, `MOBILE_APK`,
-   `APPIUM_URL=http://127.0.0.1:4723`, `MOBILE_APP_ID`. Значения `.env` в код/логи/md не писать.
-2. `tests/mobile/conftest.py`: фикстуры session-scope `emulator` (поднять AVD, если не поднят; дождаться
-   `sys.boot_completed`; не гасить чужой), `appium_server` (поднять `appium` subprocess, если порт 4723
-   свободен), `app` (установка apk, `noReset`/`fullReset` по флагу), function-scope `driver`
-   (UiAutomator2, `appium:appPackage/appActivity`), скриншот + `page_source` в Allure при падении.
-   Маркер `@pytest.mark.mobile`, зарегистрировать в `pytest.ini`; в `product_map.yml` — область `mobile`.
-3. Page objects `ui/mobile/pages/*.py` (login, список программ, карточка активности, сертификаты, профиль)
-   по снятому дереву; локаторы — `resource-id` → `accessibility id` → `xpath` по тексту, в таком порядке.
-4. Первые сценарии (данные готовить через существующие API-фикстуры `created_user`/`created_program`/
-   `assignments_endpoint`, как в UI-тестах): вход; список назначенных программ соответствует
-   `/my-programs`; открыть активность и пройти (тест/опрос — простейший); сертификат появляется после
-   завершения программы; данные профиля/прогресса совпадают с API. Каждый — `allure.title` на русском,
-   `TC-MOBILE-*` в md.
-5. `README` §19 «Мобильные тесты»: установка (brew node@18, appium, драйвер, образ), запуск
-   `pytest tests/mobile --env develop -m mobile`, типовые проблемы (эмулятор не поднялся, порт занят).
-6. test_hub: пресет/раздел «Mobile» в пресетах запуска (как API/UI/Smoke), прогон `-m mobile`
-   последовательно (один эмулятор → `-n 1`).
-
-## Часть 2 — вкладка «Мобильный» в cyber_office (второстепенно)
-
-- Новая панель в `ui/index.html` + `ui/app.js`: статус эмулятора (поднят/нет, AVD, Android), кнопки
-  «Поднять»/«Погасить», живой экран — поток скриншотов `adb exec-out screencap -p` раз в 1–2 с
-  (MJPEG/polling), рамка телефона 1080×2400 с масштабом. Кнопка «Прогнать mobile» → `testlab.run`
-  с `-m mobile`, ссылка на Allure.
-- REST: `GET /api/mobile/status`, `POST /api/mobile/emulator/start|stop`, `GET /api/mobile/screen`
-  (png), всё через `adb`/`emulator` из `ANDROID_SDK_ROOT`. Без Appium в офисе — только adb.
-- Ограничение: один эмулятор, не поднимать второй экземпляр, если уже есть `emulator-5554`.
+`docs/test_cases/mobile/app_shell.md` по `docs/test_cases/TEMPLATE.md`, `TC-MOBILE-APP-001…`, 8–10 кейсов, без
+«- Автотест:»: установка и первый запуск (запрос уведомлений), вход через WebView теми же учётками, список
+программ, загрузка файла в практическое задание через камеру/галерею, кнопка «назад» (история WebView, выход из
+приложения на корне), поведение без сети (`offline.html`, восстановление), возврат из фона, внешние ссылки
+(открываются в приложении или в браузере), уведомления. Предусловие в каждом: apk версии 3.0.1 от 06.10 (путь
+через `MOBILE_APK`, apk в git не коммитить, `*.apk` в `.gitignore`). Импорт в test_hub — вручную владельцем.
 
 ## Правила
 
-- Только develop. Учётки/токены только из `.env`. apk в git не коммитить (`.gitignore`: `*.apk`,
-  `build/mobile/`), путь — через `MOBILE_APK`.
-- Сначала часть 1 (п. 1–3 и один сквозной сценарий «вход → список программ»), показать владельцу,
-  потом остальные сценарии и test_hub; часть 2 — отдельной миссией для cyber_office.
-- Ничего не удалять на стенде; данные помечать `Автотест_`/`auto_test_` как везде.
+- Только `--env develop`, `HEADLESS=1`. Учётки из `.env`. Прод (`portal.gosedu.ru`) не открывать.
+- Сначала п. 1–2 и один тест «вход → список программ» с `--mobile` зелёным на develop — показать владельцу,
+  потом остальное. Часть 2 — отдельной задачей, можно параллельно.
+- Ничего не удалять на стенде; имена данных `Автотест_`/`auto_test_` как везде. Отчёт задачи —
+  `docs/reports/2026-10-06_mobile_mission.md` с числами прогона и списком xfail.
