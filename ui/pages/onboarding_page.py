@@ -194,7 +194,7 @@ class OnboardingPage:
             self.page.wait_for_timeout(800)
         return True
 
-    def complete_onboarding(self, max_steps: int = 20) -> None:
+    def complete_onboarding(self, max_steps: int = 20, wait_for_close: bool = True) -> None:
         """Проходит все слайды кликами «Далее» и завершает «Завершить».
 
         Между слайдами кнопка «Далее» на доли секунды пропадает (перерисовка), а
@@ -243,9 +243,10 @@ class OnboardingPage:
 
         if finish_button.is_visible(timeout=1000):
             finish_button.click(timeout=5000, force=True)
-        expect(finish_button).not_to_be_visible(timeout=15000)
-        expect(next_button).not_to_be_visible(timeout=15000)
-        self.wait_overlay_gone()
+        if wait_for_close:
+            expect(finish_button).not_to_be_visible(timeout=15000)
+            expect(next_button).not_to_be_visible(timeout=15000)
+            self.wait_overlay_gone()
 
     def wait_overlay_gone(self, timeout: int = 8000) -> None:
         """Ждём, пока исчезнет затемняющий scrim тура: после «Завершить»/закрытия крестиком

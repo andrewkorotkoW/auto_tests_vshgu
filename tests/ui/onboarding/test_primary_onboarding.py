@@ -54,10 +54,14 @@ class TestPrimaryOnboarding:
             kb_link.click(timeout=5000)
 
         with allure.step("Проходим онбординг раздела «База знаний»"):
-            onboarding.complete_onboarding(max_steps=20)
             next_or_finish = page.locator(NEXT_BUTTON).or_(page.locator(FINISH_BUTTON))
-            if next_or_finish.first.is_visible(timeout=10000):
-                onboarding.complete_onboarding(max_steps=20)
+            for _ in range(4):
+                if not next_or_finish.first.is_visible(timeout=3000):
+                    break
+                onboarding.complete_onboarding(max_steps=20, wait_for_close=False)
+                page.wait_for_timeout(500)
+            else:
+                raise AssertionError("Онбординг базы знаний не завершился после 4 последовательных туров")
             expect(page.locator(NEXT_BUTTON)).not_to_be_visible(timeout=10000)
 
         with allure.step("Открылась вкладка «Библиотека»"):
