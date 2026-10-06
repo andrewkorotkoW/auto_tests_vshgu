@@ -57,6 +57,20 @@ def created_helpdesk_group(helpdesk_endpoint):
 
 
 @pytest.fixture
+def helpdesk_existing_group_id(helpdesk_endpoint):
+    """ID уже существующей системной группы «Личная группа» — только читается
+    (find_group_by_name), не создаётся/не редактируется/не удаляется. Нужна как
+    обязательный `group_id` при создании записей 6 из 7 справочников хелпдеска (см.
+    api.endpoints.helpdesk._DICT_DEFINITIONS и docstring HelpdeskDictEndpoint: без
+    group_id сервер отвечает 422). Своя тестовая группа для этого не подходит —
+    GroupCrudController всё ещё падает 500 на успешном создании (см. test_groups_api.py,
+    xfail), поэтому справочники ссылаются на уже существующую группу, не мутируя её."""
+    found = helpdesk_endpoint.find_group_by_name("Личная группа")
+    assert found is not None and found["id"], "Не найдена системная группа «Личная группа» для group_id справочников"
+    return found["id"]
+
+
+@pytest.fixture
 def created_helpdesk_template(helpdesk_endpoint):
     """Создаёт шаблон ответа (Автотест_*) и удаляет в teardown, даже если тест упал."""
     template_ids = []
