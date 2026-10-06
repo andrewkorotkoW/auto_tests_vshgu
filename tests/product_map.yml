@@ -10,12 +10,18 @@
 # 1:1 совпадают с node.feature). Префиксы тестов сверены с реальным деревом tests/ этого
 # репозитория (только чтение) — все существуют.
 project: VSHGU
-canvas: {width: 1440, height: 900}
+# canvas.height увеличен с 900 до 1080 под новую зону mobile — она идёт строкой ниже
+# зоны int (int: y 670..840), без пересечения с ext/rev/adm/int по x/y/w/h.
+canvas: {width: 1440, height: 1080}
 zones:
   - {id: ext, label: "Внешка · слушатель", x: 30, y: 60, w: 470, h: 560}
   - {id: rev, label: "Проверяющий", x: 520, y: 60, w: 270, h: 560}
   - {id: adm, label: "Админка", x: 810, y: 60, w: 600, h: 560}
   - {id: int, label: "Интеграции (внешние системы, стрелка — куда входят)", x: 30, y: 670, w: 1380, h: 170}
+  # Мобильная вёрстка (docs/plans/2026-10-06_mobile_android_mission.md): Playwright,
+  # профиль Pixel 7 (--mobile/MOBILE=1), маркер pytest "mobile". Шесть узлов — те же
+  # шесть экранов из docs/mobile/layout_facts.md.
+  - {id: mobile, label: "Мобильная вёрстка (Pixel 7, --mobile/MOBILE=1)", x: 30, y: 870, w: 1380, h: 180}
 nodes:
   - {id: ext_login, label: Вход, zone: ext, x: 60, y: 90, w: 150, h: 40, tests: [tests/ui/users/test_user_login_navigation]}
   - {id: ext_onboarding, label: Онбординг, zone: ext, x: 230, y: 90, w: 150, h: 40, tests: [tests/ui/onboarding, tests/api/onboarding]}
@@ -91,6 +97,15 @@ nodes:
   # точного соответствия «Результатам активности» нет (см. также TODO в
   # ui/pages/activity_page.py и tests/ui/mts_link/test_event_type.py).
   - {id: int_mts_link, label: "МТС Линк", zone: int, x: 510, y: 700, w: 140, h: 40, tests: [tests/api/mts_link, tests/ui/mts_link], target: adm_tenant_integration}
+
+  # mobile: первый зелёный тест покрывает вход + список программ (tests/ui/mobile/test_mobile_login_my_programs);
+  # остальные четыре узла — кандидаты для следующей задачи (dwight), tests: [] до появления тестов.
+  - {id: mobile_login, label: "Вход (/auth/main)", zone: mobile, x: 60, y: 900, w: 190, h: 40, tests: [tests/ui/mobile/test_mobile_login_my_programs]}
+  - {id: mobile_my_programs, label: "Список программ (/education)", zone: mobile, x: 270, y: 900, w: 190, h: 40, tests: [tests/ui/mobile/test_mobile_login_my_programs]}
+  - {id: mobile_activity, label: Активити, zone: mobile, x: 480, y: 900, w: 190, h: 40, tests: []}
+  - {id: mobile_program_certificate, label: "Карточка программы / сертификат", zone: mobile, x: 690, y: 900, w: 220, h: 40, tests: []}
+  - {id: mobile_profile, label: Профиль, zone: mobile, x: 930, y: 900, w: 190, h: 40, tests: []}
+  - {id: mobile_notifications, label: "Уведомления (/portal-notifications)", zone: mobile, x: 1140, y: 900, w: 190, h: 40, tests: []}
 edges:
   - {from: ext_login, to: ext_onboarding}
   - {from: ext_onboarding, to: ext_lk}
@@ -137,3 +152,10 @@ edges:
   - {from: int_alpina, to: ext_kb}
   - {from: int_lrs, to: ext_course}
   - {from: int_helpdesk, to: ext_support}
+
+  # mobile
+  - {from: mobile_login, to: mobile_my_programs}
+  - {from: mobile_my_programs, to: mobile_activity}
+  - {from: mobile_my_programs, to: mobile_program_certificate}
+  - {from: mobile_login, to: mobile_profile}
+  - {from: mobile_login, to: mobile_notifications}

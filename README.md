@@ -1112,3 +1112,39 @@ CSRF-регэксп `HelpdeskEndpoint._csrf_token` и несвязанные `<l
 шаблонов, из-за которых раньше падали эти и другие тесты, исправлены в рамках этой миссии
 (`ui/pages/helpdesk_*.py`, `api/endpoints/helpdesk.py`) — подробности и список исправленных nodeid в
 отчёте, раздел 3.
+
+## 19. Мобильная вёрстка
+
+Миссия `docs/plans/2026-10-06_mobile_android_mission.md` (часть 1), факты по вёрстке —
+`docs/mobile/layout_facts.md`, отчёт — `docs/reports/2026-10-06_mobile_mission.md`. Приложение
+«ДПО ПА» — WebView-оболочка вокруг `portal.gosedu.ru`, поэтому автотесты мобильной вёрстки — это
+обычный Playwright с профилем контекста Pixel 7, без Appium/эмулятора (решение и разбор apk — в
+плане, «Факты про приложение»).
+
+Запуск: `MOBILE=1 HEADLESS=1 pytest -m mobile --env develop` (или `pytest --mobile --env develop`
+для конкретного теста/файла — опция и переменная окружения равнозначны, см.
+`conftest.py::_is_mobile_mode`). Без флага/переменной поведение `page`/`admin_page`/`user_page` не
+меняется ни на байт (desktop viewport 1366×768).
+
+Как добавить мобильный тест:
+
+- Фикстуры данных — те же, что в desktop UI-тестах (`created_user`, `created_program`,
+  `assignments_endpoint`, `assigned_user`, `prepare_user_for_tests_via_api` и т.п.) — мобильный
+  профиль касается только контекста браузера, не подготовки данных через API.
+- Фикстура `is_mobile` — True, если прогон идёт с `--mobile`/`MOBILE=1`; использовать для мобильных
+  веток в page objects вместо копирования page objects целиком (`if page.viewport_size["width"] <
+  768` работает только внутри теста, где страница уже открыта — `is_mobile` доступна и раньше).
+- Маркер `pytest.mark.mobile` — ставить только на тест, реально зелёный в прогоне с `--mobile` на
+  develop (не «на выглядит адаптивным»); узел в `tests/product_map.yml` (зона `mobile`) обновлять
+  вместе с тестом.
+- Если экран в мобильной вёрстке в принципе не проходит (нет элемента/зависает) — `xfail` с причиной
+  и запись в `docs/mobile/layout_facts.md`, это кандидат в дефект, а не повод пропускать тест молча.
+- Своему conftest.py, которому нужна `_context_kwargs` из корневого `conftest.py`, использовать
+  фикстуру `build_context_kwargs`, а не `import conftest` — у одноимённых `conftest.py` без
+  `__init__.py` в директориях голый `import conftest` резолвится в себя же (self-import) под
+  pytest `import-mode=prepend`, см. `tests/ui/dictionaries/conftest.py::second_user_page`.
+
+Первый зелёный тест — `tests/ui/mobile/test_mobile_login_my_programs.py` (вход → «Моё обучение»
+показывает назначенную программу). Экраны 3–6 (активити, карточка программы/сертификат, профиль,
+уведомления) — следующая задача, факты и известные дефекты вёрстки уже в `layout_facts.md`.
+отчёте, раздел 3.

@@ -76,7 +76,7 @@ def cleanup_dictionary_items(dictionaries_endpoint):
 
 
 @pytest.fixture
-def second_user_page(browser, env, created_user):
+def second_user_page(browser, env, created_user, build_context_kwargs):
     """Страница Playwright, авторизованная под реально другим пользователем (отдельные
     email/пароль, отдельный логин через config.environments.login) — в отличие от
     user_page (общий с admin_page аккаунт на develop), у него нет ролей admin/manager
@@ -84,7 +84,7 @@ def second_user_page(browser, env, created_user):
     user = created_user()
     session = login(env, user["email"], user["password"])
     storage_state = build_storage_state(env, session)
-    context = browser.new_context(viewport={"width": 1366, "height": 768}, storage_state=storage_state)
+    context = browser.new_context(**build_context_kwargs(storage_state))
     page = context.new_page()
     yield page
     context.close()
