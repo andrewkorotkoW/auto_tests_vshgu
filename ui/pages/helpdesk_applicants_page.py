@@ -7,9 +7,13 @@
 («Программы и потоки» + «Активити», каждый со своей кнопкой «Управление
 обучением»), «Тикеты». Кнопка «Управление обучением» у блока «Программы и
 потоки» уводит на другой домен — `global-develop.d2.devspark.ru`, вкладка
-«Обучение» карточки пользователя ВШГУ (кейс 9611) — это переход в соседнее
-приложение (click_and_wait здесь не ждёт networkidle того же домена, а
-полноценную навигацию, см. wait_for_navigation)."""
+«Обучение» карточки пользователя ВШГУ (кейс 9611).
+
+«Управление обучением» в реальной разметке — `<a href="..." target="_blank">`
+(не `<button>`), 2 совпадения на странице (у «Программы и потоки» и у
+«Активити» — нужен именно первый, `.first`); ссылка открывает НОВУЮ вкладку
+браузера, а не навигацию в текущей — ловим её через `context.expect_page()`,
+а не `page.expect_navigation()` (подтверждено Playwright на develop)."""
 from playwright.sync_api import expect
 
 from ui.pages.helpdesk_base_page import HelpdeskAdminPage
@@ -38,11 +42,17 @@ class HelpdeskApplicantsPage(HelpdeskAdminPage):
         self.page.goto(f"{ui_base_url.rstrip('/')}{self.PATH}/{applicant_id}/show")
         self.wait_loaded()
 
-    def go_to_vshgu_user_education(self) -> None:
-        """На уже открытой карточке заявителя — переход по кнопке «Управление
-        обучением» у блока «Программы и потоки» в карточку пользователя ВШГУ,
-        вкладка «Обучение» (другой домен — global-develop.d2.devspark.ru,
-        см. docs/helpdesk_recon.md, кейс 9611)."""
-        button = self.page.get_by_role("button", name="Управление обучением").first
-        with self.page.expect_navigation(timeout=30000):
-            button.click()
+    def go_to_vshgu_user_education(self):
+        """На уже открытой карточке заявителя — переход по ссылке «Управление
+        обучением» у блока «Программы и потоки» (первая из двух одноимённых
+        ссылок на странице, вторая — у блока «Активити») в карточку
+        пользователя ВШГУ, вкладка «Обучение» (другой домен —
+        global-develop.d2.devspark.ru, см. docs/helpdesk_recon.md, кейс 9611).
+        Ссылка открывается в НОВОЙ вкладке (target=_blank) — возвращает
+        Playwright Page этой вкладки (её URL проверяет вызывающий тест)."""
+        link = self.page.get_by_role("link", name="Управление обучением").first
+        with self.page.context.expect_page() as new_page_info:
+            link.click()
+        new_page = new_page_info.value
+        new_page.wait_for_load_state("networkidle")
+        return new_page

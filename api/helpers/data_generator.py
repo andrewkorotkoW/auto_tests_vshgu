@@ -1656,6 +1656,21 @@ def generate_helpdesk_applicant_payload(
     return payload
 
 
+def generate_helpdesk_dict_payload(prefix: str = "Автотест") -> dict:
+    """Payload «Значение» для 6 одинаково устроенных справочников хелпдеска (категории, теги,
+    типы заявителей/контактов/обращений/результата) — использовать с
+    api.endpoints.helpdesk.HelpdeskEndpoint.dict_endpoint(key).create(payload["value"], ...).
+    Не привязан к конкретному справочнику — имя реального поля формы (`value`/`name`)
+    определяется HelpdeskDictEndpoint, не генератором."""
+    return {"value": f"{prefix}_{unique_suffix()}"}
+
+
+def generate_helpdesk_blacklist_payload(prefix: str = "auto_test") -> dict:
+    """Payload для /admin/blacklist (поле «Почтовый адрес» — use с
+    HelpdeskEndpoint.dict_endpoint("blacklist").create(payload["email"]))."""
+    return {"email": f"{prefix}_{unique_suffix()}@autotest.invalid"}
+
+
 def generate_helpdesk_role_assignment_payload(admin: bool = False, support: bool = False, group_admin: bool = False) -> dict:
     """Payload для POST /admin/user/{id}/assign-role (api.endpoints.helpdesk.HelpdeskEndpoint.assign_role)
     — ровно три роли, имена полей `roles[...]` подтверждены разведкой буквально
