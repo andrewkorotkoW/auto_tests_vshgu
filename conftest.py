@@ -17,6 +17,7 @@ from api.endpoints.lpd import LpdEndpoint
 from api.endpoints.onboarding import OnboardingEndpoint
 from api.endpoints.info_banner import InfoBannerEndpoint
 from api.endpoints.tincan import TincanEndpoint
+from api.endpoints.llm_chat import LlmChatEndpoint
 from api.endpoints.omt_cas import OmtCasEndpoint
 from api.endpoints.alpina import AlpinaEndpoint
 from api.endpoints.mif import MifEndpoint
@@ -735,6 +736,12 @@ def created_tincan(api_client, tincan_endpoint):
             tincan_endpoint.mass_delete(tincan_ids)
         except Exception as e:
             logger.warning(f"Failed to delete Tincan {tincan_ids}: {e}")
+
+@pytest.fixture
+def llm_chat_endpoint(api_client):
+    """Общая фикстура для tests/api/ai_chat и tests/ui/ai_chat — специфичные для области
+    фикстуры (tincan_with_ai_chat) живут в их собственных conftest.py."""
+    return LlmChatEndpoint(api_client)
 
 @pytest.fixture
 def omt_cas_endpoint(api_client):

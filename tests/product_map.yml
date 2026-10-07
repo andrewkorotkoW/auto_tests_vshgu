@@ -81,6 +81,10 @@ nodes:
   - {id: adm_tenant_integration, label: "Тенант · МТС Линк", zone: adm, x: 1180, y: 510, w: 150, h: 40, tests: [tests/api/mts_link/test_tenant_settings]}
   - {id: adm_event_mts, label: "Мероприятие МТС Линк", zone: adm, x: 840, y: 580, w: 150, h: 40, tests: [tests/ui/mts_link/test_event_type, tests/ui/mts_link/test_statuses, tests/ui/mts_link/test_retry, tests/api/mts_link/test_create, tests/api/mts_link/test_update, tests/api/mts_link/test_delete]}
   - {id: adm_stream_attendance, label: "Таблица слушателей · посещение", zone: adm, x: 1010, y: 580, w: 150, h: 40, tests: [tests/ui/mts_link/test_attendance, tests/ui/mts_link/test_regression]}
+  # Чат с ИИ в курсах (docs/plans/2026-10-07_ai_chat_pmi_mission.md): x=1180,y=580 — последняя
+  # свободная ячейка стандартной сетки зоны adm (колонки 840/1010/1180 × строки 90..580), не
+  # пересекает adm_event_mts (840,580) и adm_stream_attendance (1010,580) в той же строке.
+  - {id: adm_ai_chat, label: "Чат с ИИ", zone: adm, x: 1180, y: 580, w: 150, h: 40, tests: [tests/api/ai_chat, tests/ui/ai_chat], target: ext_course}
 
   - {id: int_buk, label: БУК, zone: int, x: 840, y: 700, w: 110, h: 40, tests: [tests/api/buk, tests/ui/buk], target: adm_users}
   - {id: int_cas, label: CAS, zone: int, x: 60, y: 700, w: 110, h: 40, tests: [tests/api/cas, tests/ui/cas], target: ext_login}
@@ -136,6 +140,7 @@ edges:
   - {from: adm_activities, to: adm_pt}
   - {from: adm_activities, to: adm_test_constructor}
   - {from: adm_activities, to: adm_polls}
+  - {from: adm_ai_chat, to: ext_course}
 
   - {from: ext_pt, to: rev_pt}
   - {from: ext_test, to: rev_proctoring}
