@@ -10,6 +10,9 @@ from pathlib import Path
 
 import pytest
 
+from api.helpers.user_prepare_api import prepare_user_for_tests_via_api
+from config.environments import build_storage_state, login
+
 from api.client import ApiClient
 from api.endpoints.knowledge_base import KnowledgeBaseEndpoint
 from api.helpers.data_generator import unique_suffix
@@ -40,21 +43,45 @@ def kb_endpoint(api_client):
 
 
 @pytest.fixture
-def user_api_client(env, user_session):
-    """API-клиент от имени слушателя (сессия user_session) — для действий, которые должен
-    выполнять сам пользователь (запуск/завершение изучения материала), в отличие от
-    api_client (админ), которым готовятся данные."""
-    return ApiClient(session=user_session, base_url=env.api_base_url, cookie_name=env.cookie_name)
+def kb_user(env, created_user):
+    """Свежий слушатель на каждый тест достижений. Раньше тесты шли под общим аккаунтом
+    user_session: на странице «Достижения» в «Полученных» показывается не больше 6 карточек
+    без пагинации, а у общего аккаунта накопились десятки полученных достижений (11 completed на
+    07.10) — новое достижение в параллельном прогоне не попадало в видимые 6, тест падал
+    (test_user_gets_achievement_by_material[audio] в полном прогоне 07.10). У свежего пользователя
+    в «Полученных» ровно одно достижение, и счётчики рейтинга/статистики не делятся с другими
+    тестами."""
+    user = created_user()
+    prepare_user_for_tests_via_api(env, user["email"], user["password"])
+    session = login(env, user["email"], user["password"])
+    return {"user": user, "session": session}
 
 
 @pytest.fixture
-def kb_test_user_full_name(user_api_client):
-    """ФИО пользователя, под которым проходит материалы в UI (user_page/user_session) —
-    нужно для поиска в истории/рейтинге админки. На develop admin_page и user_page — один
-    и тот же аккаунт (см. .env), но фикстура не завязывается на это и берёт ФИО из /auth/me."""
-    resp = user_api_client.get("/auth/me")
-    attrs = resp.json()["data"]["attributes"]
-    return f"{attrs['surname']} {attrs['name']} {attrs['patronymic']}"
+def user_api_client(env, kb_user):
+    """API-клиент от имени свежего слушателя (kb_user) — для действий, которые должен
+    выполнять сам пользователь (запуск/завершение изучения материала), в отличие от
+    api_client (админ), которым готовятся данные."""
+    return ApiClient(session=kb_user["session"], base_url=env.api_base_url, cookie_name=env.cookie_name)
+
+
+@pytest.fixture
+def user_page(browser, env, kb_user, build_context_kwargs, apply_env_timeouts):
+    """Страница Playwright под свежим слушателем kb_user (переопределяет корневой user_page
+    для тестов достижений)."""
+    storage_state = build_storage_state(env, kb_user["session"])
+    context = browser.new_context(**build_context_kwargs(storage_state))
+    apply_env_timeouts(context)
+    page = context.new_page()
+    yield page
+    context.close()
+
+
+@pytest.fixture
+def kb_test_user_full_name(kb_user):
+    """ФИО свежего слушателя — для поиска в истории/рейтинге админки."""
+    u = kb_user["user"]
+    return f"{u['surname']} {u['name']} {u['patronymic']}"
 
 
 @pytest.fixture
