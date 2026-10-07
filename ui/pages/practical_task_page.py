@@ -57,7 +57,16 @@ class PracticalTaskPage(BasePage):
         card = self.practical_task_card(pz_name)
         expect(card).to_be_visible(timeout=30000)
         card.click(timeout=5000)
-        expect(self.page).to_have_url(re.compile(r".*[?&]homework=\d+.*"), timeout=15000)
+        # Открытие ПЗ подтверждаем по панели деталей с названием задания, а не по
+        # `?homework=<id>` в URL: когда туры раздела уже закрыты через API (07.10, ветка
+        # Игоря), карточка оказывается выбранной сразу при загрузке, и клик по уже
+        # выбранной карточке параметр в URL не дописывает — детали при этом открыты.
+        names = [pz_name] if isinstance(pz_name, str) else list(pz_name)
+        predicate = " or ".join(f"contains(normalize-space(),'{name}')" for name in names)
+        details = self.page.locator(
+            f"xpath=//div[contains(@class,'details__title') and ({predicate})]"
+        ).first
+        expect(details).to_be_visible(timeout=15000)
 
     @property
     def main_document_download_button(self) -> Locator:
