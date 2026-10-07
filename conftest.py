@@ -218,7 +218,12 @@ def pytest_collection_modifyitems(config, items):
             config.hook.pytest_deselected(items=deselected)
 
     run_env = config.getoption("--env")
+    # Тесты с маркером mobile имеют смысл только в мобильном профиле (--mobile/MOBILE=1):
+    # в обычном полном прогоне их пропускаем, а не роняем (07.10: 5 failed в полном прогоне).
+    mobile_mode = config.getoption("--mobile") or os.environ.get("MOBILE", "0").lower() in ("1", "true", "yes")
     for item in items:
+        if not mobile_mode and item.get_closest_marker("mobile") is not None:
+            item.add_marker(pytest.mark.skip(reason="только в мобильном профиле (--mobile или MOBILE=1)"))
         marker = item.get_closest_marker("env")
         if marker is not None and marker.args:
             required_env = marker.args[0]
@@ -604,6 +609,16 @@ def _authenticated_page(browser, env, role, request, fixture_name):
     context.close()
     if _video_recording_enabled():
         _finalize_test_video(request, fixture_name, page, started_at)
+
+
+@pytest.fixture
+def apply_env_timeouts(env):
+    """Фикстура-обёртка над _apply_env_timeouts для вложенных conftest.py: голый
+    `from conftest import …` из tests/ui/<раздел>/conftest.py под xdist резолвится в чужой
+    одноимённый conftest (tests/ui/tickets/conftest.py) — см. build_context_kwargs."""
+    def _apply(context):
+        _apply_env_timeouts(context, env)
+    return _apply
 
 
 @pytest.fixture
