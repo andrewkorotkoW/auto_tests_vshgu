@@ -1,7 +1,7 @@
 """Пользовательская страница «База знаний» (/library): поиск и открытие материала,
 прохождение материала (статья/аудио/видео/книга/файл/курс) и страница «Достижения»."""
 import re
-from urllib.parse import unquote_plus
+from urllib.parse import parse_qs, unquote, urlparse
 
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, expect
 
@@ -49,7 +49,8 @@ class UserKnowledgeBasePage(BasePage):
             self.page.keyboard.press("Enter")
             self.wait_loaded()
             self.page.wait_for_timeout(1000)
-            if query in unquote_plus(self.page.url):
+            filter_value = parse_qs(urlparse(self.page.url).query).get("filter", [""])[0]
+            if query in filter_value:
                 return
         raise AssertionError(f"Поиск не применил фильтр '{query}': url={self.page.url}")
 
@@ -63,19 +64,22 @@ class UserKnowledgeBasePage(BasePage):
         """Открыть материал по имени.
 
         Только что созданный материал не сразу попадает в поисковый индекс —
-        повторяем поиск, если карточка не появилась с первой попытки."""
+        повторяем поиск, пока пользовательский каталог не вернёт карточку."""
         card = None
-        attempts = 3
+        attempts = 6
         for attempt in range(attempts):
             self.search(name)
             card = self.material_card(name)
             try:
-                expect(card).to_be_visible(timeout=15000)
+                expect(card).to_be_visible(timeout=10000)
                 break
             except AssertionError:
                 if attempt == attempts - 1:
-                    raise
-                self.page.wait_for_timeout(3000)
+                    raise AssertionError(
+                        f"Материал '{name}' не появился в пользовательском каталоге "
+                        f"после {attempts} попыток поиска"
+                    )
+                self.page.wait_for_timeout(5000)
         card.click(timeout=5000)
         self.wait_loaded()
 

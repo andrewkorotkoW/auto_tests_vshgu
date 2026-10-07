@@ -30,8 +30,8 @@ class TestCompletePracticalTask:
     @pytest.mark.ui
     @pytest.mark.practical_tasks
     def test_complete_practical_task(
-        self, page, env, api_client, tincan_endpoint, assignments_endpoint, homework_endpoint,
-        assigned_user, created_module, created_homework,
+        self, page, env, api_client, tincan_endpoint, assignments_endpoint,
+        assigned_user, created_module, created_homework, register_practical_homework,
     ):
         homework_id = None
 
@@ -62,6 +62,7 @@ class TestCompletePracticalTask:
                     sub_files_uuids=[sub_file_uuid],
                 )
                 homework_id = homework["id"]
+                register_practical_homework(homework_id)
 
                 assigned_ok = assignments_endpoint.assign_content_to_module(
                     stream["program_id"], stream["id"], module["id"], [homework_id]
@@ -102,6 +103,4 @@ class TestCompletePracticalTask:
             with allure.step("8. Проверить статус «Отправлено на проверку»"):
                 task_page.expect_sent_to_review()
         finally:
-            if homework_id is not None:
-                with allure.step("9. Удалить ПЗ"):
-                    homework_endpoint.mass_delete([homework_id])
+            pass

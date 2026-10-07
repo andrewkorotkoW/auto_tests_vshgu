@@ -55,12 +55,13 @@ class TestGroupPracticalTaskFlow:
     @pytest.mark.groups
     def test_group_practical_task_flow(
         self, admin_page, browser, env, api_client, tincan_endpoint, assignments_endpoint,
-        created_user, group_practical_task,
+        users_endpoint, created_user, group_practical_task,
     ):
         with allure.step("1. Подготовить поток, модуль, ПЗ, двух слушателей и проверяющего через API"):
             user1 = created_user()
             user2 = created_user()
             reviewer = created_user()
+            users_endpoint.assign_roles(reviewer["id"], [4])
 
             cover_uuid = tincan_endpoint.upload_cover(str(TEST_DATA_DIR / "practical_task_cover.png"))
             archive_uuid = tincan_endpoint.upload_archive(str(TEST_DATA_DIR / "practical_task_main_document.docx"))

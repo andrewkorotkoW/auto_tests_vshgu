@@ -52,6 +52,8 @@ def _restart_close_restart_complete(page: Page, onboarding: OnboardingPage) -> N
 
     with allure.step("3. Закрываем онбординг крестиком на 2-м слайде"):
         onboarding.close_onboarding()
+        expect(page.locator("[data-qa='onboarding-popup-close']")).not_to_be_visible(timeout=10000)
+        page.wait_for_timeout(800)
 
     with allure.step("4. Запускаем повторный онбординг снова и проходим до конца"):
         onboarding.restart_onboarding()
@@ -80,15 +82,6 @@ class TestRepeatOnboarding:
 
     @allure.title("Повторный онбординг раздела «База знаний»: закрыть крестиком, перезапустить, пройти")
     @allure.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.xfail(
-        reason="Попап тура раздела (div.onboarding-popup, привязан к элементу страницы) "
-        "не имеет крестика закрытия — в разметке только «Назад»/«Далее» (data-qa "
-        "onboarding-popup-prev/next), проверено в DOM. Escape и клик по .v-overlay__scrim "
-        "тур не закрывают, «Далее» остаётся видимой. Это отдельно от бага «клик по "
-        "анимирующемуся окну» (он пофикшен для модалки «Моё обучение» — тот сценарий "
-        "зелёный): здесь у виджета в принципе нет способа закрыться на промежуточном слайде.",
-        strict=False,
-    )
     def test_repeat_onboarding_knowledge_base(self, repeat_onboarding_page: Page):
         page = repeat_onboarding_page
         onboarding = OnboardingPage(page)
@@ -108,11 +101,6 @@ class TestRepeatOnboarding:
 
     @allure.title("Повторный онбординг раздела «Техподдержка»: закрыть крестиком, перезапустить, пройти")
     @allure.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.xfail(
-        reason="Попап тура раздела (div.onboarding-popup) не имеет крестика закрытия — "
-        "см. подробности в test_repeat_onboarding_knowledge_base.",
-        strict=False,
-    )
     def test_repeat_onboarding_support(self, repeat_onboarding_page: Page):
         page = repeat_onboarding_page
         onboarding = OnboardingPage(page)
@@ -131,11 +119,6 @@ class TestRepeatOnboarding:
 
     @allure.title("Повторный онбординг раздела «Индивидуальное обучение»: закрыть крестиком, перезапустить, пройти")
     @allure.severity(allure.severity_level.CRITICAL)
-    @pytest.mark.xfail(
-        reason="Попап тура раздела (div.onboarding-popup) не имеет крестика закрытия — "
-        "см. подробности в test_repeat_onboarding_knowledge_base.",
-        strict=False,
-    )
     def test_repeat_onboarding_personal_education(self, repeat_onboarding_page: Page):
         page = repeat_onboarding_page
         onboarding = OnboardingPage(page)

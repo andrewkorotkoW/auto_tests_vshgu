@@ -12,15 +12,17 @@ group_practical_task закрывает именно этот пробел дл�
 """
 import pytest
 
-from utils.logger import logger
-
 
 @pytest.fixture
-def group_practical_task(created_stream, created_module, created_homework, assignments_endpoint, homework_endpoint):
+def group_practical_task(
+    created_stream,
+    created_module,
+    created_homework,
+    assignments_endpoint,
+    register_practical_homework,
+):
     """Создаёт поток → модуль → ПЗ и добавляет ПЗ в модуль. Удаляет ПЗ после теста
     (поток/программу удаляет created_stream, пользователей — created_user)."""
-    homework_ids = []
-
     def _create(*, cover_uuid, archive_uuid, sub_files_uuids, teacher_ids, inspector_ids, **stream_kwargs):
         stream = created_stream(**stream_kwargs)
         module = created_module(program_id=stream["program_id"], stream_id=stream["id"])
@@ -31,7 +33,7 @@ def group_practical_task(created_stream, created_module, created_homework, assig
             teacher_ids=teacher_ids,
             inspector_ids=inspector_ids,
         )
-        homework_ids.append(homework["id"])
+        register_practical_homework(homework["id"])
 
         assigned_ok = assignments_endpoint.assign_content_to_module(
             stream["program_id"], stream["id"], module["id"], [homework["id"]]
@@ -41,9 +43,3 @@ def group_practical_task(created_stream, created_module, created_homework, assig
         return stream, module, homework
 
     yield _create
-
-    for homework_id in homework_ids:
-        try:
-            homework_endpoint.mass_delete([homework_id])
-        except Exception as e:
-            logger.warning(f"Failed to delete group homework {homework_id}: {e}")

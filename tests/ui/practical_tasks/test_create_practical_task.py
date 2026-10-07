@@ -14,7 +14,6 @@ import pytest
 from api.helpers.data_generator import unique_suffix
 from ui.pages.admin_activities_page import AdminActivitiesPage
 from ui.pages.user_sidebar_page import UserSidebarPage
-from utils.logger import logger
 
 TEST_DATA_DIR = Path(__file__).resolve().parents[3] / "test_data"
 
@@ -27,43 +26,36 @@ class TestCreatePracticalTask:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
-    def test_create_practical_task(self, admin_page, env, homework_endpoint, created_user):
+    def test_create_practical_task(self, admin_page, env, created_user, register_practical_homework):
         activities_page = AdminActivitiesPage(admin_page)
-        homework_id = None
 
-        try:
-            with allure.step("1. Подготовить преподавателя и проверяющего через API"):
-                teacher = created_user()
-                reviewer = created_user()
-                teacher_full_name = f"{teacher['surname']} {teacher['name']} {teacher['patronymic']}"
-                reviewer_full_name = f"{reviewer['surname']} {reviewer['name']} {reviewer['patronymic']}"
-                logger.info(f"Преподаватель: {teacher_full_name}, проверяющий: {reviewer_full_name}")
+        with allure.step("1. Подготовить преподавателя и проверяющего через API"):
+            teacher = created_user()
+            reviewer = created_user()
+            teacher_full_name = f"{teacher['surname']} {teacher['name']} {teacher['patronymic']}"
+            reviewer_full_name = f"{reviewer['surname']} {reviewer['name']} {reviewer['patronymic']}"
 
-            with allure.step("2. Открыть «База Активити» и форму создания ПЗ"):
-                activities_page.open_list(env.ui_base_url)
-                # storage_state логинит без формы, поэтому онбординг-тур ещё не пройден —
-                # закрываем его, иначе затемнение перехватывает клики по форме
-                UserSidebarPage(admin_page).dismiss_popups()
-                activities_page.open_create_form()
+        with allure.step("2. Открыть «База Активити» и форму создания ПЗ"):
+            activities_page.open_list(env.ui_base_url)
+            # storage_state логинит без формы, поэтому онбординг-тур ещё не пройден —
+            # закрываем его, иначе затемнение перехватывает клики по форме
+            UserSidebarPage(admin_page).dismiss_popups()
+            activities_page.open_create_form()
 
-            with allure.step("3. Заполнить форму ПЗ: тип, обложка, поля, документы, преподаватель, проверяющий"):
-                name = f"Автотест ПЗ {unique_suffix()}"
-                external_name = f"{name} внешнее"
-                activities_page.create_homework_activity(
-                    name=name,
-                    external_name=external_name,
-                    cover_path=TEST_DATA_DIR / "practical_task_cover.png",
-                    main_document_path=TEST_DATA_DIR / "practical_task_main_document.docx",
-                    additional_document_path=TEST_DATA_DIR / "practical_task_additional_document.xlsx",
-                    teacher_full_name=teacher_full_name,
-                    reviewer_full_name=reviewer_full_name,
-                )
+        with allure.step("3. Заполнить форму ПЗ: тип, обложка, поля, документы, преподаватель, проверяющий"):
+            name = f"Автотест ПЗ {unique_suffix()}"
+            external_name = f"{name} внешнее"
+            activities_page.create_homework_activity(
+                name=name,
+                external_name=external_name,
+                cover_path=TEST_DATA_DIR / "practical_task_cover.png",
+                main_document_path=TEST_DATA_DIR / "practical_task_main_document.docx",
+                additional_document_path=TEST_DATA_DIR / "practical_task_additional_document.xlsx",
+                teacher_full_name=teacher_full_name,
+                reviewer_full_name=reviewer_full_name,
+            )
 
-            with allure.step("4. Проверить, что ПЗ найдено в таблице «База Активити» по названию"):
-                activities_page.expect_created(name)
-                homework_id = activities_page.activity_id(name)
-                logger.info(f"ПЗ создано в UI: ID={homework_id}, name={name}")
-        finally:
-            if homework_id is not None:
-                with allure.step("5. Удалить созданное ПЗ"):
-                    homework_endpoint.mass_delete([homework_id])
+        with allure.step("4. Проверить, что ПЗ найдено в таблице «База Активити» по названию"):
+            activities_page.expect_created(name)
+            homework_id = activities_page.activity_id(name)
+            register_practical_homework(homework_id)
