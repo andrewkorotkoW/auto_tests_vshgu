@@ -72,15 +72,23 @@ class LoginPage(BasePage):
 
         try:
             modal.wait_for(state="visible", timeout=3000)
-            checkbox = modal.locator('input[type="checkbox"]').first
-            if checkbox.is_visible(timeout=1000):
-                checkbox.check()
-            submit = modal.get_by_role("button", name="Отправить", exact=True)
-            if submit.is_visible(timeout=1000):
-                submit.click()
-            logger.info("✅ Модальное окно обработано")
         except PlaywrightTimeoutError:
             logger.info("Модальное окно не появилось")
+            return
+        # Чекбокс согласия в Vuetify визуально скрыт (opacity 0), is_visible() даёт False —
+        # поэтому отмечаем force, как в UserSidebarPage.dismiss_anketa; иначе «Отправить»
+        # уходит без согласия, анкета остаётся и перекрывает страницу (07.10, после слияния).
+        try:
+            for checkbox in modal.locator('input[type="checkbox"]').all():
+                if not checkbox.is_checked():
+                    checkbox.check(force=True, timeout=5000)
+            submit = modal.get_by_role("button", name="Отправить", exact=True)
+            if submit.count():
+                submit.first.click(force=True, timeout=5000)
+            modal.wait_for(state="hidden", timeout=10000)
+            logger.info("✅ Модальное окно обработано")
+        except PlaywrightTimeoutError as exc:
+            logger.warning(f"Модальное окно не закрылось: {str(exc)[:120]}")
 
     def complete_training(self):  # ← переименовано
         try:
