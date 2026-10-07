@@ -82,7 +82,16 @@ def dashboard_data(
     with allure.step("Дождаться появления строк в статистике дашбордов"):
         # Статистика считается асинхронно бэкендом после назначений/смены статусов —
         # сразу после запросов выше строк в /statistics/* может ещё не быть.
-        dashboards_endpoint.wait_for_program_row(program_name)
+        # Ждём не только появления строки, но и финальных значений: завершённость
+        # мероприятий (регистрация на schedule item) и число назначений считаются
+        # отдельными пересчётами и на develop отстают на десятки секунд — UI-тест
+        # падал на «0 вместо 1» в колонке завершённости (07.10).
+        dashboards_endpoint.wait_for_program_row(
+            program_name,
+            predicate=lambda row: int(row.get("completeness_schedule_items") or 0) >= 1
+            and int(row.get("assignments_count") or 0) >= len(user_ids),
+            timeout=90,
+        )
         dashboards_endpoint.wait_for_course_row(course["name"], stream_id)
 
     return {

@@ -27,7 +27,7 @@ class TestAdminChecksProgramAndCourseDashboards:
     @allure.title("UI: Администратор проверяет строки дашбордов программ и курсов")
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.xfail(
-        reason="Нестабильно на develop: статистика программ (/admin/learning-statistics/programs) пересчитывается с лагом — колонка «назначено» показывает 0 вместо 1 сразу после создания (подтверждено прогоном 07.10 после снятия xfail коммитом e59026b); не дефект теста",
+        reason="develop: completeness_schedule_items в /statistics/programs не пересчитывается после регистрации на мероприятие через API (0 вместо 1 спустя 10 мин опроса API, 07.10; qa_analysis/cases/schedule_completeness_develop_2026-10-07); на k8s v2 06.10 тот же сценарий давал 1 — дефект пересчёта на develop, не поиска и не лаг",
         strict=False,
     )
     @pytest.mark.ui
