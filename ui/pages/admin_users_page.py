@@ -77,7 +77,12 @@ class AdminUsersPage(BasePage):
         self.page.keyboard.press("Enter")
 
     def user_row_by_email(self, email: str) -> Locator:
-        return self.page.locator(f"xpath=//tr[.//a[contains(@href,'/admin/users/')][.//span[normalize-space()='{email}']]]")
+        # develop: email внутри <a><span>…</span></a>; ветка VSHGU2-2378 (vs-table): <a class="vs-table__link">email</a>
+        # без span — принимаем оба варианта, чтобы тест не падал ни до, ни после слияния 2378.
+        return self.page.locator(
+            f"xpath=//tr[.//a[contains(@href,'/admin/users/')]"
+            f"[normalize-space()='{email}' or .//span[normalize-space()='{email}']]]"
+        )
 
     def open_user_by_email(self, email: str) -> int:
         row = self.user_row_by_email(email)
