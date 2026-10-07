@@ -8,13 +8,15 @@ stages:
   - test
 
 variables:
-  IMAGE: "${CI_REGISTRY_IMAGE}:latest"
+  IMAGE: "${CI_REGISTRY_IMAGE}:$CI_COMMIT_REF_SLUG"
 
 docker:build:
   stage: dockerize
   tags:
     - devspark-builder
   when: manual
+  variables:
+    GIT_STRATEGY: clone
   before_script:
     - docker login -u ${CI_REGISTRY_USER} -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
   script:
@@ -25,20 +27,16 @@ docker:build:
 .run_tests:
   stage: test
   tags:
-    - devspark-builder
+    - devspark-docker
+  image: $IMAGE
   # Раннер devspark-builder — shell executor (job идёт на хосте, `image:` игнорируется),
   # поэтому тесты запускаем внутри собранного образа через docker run.
   # Переменные стендов — файл CI_TEST_ENV_FILE (тип File) в формате KEY=VALUE без кавычек.
   before_script:
     - docker login -u ${CI_REGISTRY_USER} -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
-    - docker pull "${IMAGE}"
+    # - docker pull "${IMAGE}"
   script:
-    - mkdir -p "${CI_PROJECT_DIR}/results"
-    - >
-      docker run --rm --shm-size=1g
-      --env-file "${CI_TEST_ENV_FILE}" -e HEADLESS=1
-      -v "${CI_PROJECT_DIR}/results:/tests/results"
-      "${IMAGE}" bash scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
+    - bash scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
   artifacts:
     when: always   # результаты нужны и при упавших тестах
     expire_in: 1 days
