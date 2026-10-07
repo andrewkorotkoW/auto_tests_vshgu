@@ -4,7 +4,7 @@
 ветку `main` в `qa/lms`, поправил Dockerfile/CI (без volume) и добавил наши джобы в `vshgu/lms/ci-cd`
 (`.autotest.vshgu.yml`, закомментировано). Требования девопса: никаких volume при запуске; универсальный
 набор переменных для iac-конфигов (сейчас файл `CI_AUTOTEST_ENV_FILE` содержит `DEVELOP_*`/`STAGE_*` для
-одного ЦОДа). Актуальная ветка — `auto_tests_vshgu` (в `main` нет ~70 файлов тестов за октябрь); ветка
+одного ЦОДа). Актуальная ветка (с 07.10) — `main` == бывшая `auto_tests_vshgu`; ветка
 Игоря `feature/unify-autotest-architecture` влита в `auto_tests_vshgu` 07.10 (`5cf53e2`).
 
 ## Факты по пайплайну (ci-cd, ветка develop, 07.10)
@@ -35,7 +35,9 @@
    STAND_URL из переменной деплоя). Указать, что `main` должен быть равен `auto_tests_vshgu`.
 5. Проверка: `docker build` локально, `docker run` без volume с `--env stand` и `STAND_URL` develop,
    smoke-набор зелёный, артефакты внутри контейнера на месте; tests/tools зелёные.
-6. После слияния — владелец просит девопса заменить `main` веткой `auto_tests_vshgu`.
+6. ~~После слияния — владелец просит девопса заменить `main` веткой `auto_tests_vshgu`.~~ Сделано 07.10: истории
+   связаны ours-merge (`21be9c6`), `main` обновлён через МР владельца, `main` == `auto_tests_vshgu`; дальше рабочая
+   ветка — `main`, `auto_tests_vshgu` — архив до ~21.10. Правки девопса по Dockerfile/CI уже в `main` (`98aa37a`).
 
 ## Правила
 Только develop/k8s-стенды, прод не трогать. Учётки из `.env`, в код/доки/коммиты не писать. Отчёт —
