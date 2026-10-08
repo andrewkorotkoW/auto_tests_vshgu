@@ -139,6 +139,20 @@ ENVIRONMENTS["k8s"] = _build_environment(
     },
 )
 
+# Произвольный стенд «stand» (универсальный профиль для CI других ЦОДов, см. docs/DEVOPS.md
+# раздел 4.1): все переменные с префиксом STAND_ — это и есть финальные имена (в отличие от
+# k8s, где STAND_URL — лишь один из источников для префикса K8S). Единого стенда по умолчанию
+# нет, поэтому хардкод-фолбэка хоста тут не предусмотрено — если STAND_URL не задан, адреса
+# получаются пустыми.
+_STAND_UI = (os.getenv("STAND_URL") or "").rstrip("/")
+ENVIRONMENTS["stand"] = _build_environment(
+    "stand",
+    cookie_name=os.getenv("STAND_COOKIE_NAME", ""),
+    default_api=f"{_STAND_UI}/api/v1",
+    default_ui=_STAND_UI,
+    default_global=_STAND_UI.replace("://portal-", "://global-") + "/api/v1",
+)
+
 # prod по умолчанию выключен — на нём разрешено гонять только smoke-тесты,
 # чтобы случайный полный прогон не выполнял мутирующие тесты на проде.
 PROD_ALLOWED_MARKEXPR = "smoke"
