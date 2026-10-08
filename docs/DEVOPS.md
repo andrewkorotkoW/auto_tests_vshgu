@@ -1,6 +1,6 @@
 # Автотесты LMS в Docker: инструкция для DevOps
 
-Ветка: `feature/ak_auto_tests`. Актуально на 23.09.2026. Вопросы: Андрей Коротков (QA).
+Ветка: `main`. Актуально на 08.10.2026. Вопросы: Андрей Коротков (QA).
 
 ## 1. Что это
 
@@ -28,13 +28,24 @@ docker build -t auto_tests_vshgu:latest .
 
 Команда прогона задаётся явно: `scripts/run.sh --env <стенд> [аргументы pytest]`. У образа нет ENTRYPOINT, чтобы GitLab CI мог запускать в контейнере shell; по умолчанию (`CMD`) выполняется прогон на develop.
 
+**В CI volume не нужны и не используются.** GitLab CI запускает джобу через `image: $IMAGE` — это
+собственный docker-executor раннера, он сам монтирует рабочую директорию джобы и сам же забирает
+`results/` как `artifacts:` после завершения скрипта. Внутри джобы это просто:
+
+```bash
+bash scripts/run.sh --env "${STAND}" ${PYTEST_ARGS}
+```
+
+`-v`/volume нужны только локально разработчику, чтобы руками вытащить `results/`/`.cache/` на хост —
+это удобство для машины QA, к контуру CI отношения не имеет:
+
 ```bash
 # локально, через compose (учётки из ./.env)
 docker compose run --rm tests scripts/run.sh --env develop
 docker compose run --rm tests scripts/run.sh --env develop -m smoke
 docker compose run --rm tests scripts/run.sh --env stage -m "smoke and api"
 
-# без compose
+# без compose, тоже только для локальной машины
 docker run --rm --env-file .env --shm-size=1g \
   -v "$PWD/results:/tests/results" -v "$PWD/.cache:/tests/.cache" \
   auto_tests_vshgu:latest scripts/run.sh --env develop -m smoke
@@ -45,7 +56,8 @@ docker run --rm --env-file .env --shm-size=1g \
 Результаты: `results/<env>/<timestamp>/` — allure-results и `junit.xml`; если в образе есть Allure CLI,
 там же собирается `results/<env>/allure-report/`. Allure-history между прогонами хранится в `results/<env>/allure-history`.
 
-`.cache/` — кэш сессий логина, чтобы каждый прогон не логинился заново. Можно не монтировать, тогда логин на каждый запуск.
+`.cache/` — кэш сессий логина, чтобы каждый прогон не логинился заново. В CI не монтируется (эфемерен,
+живёт только в рамках одной джобы) — это осознанно, каждая джоба логинится заново.
 
 ## 4. Переменные окружения
 
@@ -61,6 +73,37 @@ docker run --rm --env-file .env --shm-size=1g \
 `<ENV>` = `DEVELOP`, `STAGE`, `PROD`. В GitLab: Settings → CI/CD → Variables, masked + protected, имена как в `.env.example`.
 Переменные `*_COOKIE*` устаревшие, оставлены для совместимости, задавать не нужно.
 
+### 4.1 Универсальный набор для iac-конфигов (другие ЦОДы, файл переменных пайплайна)
+
+Для прогона по шаблону `vshgu/lms/ci-cd` на произвольном ЦОДе нужен один файл переменных (тип `File`,
+`KEY=VALUE` без кавычек — как `CI_TEST_ENV_FILE` в `.run_tests` нашего `.gitlab-ci.yml`) с префиксом
+`STAND_` вместо `DEVELOP_`/`STAGE_`:
+
+**Обязательные:**
+
+| Переменная | Что это |
+|---|---|
+| `STAND_URL` | адрес портала стенда, например `https://portal-develop.d2.devspark.ru` |
+| `STAND_COOKIE_NAME` | имя сессионной куки стенда |
+| `STAND_ADMIN_LOGIN` / `STAND_ADMIN_PASSWORD` | учётка администратора |
+| `STAND_USER_LOGIN` / `STAND_USER_PASSWORD` | учётка слушателя |
+
+**Необязательные** (если не заданы — выводятся из `STAND_URL` автоматически: `portal-` → `global-`/`helpdesk-`):
+
+| Переменная | Что это |
+|---|---|
+| `STAND_API_URL` | адрес API, если отличается от выведенного |
+| `STAND_GLOBAL_URL` | глобальный API (например для cross-tenant статистики) |
+| `HELPDESK_URL` | адрес хелпдеска, если отличается от выведенного |
+
+**Необязательные, только под конкретные интеграционные тесты** (пусто = тест пропускается `skip`, не `fail`):
+`STAND_CAS_TOKEN`, `STAND_EXTERNAL_TOKEN`, `STAND_LPD_JWT`, `STAND_BUK_TOKEN`.
+
+На момент записи (08.10.2026) код автотестов ещё не умеет читать `STAND_*`/режим `--env stand` —
+сейчас понимает только фиксированные `develop`/`stage`/`prod`/`k8s`. Это в работе на нашей стороне
+(расширение `config/environments.py`), название переменных уже финальное — можно закладывать в iac
+без риска, что имена потом поменяются.
+
 ## 5. Правила по стендам
 
 - **develop**: полный прогон, можно по расписанию.
@@ -71,17 +114,21 @@ docker run --rm --env-file .env --shm-size=1g \
 
 ## 6. GitLab CI
 
-`.gitlab-ci.yml`: стадия `dockerize` собирает и пушит образ `${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}`
-(оставлена как была), стадия `test` — три задания на его основе:
+`.gitlab-ci.yml`: стадия `dockerize` (`docker:build`, тег `devspark-builder`, ручная) собирает и пушит
+образ `${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}`, стадия `test` — четыре задания на его основе
+(`.run_tests`, тег `devspark-docker`, `image: $IMAGE`):
 
 | Задание | Стенд | Запуск |
 |---|---|---|
-| `tests:develop` | develop | по расписанию (Schedules) или вручную |
-| `tests:stage` | stage | только вручную |
+| `tests:develop:api` | develop, `tests/api` | по расписанию (Schedules) или вручную, таймаут 2 ч |
+| `tests:develop:ui` | develop, `tests/ui tests/e2e` | по расписанию (Schedules) или вручную, таймаут 2 ч |
+| `tests:stage` | stage, полный | только вручную, таймаут 2 ч |
 | `tests:prod-smoke` | prod, `-m smoke` | только вручную |
 
-Артефакты: `results/` на 14 дней, `junit.xml` подхватывается во вкладку Tests пайплайна. Раннеру нужны:
-тег `devspark-builder` (как у сборки, поправить под ваш), сетевой доступ к стендам `*.devspark.ru`
+develop разбит на API/UI, чтобы каждая джоба укладывалась в часовой лимит проекта и шла параллельно.
+Артефакты: `results/` на 1 день (`expire_in: 1 days`, `when: always` — остаются и при падении тестов),
+`junit.xml` подхватывается во вкладку Tests пайплайна. Раннеру нужны: тег `devspark-builder` для сборки
+и `devspark-docker` для прогона (поправить под ваши раннеры), сетевой доступ к стендам `*.devspark.ru`
 и `*.ranepa.ru`, около 2 ГБ памяти на задание (Chromium).
 
 ## 7. Проверка после развёртывания
