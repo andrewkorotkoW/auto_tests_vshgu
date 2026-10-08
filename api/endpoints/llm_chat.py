@@ -96,6 +96,23 @@ class LlmChatEndpoint:
         expect_status(resp, 200)
         return resp.json()["data"]
 
+    def ask_question(self, llm_chat_id: int, message: str) -> Dict:
+        """POST /llm-chat/{numeric_llm_chat_id} {"message": ...} → 200
+        {"message":"Генерация установлена в очередь","llm_answer_id":N} (docs/ai_chat_recon.md, 2.2).
+        `llm_chat_id` — это `data.id` из get()/wait_processed(), не content_id и не
+        llm_knowledge_uuid."""
+        resp = self.client.post(f"/llm-chat/{llm_chat_id}", json={"message": message})
+        expect_status(resp, 200)
+        return resp.json()
+
+    def history(self, llm_chat_id: int, per_page: int = 50) -> List[Dict]:
+        """GET /llm-chat/{numeric_llm_chat_id}?per-page=N → пагинированная история вопросов/
+        ответов (docs/ai_chat_recon.md, 2.3): каждый элемент содержит request/answer/status/
+        created_at."""
+        resp = self.client.get(f"/llm-chat/{llm_chat_id}?per-page={per_page}")
+        expect_status(resp, 200)
+        return resp.json()["data"]
+
     def wait_processed(self, content_id: int, timeout: int = 180, poll_interval: float = 5.0) -> Dict:
         """Опрос GET /content/{id}/llm-chat до терминального статуса каждого файла знания
         (completed/short_context/empty_context) и knowledge.status (completed/failed) —

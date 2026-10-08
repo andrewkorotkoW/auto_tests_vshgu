@@ -2,19 +2,16 @@
 (docs/ai_chat_recon.md, раздел 2.2: POST /llm-chat/{numeric_llm_chat_id} —
 контракт зафиксирован разведкой живым перехватом).
 
-LlmChatEndpoint (api/endpoints/llm_chat.py) не содержит метода для отправки вопроса
-слушателя (есть только get/upload_files/setup/disable/remove_file/export/wait_processed/
-add_file) — по условиям задачи инфраструктуру не трогаем и не дописываем production-код,
-поэтому запрос выполнен напрямую через ApiClient (api_client.post), без изменений
-в api/endpoints/llm_chat.py. См. итоговый отчёт: метод ask_question в LlmChatEndpoint
-отсутствует, это пробел в инфраструктуре, а не тестов.
+Вопрос и история — через LlmChatEndpoint.ask_question/history (api/endpoints/llm_chat.py),
+привязанные к сессии слушателя (отдельный ApiClient на его cookies), а не к общему
+api_client админа.
 """
 import time
 
 import allure
 import pytest
 
-from api.helpers.expectations import expect_status
+from api.endpoints.llm_chat import LlmChatEndpoint
 from api.helpers.user_prepare_api import login_user_session
 from api.client import ApiClient
 from tests.api.ai_chat._helpers import unique_context_file
@@ -55,15 +52,15 @@ class TestLlmChatQuestions:
             listener_client = ApiClient(
                 session=listener_session, base_url=env.api_base_url, cookie_name=env.cookie_name
             )
+            listener_llm_chat = LlmChatEndpoint(listener_client)
 
         with allure.step("Запомнить questions_count/answers_count до вопроса"):
             before = llm_chat_endpoint.get(content_id)
             questions_before = before["questions_count"]
             answers_before = before["answers_count"]
 
-        with allure.step("Задать вопрос от имени слушателя: POST /llm-chat/{id}"):
-            resp = listener_client.post(f"/llm-chat/{chat_id}", json={"message": QUESTION_TEXT})
-            expect_status(resp, 200)
+        with allure.step("Задать вопрос от имени слушателя: LlmChatEndpoint.ask_question"):
+            listener_llm_chat.ask_question(chat_id, QUESTION_TEXT)
 
         with allure.step(f"Дождаться роста questions_count/answers_count (до {ANSWER_WAIT_TIMEOUT} с)"):
             deadline = time.monotonic() + ANSWER_WAIT_TIMEOUT
@@ -81,3 +78,7 @@ class TestLlmChatQuestions:
                 f"answers_count не вырос за {ANSWER_WAIT_TIMEOUT} с: было {answers_before}, "
                 f"стало {after['answers_count']}"
             )
+
+        with allure.step("История (GET /llm-chat/{id}) содержит заданный вопрос"):
+            history = listener_llm_chat.history(chat_id)
+            assert any(item.get("request") == QUESTION_TEXT for item in history), history
