@@ -33,8 +33,6 @@ class TestPlayerChatToggle:
 
         with allure.step("3. Открыть плеер курса через индивидуальное обучение"):
             player_page = open_course_player(page, tincan_with_ai_chat["name"])
-            print(f"DEBUG player_page.url={player_page.url}")
-            print(f"DEBUG player_page.title={player_page.title()}")
 
         with allure.step("4. Кнопка чата с ИИ видна, подсказка при наведении показывает ожидаемый текст"):
             chat_page = PlayerAiChatPage(player_page)
