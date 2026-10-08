@@ -13,6 +13,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_filter.py::TestLlmChatFilter::test_filter_returns_only_activities_with_ai_chat
 - Приоритет: medium   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: 5d412301-020d-4d0b-8ba9-2a8a04d5e324
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити без настроенного чата с ИИ | — |
@@ -24,6 +25,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_formats.py::TestLlmChatFormats::test_format_reaches_completed[txt]
 - Приоритет: medium   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: 066af80a-da57-47a8-ba37-fd5da55c9bb1
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити и загрузить soups.txt как контекст чата | — |
@@ -34,6 +36,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_formats.py::TestLlmChatFormats::test_format_reaches_completed[pdf]
 - Приоритет: medium   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: 055c0a91-b9f8-407f-9bbe-c21886e56593
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити и загрузить soups.pdf как контекст чата | — |
@@ -44,6 +47,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_formats.py::TestLlmChatFormats::test_format_reaches_completed[md]
 - Приоритет: medium   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: ac288b9a-5eef-4ae5-951f-62b616e44f40
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити и загрузить pea_soup.md как контекст чата | — |
@@ -54,6 +58,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_formats.py::TestLlmChatFormats::test_scan_without_text_reaches_empty_context
 - Приоритет: medium   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: 829b02fa-9232-40a2-8a83-8ea0aae6a934
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити и загрузить скан-PDF без текстового слоя (только изображения) | — |
@@ -64,6 +69,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_formats.py::TestLlmChatFormats::test_short_document_reaches_short_context
 - Приоритет: medium   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: b6c4ed4e-e431-45b1-86ba-93c5cfb8a001
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити и загрузить короткий docx (мало текста) | — |
@@ -74,6 +80,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_management.py::TestLlmChatManagement::test_remove_file
 - Приоритет: medium   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: 99278d6a-73f2-4fdf-b03e-28c36f885e4f
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Настроить чат с ИИ и дождаться completed | — |
@@ -85,6 +92,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_management.py::TestLlmChatManagement::test_disable_chat
 - Приоритет: high   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: e9a59ff5-cf89-4a97-a6b0-80f0dea0a438
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Настроить чат и дождаться терминального статуса | — |
@@ -97,6 +105,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_management.py::TestLlmChatManagement::test_export_history
 - Приоритет: low   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: a6294459-ac72-4c0e-b239-2f803674b687
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Настроить чат и дождаться терминального статуса | — |
@@ -107,6 +116,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_questions.py::TestLlmChatQuestions::test_questions_count_grows_after_listener_question
 - Приоритет: high   Тип: api   Роли: user
 - Предусловия: -
+- Test IT: f2b86205-c835-4295-8d5f-91d33e1a744c
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити, настроить чат с ИИ и дождаться completed | — |
@@ -121,6 +131,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_setup.py::TestLlmChatSetup::test_empty_chat_for_new_activity
 - Приоритет: medium   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: afaf8069-90cc-46fe-87d2-07dfeaa15d14
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити Tincan, чат с ИИ не настраивать | — |
@@ -131,6 +142,7 @@
 - Автотест: tests/api/ai_chat/test_llm_chat_setup.py::TestLlmChatSetup::test_setup_with_docx_reaches_completed
 - Приоритет: high   Тип: api   Роли: -
 - Предусловия: -
+- Test IT: 070fffb8-9939-4734-8291-eb01a9e79eab
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Загрузить soups.docx и настроить чат с ИИ (is_enabled=1) | — |
@@ -143,6 +155,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_activities_list_icon_filter.py::TestAiChatActivitiesListIconFilter::test_icon_and_filter[tincan]
 - Приоритет: high   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 1ed59300-bd50-4220-a052-6cf21fc26020
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити типа Tincan без чата с ИИ | — |
@@ -156,6 +169,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_activities_list_icon_filter.py::TestAiChatActivitiesListIconFilter::test_icon_and_filter[scorm]
 - Приоритет: high   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 50b2bfc9-2371-424d-b090-e7450fcdc660
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать активити типа Scorm без чата с ИИ | — |
@@ -169,6 +183,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_card_tab_switch.py::TestAiChatCardTabSwitch::test_tab_and_switch_without_file
 - Приоритет: high   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 92a6c215-7dfd-4fdb-9b8e-176a48c21d5a
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Создать курс Tincan | — |
@@ -183,6 +198,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_drop_unsupported_format.py::TestAiChatDropUnsupportedFormat::test_drop_unsupported_format_rejected
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 60935fa8-7914-4b1f-9a77-f0192c7aae88
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити, включить переключатель | — |
@@ -195,6 +211,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_history_counters_export.py::TestAiChatHistoryCountersExport::test_counters_and_download_history
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 7d16d6a6-09e7-431c-b5d3-68b505e9f8f4
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити с настроенным чатом (вопросов пока не было) | Счётчики «Задано вопросов»/«Получено ответов» — 0 |
@@ -205,6 +222,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_remove_file.py::TestAiChatRemoveFile::test_remove_last_file_keeps_icon
 - Приоритет: high   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 22c13175-1867-42fc-a9c4-0f3cc56c0aec
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити с загруженным файлом | Файл и блок «История ИИ-чата» видны |
@@ -217,6 +235,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_scan_pdf_no_text.py::TestAiChatScanPdfNoText::test_scan_pdf_fails_processing
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: a38176cf-363e-4501-a2ed-3bcabc773fd6
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити, включить переключатель | — |
@@ -230,6 +249,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_upload_docx_history.py::TestAiChatUploadDocxHistory::test_upload_docx_shows_file_and_history
 - Приоритет: high   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 0271884e-866c-4b9b-b498-5f031930c46d
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити на вкладке «Чат с ИИ», включить переключатель | — |
@@ -242,6 +262,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_upload_formats.py::TestAiChatUploadFormats::test_upload_format[txt-test_data/llm/soups.txt]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: c554267d-1d39-4961-bc94-b475c33593b6
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити, включить переключатель | — |
@@ -254,6 +275,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_upload_formats.py::TestAiChatUploadFormats::test_upload_format[pdf-test_data/llm/soups.pdf]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 4329efed-278e-46b7-bae9-4e7a74cb4745
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити, включить переключатель | — |
@@ -266,6 +288,7 @@
 - Автотест: tests/ui/ai_chat/admin/test_upload_formats.py::TestAiChatUploadFormats::test_upload_format[md-test_data/llm/pea_soup.md]
 - Приоритет: medium   Тип: ui   Роли: admin
 - Предусловия: -
+- Test IT: 6db6ecd6-26a3-4a46-a4da-cf4bf1328004
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити, включить переключатель | — |
@@ -278,6 +301,7 @@
 - Автотест: tests/ui/ai_chat/user/test_player_chat_off_topic_questions.py::TestPlayerChatOffTopicQuestions::test_question_answered_and_saved_to_history[off_topic]
 - Приоритет: medium   Тип: ui   Роли: user
 - Предусловия: -
+- Test IT: 187354fb-adce-4070-a792-241855fbc5e4
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Назначить курс с настроенным чатом слушателю в индивидуальное обучение, войти, открыть плеер и чат | — |
@@ -290,6 +314,7 @@
 - Автотест: tests/ui/ai_chat/user/test_player_chat_off_topic_questions.py::TestPlayerChatOffTopicQuestions::test_question_answered_and_saved_to_history[about_test]
 - Приоритет: medium   Тип: ui   Роли: user
 - Предусловия: -
+- Test IT: 839b5005-a932-4058-8538-d31d37c7abad
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Назначить курс с настроенным чатом слушателю в индивидуальное обучение, войти, открыть плеер и чат | — |
@@ -302,6 +327,7 @@
 - Автотест: tests/ui/ai_chat/user/test_player_chat_qa_flow.py::TestPlayerChatQaFlow::test_question_rating_and_history_persist_after_relogin
 - Приоритет: high   Тип: ui   Роли: user
 - Предусловия: -
+- Test IT: 24636bf6-accb-4e09-b4ae-d815812369be
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Назначить курс с настроенным чатом слушателю в индивидуальное обучение, войти и открыть чат в плеере | — |
@@ -317,6 +343,7 @@
 - Автотест: tests/ui/ai_chat/user/test_player_chat_toggle.py::TestPlayerChatToggle::test_chat_button_visible_in_player
 - Приоритет: high   Тип: ui   Роли: user
 - Предусловия: -
+- Test IT: cdeda117-207c-4218-befb-319ac0aa98e1
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Назначить курс с настроенным чатом слушателю в индивидуальное обучение, войти и открыть плеер | — |
@@ -328,6 +355,7 @@
 - Автотест: tests/ui/ai_chat/user/test_player_chat_hidden.py::TestPlayerChatHidden::test_chat_button_hidden[tincan_with_ai_chat_disabled-чат выключен]
 - Приоритет: medium   Тип: ui   Роли: user
 - Предусловия: -
+- Test IT: 22a4af62-1f9b-47e1-b942-33705559b202
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Подготовить курс, у которого чат с ИИ был настроен, а затем выключен переключателем | — |
@@ -339,6 +367,7 @@
 - Автотест: tests/ui/ai_chat/user/test_player_chat_hidden.py::TestPlayerChatHidden::test_chat_button_hidden[tincan_with_ai_chat_no_docs-документы контекста удалены]
 - Приоритет: medium   Тип: ui   Роли: user
 - Предусловия: -
+- Test IT: 8ce06c24-9fda-4816-873f-2f8fa100d67c
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Подготовить курс с настроенным чатом с ИИ и удалить все документы контекста (переключатель остаётся включён) | — |
@@ -348,6 +377,7 @@
 ### TC-AI_CHAT-030 Отказ ИИ-помощника на вопрос не по теме курса и на просьбу решить тест — проверка смысла ответа
 - Приоритет: medium   Тип: manual   Роли: user
 - Предусловия: Курс с настроенным и обработанным чатом (контекст — документы про супы). Автотесты TC-AI_CHAT-024/025 проверяют только факт получения и сохранения ответа — не его смысл (ответ ИИ недетерминирован и не фиксируется в коде)
+- Test IT: 105d603f-8136-415f-a9fd-a708317ff538
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Задать в чате вопрос не по теме курса (например, «Какая столица Австралии?») | Отказ по смыслу — ИИ не отвечает на вопрос, вместо этого сообщает, что отвечает только на вопросы по материалам курса |
@@ -357,6 +387,7 @@
 ### TC-AI_CHAT-031 Содержимое файла «Скачать историю» — ФИО, почта, id, вопросы, ответы, дата и время
 - Приоритет: medium   Тип: manual   Роли: admin
 - Предусловия: Активити с историей вопросов/ответов. Экспорт асинхронный, файл формируется и скачивается на внешке — автотест TC-AI_CHAT-009/017 проверяет только 200 и status: success, не содержимое файла
+- Test IT: fd7985f6-a6c7-49f2-a0ed-832aae7ff11b
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | В карточке активити → «Чат с ИИ» нажать «Скачать историю» и дождаться скачивания файла | Файл скачан |
@@ -365,6 +396,7 @@
 ### TC-AI_CHAT-032 Подсказка при наведении на переключатель «Чат с ИИ» в карточке активити
 - Приоритет: low   Тип: manual   Роли: admin
 - Предусловия: Hover-тултип (v-tooltip) ненадёжно детектируется headless Playwright — отдельный ручной кейс (шаг 7 сценария)
+- Test IT: 3fcb3510-99fc-4601-b7af-4bdca66b4a32
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть карточку активити → вкладка «Чат с ИИ» | Видны выключенный переключатель и описание раздела |
@@ -373,6 +405,7 @@
 ### TC-AI_CHAT-033 «Статистика обучения» → курс → «Оценки и отзывы»
 - Приоритет: low   Тип: manual   Роли: admin
 - Предусловия: Курс с чатом с ИИ, по которому слушатели уже оценивали ответы (звёзды + комментарий)
+- Test IT: 3d72c912-cb3b-4962-bb49-87fad6ea54d4
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Перейти «Статистика обучения» → «Курсы» → выбрать курс | Открыта карточка курса |
