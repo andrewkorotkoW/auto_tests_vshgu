@@ -27,6 +27,8 @@ from api.endpoints.knowledge_base import KnowledgeBaseEndpoint
 from api.endpoints.homework import HomeworkEndpoint
 from api.endpoints.certificates import CertificatesEndpoint
 from api.endpoints.dashboards import DashboardsEndpoint
+from api.endpoints.qr_code import QrCodeEndpoint
+from api.endpoints.ratings import RatingsEndpoint
 from api.helpers.data_generator import (
     generate_user_payload,
     generate_program_payload,
@@ -819,6 +821,14 @@ def created_test(api_client, tests_endpoint):
 @pytest.fixture
 def polls_endpoint(api_client):
     return PollsEndpoint(api_client)
+
+@pytest.fixture
+def qr_code_endpoint(api_client):
+    return QrCodeEndpoint(api_client)
+
+@pytest.fixture
+def ratings_endpoint(api_client):
+    return RatingsEndpoint(api_client)
 
 @pytest.fixture
 def created_poll(api_client, polls_endpoint):
