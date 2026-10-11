@@ -13,22 +13,6 @@ class TestAdminCasUsers:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    @pytest.mark.xfail(
-        reason=(
-            "Нестабильно на develop: после снятия синхронизации через API "
-            "(DELETE /external/cas/sync/users/{id}) бэкенд обновляется мгновенно "
-            "(GET /users/{id} сразу отдаёт sync_status=disabled — подтверждено прямыми "
-            "запросами к API), но карточка пользователя в «Базе Пользователей» "
-            "(/admin/users) иногда продолжает показывать чип «Синхронизирован» даже "
-            "после reload() + повторного поиска и активно поллящего "
-            "expect(...).to_be_hidden(timeout=10000) — из нескольких прогонов один "
-            "обновился за <3с, другой не обновился за ~3 мин (основной прогон + 1 "
-            "автоповтор). Разброс на порядки — тот же характер нестабильности, что у "
-            "задержки удаления уведомлений (README §13), похоже на кеш/индекс на "
-            "стороне стенда, а не на гонку в самом тесте (поллинг уже используется)."
-        ),
-        strict=False,
-    )
     def test_admin_check_cas_user(self, admin_page, env, api_client, omt_cas_endpoint, external_cas_endpoint):
         from api.helpers.data_generator import generate_cas_payload, generate_external_cas_user_payload
         from api.endpoints.users import UsersEndpoint
