@@ -108,10 +108,20 @@ def _context_kwargs(request, storage_state=None):
 # Страницы отрисовываются, поэтому для k8s поднимаем таймаут навигации до 60 с; develop/stage — без изменений.
 K8S_NAVIGATION_TIMEOUT_MS = 60000
 
+# Маячки Яндекс.Метрики, которые портал грузит на каждой странице: из некоторых сетей
+# (локальные прогоны 12.10.2026) соединение с ними не завершается вообще — запрос висит
+# минутами, из-за чего wait_for_load_state("networkidle") (login_page.login и ещё ~60 мест)
+# не наступает никогда и тесты падают по таймауту ещё на логине. Для сценариев портала
+# эти хосты не нужны — обрываем их на уровне контекста.
+BLOCKED_TRACKER_HOSTS = ("hdrc.yandex.net", "mdd.yandex.net", "mc.yandex.ru", "mc.yandex.com")
+
 
 def _apply_env_timeouts(context, env):
+    """Единая настройка каждого browser context: таймауты окружения + блокировка трекеров."""
     if env.name == "k8s":
         context.set_default_navigation_timeout(K8S_NAVIGATION_TIMEOUT_MS)
+    for host in BLOCKED_TRACKER_HOSTS:
+        context.route(f"**://{host}/**", lambda route: route.abort())
 
 
 def _video_recording_enabled():

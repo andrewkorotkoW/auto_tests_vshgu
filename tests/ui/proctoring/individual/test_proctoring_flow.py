@@ -99,7 +99,7 @@ class TestUIProctoringFlow:
 
         with allure.step("6. Завершить тест в тестовой среде"):
             finish_btn.click(force=True)
-            page.wait_for_timeout(2000)
+            page.wait_for_load_state("networkidle")
             page.screenshot(path="allure-results/proctoring_ui_05_finished.png")
             allure.attach.file("allure-results/proctoring_ui_05_finished.png", "Тест завершён", allure.attachment_type.PNG)
 

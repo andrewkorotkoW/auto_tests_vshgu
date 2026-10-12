@@ -92,12 +92,11 @@ class TincanPage(BasePage):
         banner = self.page.locator("text=Индивидуальное обучение").first
         expect(banner).to_be_visible(timeout=settings.UI_TIMEOUT)
         banner.click(force=True)
-        self.page.wait_for_timeout(1500)
-        sidebar.dismiss_popups()
+        # Раздел открылся, когда видна его вкладка; сами попапы/тур dismiss_popups ждёт сам.
         tab = self.page.locator("xpath=//span[normalize-space()='Курсы и тесты']").first
         expect(tab).to_be_visible(timeout=15000)
+        sidebar.dismiss_popups()
         tab.click(force=True)
-        self.page.wait_for_timeout(1000)
         # На вкладке у нового пользователя стартует свой тур («1 из 2»), и до его закрытия
         # вместо реальных карточек показаны демо («Пример назначенного курса») — закрываем.
         sidebar.dismiss_popups()

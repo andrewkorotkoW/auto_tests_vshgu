@@ -1,7 +1,9 @@
 import allure
 import pytest
 import json
+from api.helpers.expectations import expect_status
 from utils.logger import logger
+from utils.retry import retry_until_success
 
 
 @allure.feature("External CAS API")
@@ -22,11 +24,15 @@ class TestExternalCasBulkSyncAPI:
                 logger.info(f"Пользователь: ID={u['id']}")
 
         with allure.step("2. Массовая синхронизация"):
-            import time
-            # Ожидание без условия: индексация 3 новых пользователей перед bulk-синхронизацией без статус-эндпоинта.
-            time.sleep(30)
             users_payload = [
                 {**generate_cas_sync_payload(), "user_id": u["id"]} for u in users
             ]
-            data = external_cas_endpoint.sync_users_bulk(users_payload)
+            # Статус-эндпоинта индексации новых пользователей нет — вместо слепой паузы
+            # повторяем саму синхронизацию, пока бэкенд её не примет (обычно с первого раза).
+            resp = retry_until_success(
+                lambda: external_cas_endpoint.client.post("/external/cas/sync/users", json=users_payload),
+                timeout=60, interval=5, success_codes=(200, 201),
+            )
+            expect_status(resp, (200, 201))
+            data = resp.json().get("data", resp.json())
             logger.info("Массовая синхронизация выполнена")

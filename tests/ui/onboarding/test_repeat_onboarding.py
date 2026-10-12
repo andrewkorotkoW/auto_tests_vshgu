@@ -53,6 +53,11 @@ def _restart_close_restart_complete(page: Page, onboarding: OnboardingPage) -> N
     with allure.step("3. Закрываем онбординг крестиком на 2-м слайде"):
         onboarding.close_onboarding()
         expect(page.locator("[data-qa='onboarding-popup-close']")).not_to_be_visible(timeout=10000)
+        # Осознанная пауза, а не ожидание состояния: после закрытия у тура нет DOM-признака
+        # окончания teardown'а (кнопки/модалка уже скрыты, scrim может задержаться, см.
+        # wait_overlay_gone), а перезапуск «впритык» даёт тур, у которого первый клик
+        # «Далее» не сдвигает счётчик с «1 из N» (проверено 12.10.2026 на develop:
+        # без паузы «Индивидуальное обучение» падает 3/3, с ней проходит).
         page.wait_for_timeout(800)
 
     with allure.step("4. Запускаем повторный онбординг снова и проходим до конца"):

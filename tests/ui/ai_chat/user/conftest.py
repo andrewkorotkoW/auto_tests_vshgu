@@ -85,12 +85,11 @@ def open_course_player():
         banner = page.locator("text=Индивидуальное обучение").first
         expect(banner).to_be_visible(timeout=30000)
         banner.click(force=True)
-        page.wait_for_timeout(1500)
-        sidebar.dismiss_popups()
+        # Раздел открылся, когда видна его вкладка; сами попапы/тур dismiss_popups ждёт сам.
         tab = page.locator("xpath=//span[normalize-space()='Курсы и тесты']").first
         expect(tab).to_be_visible(timeout=15000)
+        sidebar.dismiss_popups()
         tab.click(force=True)
-        page.wait_for_timeout(1000)
         sidebar.dismiss_popups()
         course_card = page.get_by_text(course_name, exact=False).first
         expect(course_card).to_be_visible(timeout=30000)

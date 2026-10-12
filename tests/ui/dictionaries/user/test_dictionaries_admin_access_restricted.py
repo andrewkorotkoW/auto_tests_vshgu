@@ -13,8 +13,11 @@ tests/api/dictionaries (README §14 «Модель прав»): чтение с�
 таблицу справочника в режиме только для чтения — поэтому здесь достаточно проверить
 редирект, отдельный сценарий «доступен для чтения, но без кнопок CRUD» недостижим.
 """
+import re
+
 import allure
 import pytest
+from playwright.sync_api import expect
 
 
 @allure.feature("Справочники UI")
@@ -31,7 +34,8 @@ class TestDictionariesAdminAccessRestricted:
             # не всегда успевает наступить за 30с — надёжнее дождаться самого DOM,
             # а не полной тишины сети.
             second_user_page.goto(f"{env.ui_base_url}/admin/catalogs/programs", wait_until="domcontentloaded")
-            second_user_page.wait_for_timeout(4000)
+            # Ждём сам редирект SPA-роутера из /admin, а не фиксированные секунды.
+            expect(second_user_page).not_to_have_url(re.compile(r"/admin"), timeout=15000)
 
         assert "/admin" not in second_user_page.url, (
             f"Обычный пользователь остался в разделе админки: {second_user_page.url}"

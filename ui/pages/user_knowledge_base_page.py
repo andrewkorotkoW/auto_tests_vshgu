@@ -129,7 +129,6 @@ class UserKnowledgeBasePage(BasePage):
             if is_scrolled_to_end:
                 break
         assert is_scrolled_to_end, "Статья не была прокручена до конца"
-        self.page.wait_for_timeout(2000)
 
         close_button = dialog.locator(".vs-modal__close-btn")
         expect(close_button).to_be_visible(timeout=10000)
@@ -177,7 +176,6 @@ class UserKnowledgeBasePage(BasePage):
             if read_percent >= 96:
                 break
         assert read_percent >= 96, f"Книга не была прочитана больше чем на 95% (осталось {read_percent:.1f}%)"
-        self.page.wait_for_timeout(5000)
 
     def download_file(self, file_name: str, attached_file_name: str) -> None:
         """Карточка файла (.file-download) со ссылкой-скачиванием видна на странице материала
@@ -189,7 +187,6 @@ class UserKnowledgeBasePage(BasePage):
         file_link = file_card.locator("a.file-download__link")
         expect(file_link).to_be_visible(timeout=15000)
         file_link.click(timeout=5000)
-        self.page.wait_for_timeout(5000)
 
     def start_course(self, course_name: str) -> None:
         """Открыть курс Tincan, встроенный в материал БЗ: «Приступить к изучению» → popup
@@ -210,7 +207,6 @@ class UserKnowledgeBasePage(BasePage):
 
         course_popup = popup_info.value
         course_popup.wait_for_load_state("domcontentloaded", timeout=30000)
-        course_popup.wait_for_timeout(5000)
         course_popup.close()
 
     def open_achievements(self, ui_base_url: str) -> None:
@@ -270,4 +266,3 @@ class UserKnowledgeBasePage(BasePage):
                 el.dispatchEvent(new Event("ended", { bubbles: true }));
             }"""
         )
-        self.page.wait_for_timeout(2000)

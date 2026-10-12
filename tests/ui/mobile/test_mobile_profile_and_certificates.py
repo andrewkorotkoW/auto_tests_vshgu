@@ -54,7 +54,6 @@ class TestMobileProfileAndCertificates:
                 # Ждём тишины в сети, кликаем и проверяем переход на /profile/<id>; при no-op —
                 # один повторный клик.
                 page.wait_for_load_state("networkidle", timeout=15000)
-                page.wait_for_timeout(1000)
                 for _ in range(2):
                     profile_tab.click()
                     try:

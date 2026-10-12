@@ -136,8 +136,6 @@ class AdminActivitiesPage(BasePage):
         # пока цель реально начнёт принимать события, а не форсирует клик в перехватчик.
         select_field.click(timeout=15000)
         self.page.keyboard.type(full_name, delay=30)
-        # debounce поиска по ФИО — без паузы поиск иногда не успевает отработать на свежесозданном пользователе
-        self.page.wait_for_timeout(800)
 
         option = self._dropdown_option_by_text(full_name)
         expect(option).to_be_visible(timeout=15000)
@@ -175,8 +173,6 @@ class AdminActivitiesPage(BasePage):
         # после transition, он перехватывает клик поверх комбобокса.
         select_field.click(timeout=15000)
         self.page.keyboard.type(full_name, delay=30)
-        # debounce поиска по ФИО — без паузы поиск иногда не успевает отработать на свежесозданном пользователе
-        self.page.wait_for_timeout(800)
 
         safe_name = full_name.replace("'", "")
         option = self.page.locator(

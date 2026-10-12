@@ -49,13 +49,17 @@ class TestAosPublicLink:
             finish_btn = page.locator("button:has-text('Завершить')").first
             groups_answered = 0
             next_group_btn = page.locator("button:has-text('Перейти к следующей группе')").first
+            # Пока плеер переключает группу вопросов, кнопки стоят в aria-busy="true", а
+            # контейнер вопросов перехватывает клики — ждём, пока занятых элементов не останется
+            # (это и есть конец перехода, а не фиксированная пауза).
+            busy = page.locator("[aria-busy='true']")
             for _ in range(10):
+                expect(busy).to_have_count(0, timeout=15000)
                 if finish_btn.is_visible():
                     break
                 if next_group_btn.is_visible():
                     next_group_btn.click()
                     page.wait_for_load_state("networkidle")
-                    page.wait_for_timeout(1000)
                     continue
                 # шкалы 1–10: в каждой выбираем «10»
                 for scale_ten in page.locator("button:text-is('10'), .scale-item:text-is('10'), [class*='scale'] :text-is('10')").all():
@@ -73,7 +77,6 @@ class TestAosPublicLink:
                 answer_btn.click()
                 groups_answered += 1
                 page.wait_for_load_state("networkidle")
-                page.wait_for_timeout(1000)
                 page.screenshot(path=f"allure-results/aos_public_group_{groups_answered}.png")
             logger.info(f"Отвечено групп вопросов: {groups_answered}")
             assert groups_answered > 0, "Ни одна группа вопросов не была отвечена"

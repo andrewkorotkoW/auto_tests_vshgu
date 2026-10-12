@@ -97,11 +97,10 @@ class TestExternalCasAssignAPI:
             allure.attach(json.dumps(result, indent=2, ensure_ascii=False), "Снятие", allure.attachment_type.JSON)
             logger.info(f"Назначение снято: {result}")
 
-        import time
-        # Ожидание без условия: асинхронная обработка dismiss в CAS не имеет статус-эндпоинта для поллинга.
-        time.sleep(60)
-
         with allure.step("6. Очистка"):
-            external_cas_endpoint.delete_stream(program_id, stream_id)
+            # Статус-эндпоинта асинхронной обработки dismiss нет — вместо слепой паузы
+            # повторяем удаление потока, пока бэкенд его не примет.
+            from utils.retry import wait_until
+            wait_until(lambda: external_cas_endpoint.delete_stream(program_id, stream_id), timeout=90, interval=5)
             external_cas_endpoint.delete_program(program_id)
             omt_cas_endpoint.delete_tenant_org_location(cas_id)

@@ -33,7 +33,6 @@ class AdminUsersPage(BasePage):
         box.fill(query)
         self.page.keyboard.press("Enter")
         self.wait_loaded()
-        self.page.wait_for_timeout(1500)
 
     def row_for(self, user: dict) -> Locator:
         """Строка таблицы для пользователя (ищем по ФИО, затем сверяем email в строке)."""
@@ -120,8 +119,6 @@ class AdminUsersPage(BasePage):
         # Без force=True: пока transition открытия модалки не осела, её scrim перехватывает клик.
         select_field.click(timeout=15000)
         self.page.keyboard.type(pz_name, delay=30)
-        # debounce поиска — без паузы результат иногда не успевает подгрузиться
-        self.page.wait_for_timeout(800)
 
         safe = pz_name.replace("'", "")
         option = self.page.locator(
@@ -151,8 +148,6 @@ class AdminUsersPage(BasePage):
         expect(select_locator).to_be_visible(timeout=15000)
         select_locator.click(timeout=15000)
         select_locator.locator("input").first.fill(value, timeout=5000)
-        # debounce фильтрации списка — без паузы результат иногда не успевает подгрузиться
-        self.page.wait_for_timeout(800)
 
         list_id = select_locator.get_attribute("aria-owns")
         if list_id:

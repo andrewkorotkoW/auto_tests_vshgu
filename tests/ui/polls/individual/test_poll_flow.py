@@ -93,7 +93,7 @@ class TestUIPollFlow:
             intro_start = poll_page.locator("button:has-text('Начать')").first
             expect(intro_start).to_be_visible(timeout=15000)
             intro_start.click(timeout=10000)
-            poll_page.wait_for_timeout(1500)
+            expect(intro_start).to_be_hidden(timeout=15000)
             poll_page.screenshot(path="allure-results/poll_ui_04_launched.png")
             allure.attach.file("allure-results/poll_ui_04_launched.png", "Опрос запущен", allure.attachment_type.PNG)
             logger.info("Вступительный слайд пройден")
@@ -108,7 +108,6 @@ class TestUIPollFlow:
                     answer_btn = poll_page.locator("button:has-text('Ответить')").first
                     if answer_btn.count() > 0:
                         answer_btn.click(timeout=5000)
-                    poll_page.wait_for_timeout(1000)
 
                     next_btn = poll_page.locator("button:has-text('Далее')").first
                     if next_btn.count() > 0 and next_btn.is_visible(timeout=2000):

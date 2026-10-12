@@ -89,7 +89,6 @@ class TestReviewerSeesAdditionalMaterials:
                     user_full_name, program_name, stream["name"], [homework["name_client"], homework["name"]]
                 )
                 page.wait_for_load_state("networkidle")
-                page.wait_for_timeout(3000)
 
             with allure.step(f"5. На странице проверки виден файл доп. материалов «{ADDITIONAL_FILE}»"):
                 expect(reviewer_page.additional_material_link(ADDITIONAL_FILE)).to_be_visible(timeout=15000)
