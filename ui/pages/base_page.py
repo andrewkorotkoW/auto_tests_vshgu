@@ -26,9 +26,24 @@ class BasePage:
     def _locator(self, selector) -> Locator:
         return self.page.locator(selector) if isinstance(selector, str) else selector
 
+    # Видимые индикаторы загрузки Vuetify/портала: крутилка, скелетон, элемент в состоянии
+    # «занят». v-progress-linear сюда не входит — верхняя полоса остаётся в DOM видимой и после
+    # полной загрузки (разведка 12.10.2026), признаком она не является.
+    LOADING_INDICATORS = (
+        ".v-progress-circular--indeterminate:visible, .v-skeleton-loader:visible, [aria-busy='true']:visible"
+    )
+
     def wait_loaded(self, timeout: int = None):
-        """Ждёт, пока страница угомонится после навигации/клика (сеть в состоянии idle)."""
-        self.page.wait_for_load_state("networkidle", timeout=timeout or settings.UI_TIMEOUT)
+        """Ждёт, пока страница «угомонится» после навигации/клика: DOM собран и на экране нет
+        индикаторов загрузки (LOADING_INDICATORS).
+
+        Раньше здесь был networkidle, но он (а) зависит от сторонних маячков и поллинга
+        уведомлений и на медленном стенде не наступает вовсе, (б) возвращается мгновенно, пока
+        на экране ещё крутится v-progress-circular — разведка на develop 12.10.2026 показала
+        оба случая. Ждём состояние страницы, а не тишину сети."""
+        timeout = timeout or settings.UI_TIMEOUT
+        self.page.wait_for_load_state("domcontentloaded", timeout=timeout)
+        expect(self.page.locator(self.LOADING_INDICATORS)).to_have_count(0, timeout=timeout)
 
     def wait_visible(self, selector, timeout: int = None) -> Locator:
         """Ждёт, пока locator (или селектор) станет видимым, и возвращает его."""

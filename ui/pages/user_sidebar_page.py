@@ -60,8 +60,19 @@ class UserSidebarPage(BasePage):
             form = page.locator(".v-overlay--active:has-text('данные о себе'), .v-dialog:has-text('данные о себе')").first
             form.wait_for(state="visible", timeout=5000)
             for cb in form.locator("input[type=checkbox]").all():
-                if not cb.is_checked():
+                if cb.is_checked():
+                    continue
+                # Сам <input> скрыт (opacity 0), а check(force=True) по нему пропускает
+                # проверку стабильности: клик во время enter-анимации диалога не меняет
+                # состояние (12.10.2026, когда login перестал ждать networkidle). Кликаем
+                # по видимой обёртке контрола обычным кликом и проверяем результат —
+                # то же, что LoginPage.handle_modal.
+                control = cb.locator("xpath=ancestor::*[contains(@class,'v-selection-control')][1]")
+                if control.count():
+                    control.first.click(timeout=5000)
+                else:
                     cb.check(force=True)
+                expect(cb).to_be_checked(timeout=5000)
             form.locator("button:has-text('Отправить')").first.click(force=True)
             self.wait_hidden(form, timeout=10000)
             logger.info("Анкета «данные о себе» отправлена")

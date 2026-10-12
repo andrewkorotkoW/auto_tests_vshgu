@@ -24,9 +24,31 @@ class LoginPage(BasePage):
         self.fill('input[name="email_or_login"]', email)
         self.fill('input[name="password"]', password)
 
-        self.click('button:has-text("Войти")')
-        self.page.wait_for_load_state("networkidle")
-        self.select_tenant_if_required(base_url=base_url, tenant_name=tenant_name)
+        # Вместо networkidle (тишина сети зависит от сторонних маячков/поллинга уведомлений и
+        # на медленном стенде не наступает вовсе — см. conftest.BLOCKED_TRACKER_HOSTS) ждём
+        # конкретный ответ: GET /api/v1/me/agreements — его SPA запрашивает при каждом входе
+        # (разведка develop 12.10.2026: /routes → /auth/me + /onboarding + /me/agreements →
+        # /tenants → /ws-config), и именно по нему решает, показывать ли анкету согласия.
+        # Возвращаться раньше него нельзя: handle_modal/dismiss_anketa застанут анкету ещё не
+        # отрисованной или не ожившей (чекбокс не меняет состояние). Блок with охватывает и
+        # выбор тенанта: у админа с несколькими организациями SPA стартует только после него.
+        with self.page.expect_response(
+            lambda r: "/api/v1/me/agreements" in r.url, timeout=settings.UI_TIMEOUT
+        ):
+            self.click('button:has-text("Войти")')
+            # Форма входа серверная: после submit портал уводит с /auth/main (на /education или
+            # /auth/tenant/select). Неверный пароль оставляет нас на /auth/main — упадём здесь с
+            # понятным сообщением, а не на следующем шаге.
+            expect(self.page).not_to_have_url(re.compile(r"/auth/main"), timeout=settings.UI_TIMEOUT)
+            self.select_tenant_if_required(base_url=base_url, tenant_name=tenant_name)
+        # SPA поднял сессию (GET /api/v1/auth/me → 200) и отрисовал первый экран. Их три:
+        # оболочка с меню пользователя в шапке (.user-menu, тега <header> на портале нет — см.
+        # UserSidebarPage); в мобильной вёрстке (Pixel 7, MOBILE=1) вместо неё нижняя панель
+        # (a.bottom-bar__link); у нового пользователя оболочки ещё нет вовсе — на сером фоне
+        # только модалка согласия «заполните данные о себе» (её дальше закрывает handle_modal).
+        shell = self.page.locator(".user-menu, a.bottom-bar__link")
+        consent_dialog = self.page.get_by_role("dialog").filter(has_text="Отправить")
+        expect(shell.or_(consent_dialog).first).to_be_visible(timeout=settings.UI_TIMEOUT)
         if handle_onboarding:
             self.handle_modal()
             self.complete_training()
@@ -75,13 +97,24 @@ class LoginPage(BasePage):
         except PlaywrightTimeoutError:
             logger.info("Модальное окно не появилось")
             return
-        # Чекбокс согласия в Vuetify визуально скрыт (opacity 0), is_visible() даёт False —
-        # поэтому отмечаем force, как в UserSidebarPage.dismiss_anketa; иначе «Отправить»
-        # уходит без согласия, анкета остаётся и перекрывает страницу (07.10, после слияния).
+        # Чекбокс согласия в Vuetify визуально скрыт (opacity 0), is_visible() даёт False.
+        # Раньше его отмечали check(force=True) по самому <input>, но force пропускает
+        # проверку стабильности, и клик во время enter-анимации диалога иногда не меняет
+        # состояние («Clicking the checkbox did not change its state» — всплыло 12.10.2026,
+        # когда login перестал ждать networkidle и стал приходить сюда сразу). Кликаем по
+        # видимой обёртке контрола обычным кликом (он дождётся конца анимации) и проверяем
+        # результат; без согласия «Отправить» уходит впустую, анкета остаётся и перекрывает
+        # страницу (07.10, после слияния).
         try:
             for checkbox in modal.locator('input[type="checkbox"]').all():
-                if not checkbox.is_checked():
+                if checkbox.is_checked():
+                    continue
+                control = checkbox.locator("xpath=ancestor::*[contains(@class,'v-selection-control')][1]")
+                if control.count():
+                    control.first.click(timeout=5000)
+                else:
                     checkbox.check(force=True, timeout=5000)
+                expect(checkbox).to_be_checked(timeout=5000)
             submit = modal.get_by_role("button", name="Отправить", exact=True)
             if submit.count():
                 submit.first.click(force=True, timeout=5000)
