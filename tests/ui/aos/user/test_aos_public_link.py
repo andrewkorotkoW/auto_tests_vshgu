@@ -30,16 +30,29 @@ class TestAosPublicLink:
         # 3. Открыть ссылку (без авторизации)
         with allure.step("2. Открыть публичную ссылку"):
             page.context.clear_cookies()  # убрать все куки, чтобы точно быть анонимом
+            # Дефолтный wait_until="load" оставлен намеренно: с domcontentloaded клик «Начать»
+            # попадает на ещё не ожившую кнопку (скрипты плеера не отработали) — проверено
+            # 12.10.2026. Дальше ждём не тишину сети, а уход индикаторов загрузки.
             page.goto(public_url)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+            aos_page = AosPage(page)
+            aos_page.wait_loaded()
             page.screenshot(path="allure-results/aos_public_opened.png")
             allure.attach.file("allure-results/aos_public_opened.png", "АОС по публичной ссылке", allure.attachment_type.PNG)
 
         # 4. Начать АОС (кнопка «Начать»)
         with allure.step("3. Начать АОС"):
-            aos_page = AosPage(page)
-            # Используем готовый метод для запуска анкеты (без открытия программы)
-            aos_page.launch_questionnaire()  # если такого метода нет, просто дважды кликнем «Начать»
+            # «Начать» видна раньше, чем плеер получил данные анкеты, и клик по ней в этот
+            # момент — no-op (12.10.2026, после отказа от networkidle); DOM-признака
+            # готовности у плеера нет, поэтому кликаем повторно, пока не появится первый
+            # вопрос — тот же приём, что у нижней панели в tests/ui/mobile.
+            answerable = page.locator("textarea, input[type='checkbox'], input[type='radio'], label.c-radio").first
+            for attempt in range(3):
+                aos_page.launch_questionnaire()
+                try:
+                    expect(answerable).to_be_visible(timeout=10000)
+                    break
+                except AssertionError:
+                    logger.info(f"«Начать» не открыла вопросы (попытка {attempt + 1}/3) — плеер ещё не ожил, повторяем")
 
         # 5. Пройти вопросы: АОС — группы вопросов на одной странице (шкалы 1–10, комментарий,
         #    чекбоксы) и кнопка «Ответить»; первый экран обязан появиться, иначе анонимный доступ не работает
@@ -59,7 +72,6 @@ class TestAosPublicLink:
                     break
                 if next_group_btn.is_visible():
                     next_group_btn.click()
-                    page.wait_for_load_state("networkidle")
                     continue
                 # шкалы 1–10: в каждой выбираем «10»
                 for scale_ten in page.locator("button:text-is('10'), .scale-item:text-is('10'), [class*='scale'] :text-is('10')").all():
@@ -76,7 +88,7 @@ class TestAosPublicLink:
                 expect(answer_btn).to_be_enabled(timeout=5000)
                 answer_btn.click()
                 groups_answered += 1
-                page.wait_for_load_state("networkidle")
+                expect(busy).to_have_count(0, timeout=15000)
                 page.screenshot(path=f"allure-results/aos_public_group_{groups_answered}.png")
             logger.info(f"Отвечено групп вопросов: {groups_answered}")
             assert groups_answered > 0, "Ни одна группа вопросов не была отвечена"

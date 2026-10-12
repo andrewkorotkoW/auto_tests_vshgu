@@ -48,7 +48,7 @@ class LpdPage(BasePage):
         with self.page.context.expect_event("page", timeout=settings.UI_TIMEOUT) as event:
             self.page.locator(f"span:has-text('{button_text}')").first.click(force=True)
         new_page = event.value
-        new_page.wait_for_load_state("networkidle")
+        new_page.wait_for_load_state("domcontentloaded")
         logger.info(f"Новая вкладка LPD: {new_page.url}")
         return new_page
 

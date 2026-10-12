@@ -51,9 +51,9 @@ class TestMobileProfileAndCertificates:
                 expect(profile_tab).to_be_visible(timeout=15000)
                 # Клик сразу после загрузки /education — no-op (обработчик нижней панели ещё не
                 # навешан, URL не меняется — так и родилась версия про «бесконечный спиннер»).
-                # Ждём тишины в сети, кликаем и проверяем переход на /profile/<id>; при no-op —
-                # один повторный клик.
-                page.wait_for_load_state("networkidle", timeout=15000)
+                # Ждём, пока уйдут индикаторы загрузки, кликаем и проверяем переход на
+                # /profile/<id>; при no-op — один повторный клик.
+                UserSidebarPage(page).wait_loaded()
                 for _ in range(2):
                     profile_tab.click()
                     try:

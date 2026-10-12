@@ -25,8 +25,10 @@ class TestInfoBannerUI:
             info_banner_endpoint = info_banner_on
 
         with allure.step("3. Проверка баннера на странице входа"):
-            page.goto(f"{settings.UI_BASE_URL}/auth/main")
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+            # Плашка на странице входа рисуется по ответу GET /api/v1/info-banner/show —
+            # ждём именно его, а не тишину сети.
+            with page.expect_response(lambda r: "/info-banner/show" in r.url, timeout=settings.UI_TIMEOUT):
+                page.goto(f"{settings.UI_BASE_URL}/auth/main")
             page.screenshot(path="allure-results/banner_login_page.png")
             allure.attach.file("allure-results/banner_login_page.png", "Баннер на странице входа", allure.attachment_type.PNG)
             # на странице входа плашка — div.tech-alert, внутри системы — div.tech-banner
@@ -54,8 +56,9 @@ class TestInfoBannerUI:
 
         with allure.step("7. Проверка на странице входа (баннер выключен)"):
             page.context.clear_cookies()
-            page.goto(f"{settings.UI_BASE_URL}/auth/main")
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+            # Негативная проверка ниже (count 0) не должна пройти до ответа API баннера.
+            with page.expect_response(lambda r: "/info-banner/show" in r.url, timeout=settings.UI_TIMEOUT):
+                page.goto(f"{settings.UI_BASE_URL}/auth/main")
             page.screenshot(path="allure-results/banner_off_login.png")
             allure.attach.file("allure-results/banner_off_login.png", "Страница входа без баннера", allure.attachment_type.PNG)
             expect(page.locator("div.tech-alert.show")).to_have_count(0, timeout=5000)

@@ -100,7 +100,7 @@ class TestUserTincanFlow:
             # После цикла
             if tincan_page.frame.locator("button:has-text('Продолжить обучение')").is_visible(timeout=3000):
                 tincan_page.frame.locator("button:has-text('Продолжить обучение')").first.click(force=True)
-                tincan_page.page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+                tincan_page.wait_loaded()
 
             tincan_page.page.screenshot(path="allure-results/tincan_completed.png")
             allure.attach.file("allure-results/tincan_completed.png", "Курс пройден", allure.attachment_type.PNG)

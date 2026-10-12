@@ -54,5 +54,5 @@ class HelpdeskApplicantsPage(HelpdeskAdminPage):
         with self.page.context.expect_page() as new_page_info:
             link.click()
         new_page = new_page_info.value
-        new_page.wait_for_load_state("networkidle")
+        new_page.wait_for_load_state("domcontentloaded")
         return new_page

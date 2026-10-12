@@ -95,8 +95,9 @@ class TestUserTestStreamFlow:
                     logger.info(f"Тест не найден на вкладке (попытка {attempt + 1}/4), reload+retry")
                     page.wait_for_timeout(5000)
                     page.reload()
-                    page.wait_for_load_state("networkidle")
-                    UserSidebarPage(page).dismiss_popups()
+                    sidebar = UserSidebarPage(page)
+                    sidebar.wait_loaded()
+                    sidebar.dismiss_popups()
                     page.locator("text=Курсы и тесты").first.click(force=True)
             assert found, f"Тест '{test_data['name']}' не отображается на вкладке «Курсы и тесты» после 4 попыток"
             test_element.first.click(force=True)

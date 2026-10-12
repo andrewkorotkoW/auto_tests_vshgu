@@ -67,7 +67,6 @@ class TestKnowledgeBaseFlow:
         with allure.step("4. Логин"):
             login_page = LoginPage(page)
             login_page.login(user["email"], user["password"])
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/kb_ui_01_login.png")
             allure.attach.file("allure-results/kb_ui_01_login.png", "Логин", allure.attachment_type.PNG)
 
@@ -135,7 +134,9 @@ class TestKnowledgeBaseFlow:
                                     }
                                 }
                             """)
-                page.wait_for_load_state("networkidle")
+                # networkidle здесь возвращался мгновенно при ещё крутящемся спиннере
+                # (разведка 12.10.2026) — ждём, пока индикаторы загрузки уйдут.
+                kb_page.wait_loaded()
 
                 page.screenshot(path="allure-results/kb_ui_06_course_loaded.png")
                 allure.attach.file("allure-results/kb_ui_06_course_loaded.png", "Курс загружен",

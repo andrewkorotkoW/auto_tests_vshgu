@@ -84,12 +84,13 @@ class TestAdminCasListenersStatuses:
         # логин через форму под settings.TEST_USER_EMAIL и клик по «Админка» в меню
         # пользователя (ui/pages/admin_page.py.go_to_admin) не нужны.
         with allure.step("4. Перейти к Слушателям"):
-            UserSidebarPage(admin_page).dismiss_popups()
+            shell = UserSidebarPage(admin_page)
+            shell.dismiss_popups()
             # Клик по вкладке «Слушатели» не переключает SPA-контент на develop (баг стенда
             # либо особенность роутинга) — вкладки страницы потока адресуются query-параметром
             # ?i=<index> (0=Общая информация, ..., 4=Слушатели), так и открываем напрямую.
             admin_page.goto(f"{env.ui_base_url}/admin/programs/{program_id}/streams/{stream_id}?i=4")
-            admin_page.wait_for_load_state("networkidle")
+            shell.wait_loaded()
 
         with allure.step("5. Проверить статусы"):
             admin_page.screenshot(path="allure-results/cas_admin_listeners.png")

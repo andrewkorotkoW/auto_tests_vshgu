@@ -20,7 +20,6 @@ class TestAlpinaFlow:
         ),
     )
     def test_alpina_access(self, page, created_user, alpina_endpoint):
-        from config.settings import settings
 
         login_page = LoginPage(page)
 
@@ -46,7 +45,7 @@ class TestAlpinaFlow:
             with page.context.expect_page() as new_page_info:
                 alpina_btn.click(force=True)
             alpina_page = new_page_info.value
-            alpina_page.wait_for_load_state("networkidle")
+            alpina_page.wait_for_load_state("domcontentloaded")
             alpina_page.screenshot(path="allure-results/alpina_02_page.png")
             allure.attach.file("allure-results/alpina_02_page.png", "Страница Альпины", allure.attachment_type.PNG)
             alpina_page.close()
@@ -59,8 +58,6 @@ class TestAlpinaFlow:
         # ========== UI ==========
         with allure.step("5. Повторный вход — кнопки Альпины нет"):
             page.context.clear_cookies()
-            page.goto(f"{settings.UI_BASE_URL}/auth/main")
-            page.wait_for_load_state("networkidle")
             login_page.login(user["email"], user["password"])
             UserSidebarPage(page).dismiss_popups()
 

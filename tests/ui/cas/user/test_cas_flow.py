@@ -94,7 +94,7 @@ class TestCasFlow:
             with page.context.expect_page() as new_page_info:
                 lk_item.click()
             lk_page = new_page_info.value
-            lk_page.wait_for_load_state("networkidle")
+            lk_page.wait_for_load_state("domcontentloaded")
             lk_page.screenshot(path="allure-results/cas_04_lk.png")
             allure.attach.file("allure-results/cas_04_lk.png", "Личный кабинет", allure.attachment_type.PNG)
             logger.info("Перешли в Личный кабинет")
@@ -107,10 +107,8 @@ class TestCasFlow:
 
         with allure.step("8. Повторный вход — ЛК не видна"):
             page.context.clear_cookies()
-            page.goto(f"{env.ui_base_url}/auth/main")
-            page.wait_for_load_state("networkidle")
+            # login() сам открывает /auth/main и ждёт готовности SPA после входа.
             login_page.login(user_email, "SecurePass123")
-            page.wait_for_load_state("networkidle")
             page.locator("[data-onboarding-step='user-menu']").first.click(force=True)
             page.screenshot(path="allure-results/cas_05_no_lk.png")
             allure.attach.file("allure-results/cas_05_no_lk.png", "ЛК отсутствует", allure.attachment_type.PNG)

@@ -107,6 +107,6 @@ def open_course_player():
             player_page = new_page_info.value
         except Exception:  # noqa: BLE001 — «Начать» мог открыть плеер в текущей вкладке
             player_page = page
-        player_page.wait_for_load_state("networkidle", timeout=30000)
+        player_page.wait_for_load_state("domcontentloaded", timeout=30000)
         return player_page
     return _open

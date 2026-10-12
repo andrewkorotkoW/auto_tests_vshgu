@@ -43,7 +43,7 @@ class TestMifFlow:
             with page.context.expect_page() as new_page_info:
                 mif_btn.click(force=True)
             mif_page = new_page_info.value
-            mif_page.wait_for_load_state("networkidle")
+            mif_page.wait_for_load_state("domcontentloaded")
             # Проверить URL редиректа
             # Примечание: бесшовный OAuth-переход (gosedu → miflib) невозможен в Playwright
             # из-за кросс-доменных ограничений. Тест проверяет, что редирект инициирован.
@@ -61,8 +61,6 @@ class TestMifFlow:
 
         with allure.step("5. Повторный вход — кнопки нет"):
             page.context.clear_cookies()
-            page.goto(f"{settings.UI_BASE_URL}/auth/main")
-            page.wait_for_load_state("networkidle")
             login_page.login(user["email"], user["password"])
             UserSidebarPage(page).dismiss_popups()
 

@@ -112,7 +112,7 @@ class TestBukUserMenuUI:
             buk_tab.locator("input[type=checkbox]").first.check(force=True)
             buk_tab.locator("button:has-text('Подтвердить'), input[type=submit], a:has-text('Подтвердить')").first.click()
             try:
-                buk_tab.wait_for_load_state("networkidle", timeout=30000)
+                buk_tab.wait_for_load_state("domcontentloaded", timeout=30000)
             except Exception:  # noqa: BLE001
                 pass
             buk_tab.wait_for_timeout(1000)
@@ -124,7 +124,7 @@ class TestBukUserMenuUI:
                 data = json.loads(body)
                 allure.attach(body, "Ответ на согласие (JSON)", allure.attachment_type.JSON)
                 assert "redirect_url" in data, data
-                buk_tab.goto(data["redirect_url"], wait_until="networkidle")
+                buk_tab.goto(data["redirect_url"], wait_until="domcontentloaded")
                 buk_tab.wait_for_timeout(1500)
 
         with allure.step("3. Мы внутри БУК, без ошибки авторизации"):

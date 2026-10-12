@@ -41,14 +41,15 @@ class TincanPage(BasePage):
         with self.page.context.expect_page() as new_page_info:
             self.page.locator("span:has-text('Начать')").first.click(force=True)
         course_page = new_page_info.value
-        course_page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+        # Плеер грузит пакет курса из /static/content/… — ждём DOM вкладки, а готовность
+        # самого плеера проверяют wait_visible по кнопкам внутри #iframe ниже.
+        course_page.wait_for_load_state("domcontentloaded", timeout=settings.UI_TIMEOUT)
 
         self.frame = course_page.frame_locator("#iframe")
         learn_btn = self.wait_visible(self.frame.locator("button:has-text('Перейти к изучению')").first)
         learn_btn.click(force=True)
         start_test_btn = self.wait_visible(self.frame.locator("button:has-text('Начать тест')").first)
         start_test_btn.click(force=True)
-        course_page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
 
         self.page = course_page
 
@@ -125,7 +126,7 @@ class TincanPage(BasePage):
             course_page = new_page_info.value
         except Exception:
             course_page = self.page
-        course_page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+        course_page.wait_for_load_state("domcontentloaded", timeout=settings.UI_TIMEOUT)
         self.page = course_page
 
         self.frame = course_page.frame_locator("#iframe")

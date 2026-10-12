@@ -43,7 +43,8 @@ class TestUserCookieBanner:
             with page.context.expect_page() as new_page_info:
                 policy_link.click()
             policy_page = new_page_info.value
-            policy_page.wait_for_load_state("networkidle")
+            # Внешний сайт ranepa.ru со своими счётчиками — ждём только DOM, не тишину сети.
+            policy_page.wait_for_load_state("domcontentloaded")
             policy_page.screenshot(path="allure-results/cookie_banner_02_policy.png")
             allure.attach.file("allure-results/cookie_banner_02_policy.png", "Страница политики",
                                allure.attachment_type.PNG)
@@ -55,7 +56,7 @@ class TestUserCookieBanner:
 
         with allure.step("6. После перезагрузки страницы баннер не показывается повторно"):
             page.reload()
-            page.wait_for_load_state("networkidle")
+            sidebar.wait_loaded()
             sidebar.pass_onboarding()
             page.screenshot(path="allure-results/cookie_banner_03_after_reload.png")
             allure.attach.file("allure-results/cookie_banner_03_after_reload.png", "После перезагрузки",

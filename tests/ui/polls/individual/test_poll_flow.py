@@ -85,7 +85,7 @@ class TestUIPollFlow:
                     }
                 """)
             poll_page = new_page_info.value
-            poll_page.wait_for_load_state("networkidle")
+            poll_page.wait_for_load_state("domcontentloaded")
             logger.info(f"Плеер опроса открыт в новой вкладке: {poll_page.url}")
 
             # Вступительный слайд плеера — отдельная кнопка «Начать» (реальный клик,

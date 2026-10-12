@@ -44,9 +44,10 @@ class TestAdminCasFlow:
         program_url = f"{env.ui_base_url}/admin/programs/{program_id}"
         stream_url = f"{env.ui_base_url}/admin/programs/{program_id}/streams/{stream_id}"
         with allure.step("4. Открыть программу → Описание"):
-            UserSidebarPage(admin_page).dismiss_popups()
+            shell = UserSidebarPage(admin_page)
+            shell.dismiss_popups()
             admin_page.goto(f"{program_url}?i=1")
-            admin_page.wait_for_load_state("networkidle")
+            shell.wait_loaded()
             admin_page.screenshot(path="allure-results/cas_admin_program.png")
 
         with allure.step("5. Проверить синхронизацию (зелёная круглая кнопка)"):
@@ -60,7 +61,6 @@ class TestAdminCasFlow:
 
         with allure.step("6. Открыть поток"):
             admin_page.goto(stream_url)
-            admin_page.wait_for_load_state("networkidle")
 
         with allure.step("7. Проверить синхронизацию потока"):
             expect(admin_page.locator("button.v-btn--round[style*='213, 239, 209']").first).to_be_visible(timeout=10000)
@@ -75,7 +75,9 @@ class TestAdminCasFlow:
 
         with allure.step("9. Обновить страницу программы и проверить отсутствие синхронизации"):
             admin_page.goto(f"{program_url}?i=1")
-            admin_page.wait_for_load_state("networkidle")
+            # Негативная проверка (count 0) прошла бы и на ещё не отрисованной странице —
+            # ждём, пока уйдут индикаторы загрузки.
+            shell.wait_loaded()
             expect(admin_page.locator("button.v-btn--round[style*='213, 239, 209']")).to_have_count(0, timeout=10000)
             logger.info("Синхронизация снята — зелёная кнопка отсутствует")
             admin_page.screenshot(path="allure-results/cas_admin_unsynced.png")
@@ -84,7 +86,7 @@ class TestAdminCasFlow:
 
         with allure.step("10. Проверить отсутствие синхронизации потока"):
             admin_page.goto(stream_url)
-            admin_page.wait_for_load_state("networkidle")
+            shell.wait_loaded()
             expect(admin_page.locator("button.v-btn--round[style*='213, 239, 209']")).to_have_count(0, timeout=10000)
             admin_page.screenshot(path="allure-results/cas_admin_stream_unsynced.png")
             allure.attach.file("allure-results/cas_admin_stream_unsynced.png", "Поток не синхронизирован",

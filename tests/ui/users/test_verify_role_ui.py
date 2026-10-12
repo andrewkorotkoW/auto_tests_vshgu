@@ -31,7 +31,6 @@ class TestAdminVerifyRoleUI:
             admin_password = settings.TEST_USER_PASSWORD
             login_page = LoginPage(page)
             login_page.login(admin_email, admin_password)
-            page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/admin_role_ui_01_login.png")
             allure.attach.file("allure-results/admin_role_ui_01_login.png", "Логин админа", allure.attachment_type.PNG)
 

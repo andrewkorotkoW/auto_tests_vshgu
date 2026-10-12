@@ -72,7 +72,7 @@ class TestUserAosFlow:
             aos_page.start_aos(aos["program_name"])
 
         with allure.step("7. Вопрос 1"):
-            aos_page.page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+            aos_page.wait_loaded()
             aos_page.answer_first_option()
             aos_page.click_answer()
             aos_page.click_next()

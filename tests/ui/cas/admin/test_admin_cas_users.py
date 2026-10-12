@@ -38,14 +38,17 @@ class TestAdminCasUsers:
         # логин через форму под settings.TEST_USER_EMAIL и клик по «Админка» в меню
         # пользователя (ui/pages/admin_page.py.go_to_admin) не нужны.
         with allure.step("3. Открыть «Базу Пользователей»"):
-            UserSidebarPage(admin_page).dismiss_popups()
+            shell = UserSidebarPage(admin_page)
+            shell.dismiss_popups()
             admin_page.goto(f"{env.ui_base_url}/admin/users")
-            admin_page.wait_for_load_state("networkidle")
+            # /admin/users держит фоновый поллинг — networkidle здесь ждал 21–22 с
+            # (разведка 12.10.2026); нужна только готовность таблицы.
+            shell.wait_loaded()
 
         with allure.step("4. Найти пользователя по ФИО"):
             admin_page.locator('[data-qa="km-search"]').fill(user_fio)
             admin_page.locator(f"text={user_fio}").first.click(force=True)
-            admin_page.wait_for_load_state("networkidle")
+            shell.wait_loaded()
             admin_page.screenshot(path="allure-results/cas_admin_user.png")
             allure.attach.file("allure-results/cas_admin_user.png", "Пользователь КАС", allure.attachment_type.PNG)
 
@@ -70,11 +73,11 @@ class TestAdminCasUsers:
 
         with allure.step("6.2. Обновить страницу и проверить отсутствие синхронизации"):
             admin_page.reload()
-            admin_page.wait_for_load_state("networkidle")
+            shell.wait_loaded()
             # Повторный поиск
             admin_page.locator('[data-qa="km-search"]').fill(user_fio)
             admin_page.locator(f"text={user_fio}").first.click(force=True)
-            admin_page.wait_for_load_state("networkidle")
+            shell.wait_loaded()
 
             # is_visible() не ждёт — однократная проверка DOM, без поллинга; заменено на
             # expect(...).to_be_hidden() — тот же приём, что в соседних CAS/UI тестах (см.

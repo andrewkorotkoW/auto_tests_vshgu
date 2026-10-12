@@ -4,7 +4,6 @@ from playwright.sync_api import expect
 from ui.pages.login_page import LoginPage
 from ui.pages.tincan_page import TincanPage
 from ui.pages.user_sidebar_page import UserSidebarPage
-from config.settings import settings
 from utils.logger import logger
 
 
@@ -69,7 +68,7 @@ class TestUserTincanIndividualFlow:
                     break
             if tincan_page.frame.locator("button:has-text('Продолжить обучение')").is_visible(timeout=3000):
                 tincan_page.frame.locator("button:has-text('Продолжить обучение')").first.click(force=True)
-                tincan_page.page.wait_for_load_state("networkidle", timeout=settings.UI_TIMEOUT)
+                tincan_page.wait_loaded()
             tincan_page.page.screenshot(path="allure-results/tincan_ind_completed.png")
             allure.attach.file("allure-results/tincan_ind_completed.png", "Курс пройден", allure.attachment_type.PNG)
 

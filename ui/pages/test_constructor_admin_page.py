@@ -42,7 +42,6 @@ class ConstructorAdminPage(BasePage):
         search_input = self.page.locator('[data-qa="km-search"]')
         expect(search_input).to_be_visible(timeout=15000)
         search_input.fill(constructor_name)
-        self.page.wait_for_load_state("networkidle", timeout=30000)
 
     def open_create_page(self, ui_base_url: str) -> None:
         self.page.goto(f"{ui_base_url.rstrip('/')}/admin/testing/constructor/create")
@@ -133,7 +132,6 @@ class ConstructorAdminPage(BasePage):
     def open_constructor_by_id(self, ui_base_url: str, content_id: int) -> None:
         self.page.goto("about:blank")
         self.page.goto(f"{ui_base_url.rstrip('/')}/admin/testing/constructor/edit/{content_id}/second")
-        self.page.wait_for_load_state("networkidle", timeout=30000)
         expect(self.page).to_have_url(
             re.compile(rf".*/admin/testing/constructor/edit/{content_id}/second.*"), timeout=30000
         )
@@ -490,7 +488,6 @@ class ConstructorAdminPage(BasePage):
         search_input = modal.locator('[data-qa="km-search"]')
         expect(search_input).to_be_visible(timeout=30000)
         search_input.fill(bank_question_text)
-        self.page.wait_for_load_state("networkidle", timeout=30000)
 
         bank_question_row = modal.locator(".material", has_text=bank_question_text)
         expect(bank_question_row).to_be_visible(timeout=30000)
@@ -501,7 +498,10 @@ class ConstructorAdminPage(BasePage):
         insert_options_modal = self.page.get_by_role("dialog").filter(has_text="Добавить вопросы")
         expect(insert_options_modal).to_be_visible(timeout=30000)
         insert_options_modal.get_by_role("button", name="Списком").click()
-        self.page.wait_for_load_state("networkidle", timeout=30000)
+        # networkidle в админке конструктора виснет на открытом websocket (см. докстринг
+        # search_statistics_by_user_name) — ждём уход индикаторов загрузки; сама модалка
+        # после «Списком» остаётся открытой (проверено 12.10.2026), её закрытия не ждём.
+        self.wait_loaded()
 
     def assert_bank_question_added_to_constructor(self, bank_question_text: str) -> None:
         """Иконка связи с банком вопросов — inline SVG без класса
