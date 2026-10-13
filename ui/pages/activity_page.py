@@ -12,10 +12,10 @@ class ActivityPage(BasePage):
     def start_external_activity(self, program_name: str):
         """Открыть внешнюю активити (Игровая сессия)."""
         sidebar = UserSidebarPage(self.page)
+        # dismiss_popups сам ждёт «Пройти обучение»/шаг тура с поллингом и закрывает всё по
+        # кругу (cookie-баннер после тура включительно) — отдельные _start_tour_if_present и
+        # complete_program_onboarding здесь были три лишних ожидания по таймауту (82 с шага).
         sidebar.dismiss_popups()
-        self._start_tour_if_present()
-        self.complete_program_onboarding()
-        sidebar.dismiss_popups()  # cookie-баннер может переотрисоваться после тура
         program_title = self.page.locator(f"text={program_name}").first
         expect(program_title).to_be_visible(timeout=settings.UI_TIMEOUT)
         goto_btn = self.page.locator("button:has-text('Перейти к программе'), a:has-text('Перейти к программе')").first

@@ -50,8 +50,12 @@ class LoginPage(BasePage):
         consent_dialog = self.page.get_by_role("dialog").filter(has_text="Отправить")
         expect(shell.or_(consent_dialog).first).to_be_visible(timeout=settings.UI_TIMEOUT)
         if handle_onboarding:
-            self.handle_modal()
-            self.complete_training()
+            # Анкета согласия, отказ от рассылки, cookie-баннер и тур — одним ожиданием
+            # «любого блокера» (UserSidebarPage.dismiss_popups), а не handle_modal (3 с) +
+            # complete_training (3 + 2 + 2 с) по очереди: у подготовленного через API
+            # пользователя ничего из этого не показывается, и логин стоил ~35 с вместо ~7.
+            from ui.pages.user_sidebar_page import UserSidebarPage
+            UserSidebarPage(self.page).dismiss_popups()
 
     def select_tenant_if_required(self, base_url: str = None, tenant_name: str = None):
         """Выбирает тенант после входа, если пользователю доступно несколько организаций.

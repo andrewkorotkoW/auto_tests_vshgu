@@ -84,7 +84,9 @@ class TestUserTestStreamFlow:
             expect(tests_tab).to_be_visible(timeout=15000)
             tests_tab.click(force=True)
 
-            test_element = page.locator(f"text={test_data['name']}")
+            # Имя теста на вкладке встречается дважды (заголовок карточки .v-card-title и
+            # .activity-test__title раскрытой карточки) — без .first expect падает по strict mode.
+            test_element = page.locator(f"text={test_data['name']}").first
             found = False
             for attempt in range(4):
                 try:
