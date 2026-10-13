@@ -16,7 +16,6 @@ import allure
 import pytest
 
 from api.endpoints.assignments import AssignmentsEndpoint
-from api.helpers.user_prepare_api import prepare_user_for_tests_via_api
 from ui.pages.login_page import LoginPage
 from ui.pages.practical_task_page import PracticalTaskPage
 from ui.pages.reviewer_page import ReviewerPage
@@ -62,19 +61,18 @@ class TestCompleteAndReviewPersonalAssignment:
     @pytest.mark.practical_tasks
     def test_complete_and_review_personal_assignment(
         self, page, env, api_client, tincan_endpoint,
-        created_user, created_homework, register_practical_homework,
+        prepared_user, created_homework, register_practical_homework,
     ):
         homework_id = None
 
         try:
             with allure.step("1. Подготовить слушателя, проверяющего, ПЗ и индивидуальное назначение через API"):
-                user = created_user()
-                reviewer = created_user()
-                # Без этого «Индивидуальное обучение» показывает «У вас нет программ» вместо
-                # реально назначенного ПЗ (тот же класс дефекта, что и в
-                # test_complete_practical_task.py — стенду нужно закрытое согласие на ПД
-                # и онбординг-истории через API, а не через UI-тур при логине).
-                prepare_user_for_tests_via_api(env, user["email"], user["password"])
+                # prepared_user: согласие на ПД и онбординг-истории закрыты через API. Без этого
+                # «Индивидуальное обучение» показывает «У вас нет программ» вместо реально
+                # назначенного ПЗ (тот же класс дефекта, что и в test_complete_practical_task.py),
+                # а у проверяющего при логине всплывают анкета и тур.
+                user = prepared_user()
+                reviewer = prepared_user()
 
                 cover_uuid = tincan_endpoint.upload_cover(str(TEST_DATA_DIR / "practical_task_cover.png"))
                 # upload_archive() шлёт файл на /upload/course_archive (только zip/rar) —

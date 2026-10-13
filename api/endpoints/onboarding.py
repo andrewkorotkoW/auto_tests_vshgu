@@ -7,22 +7,29 @@ from utils.logger import logger
 class OnboardingEndpoint:
     """Методы для работы с онбордингом."""
 
-    # Полный список историй онбординга (перенесён из DEFAULT_ONBOARDING_STORIES
-    # коллеги, tests/api/helpers/user_prepare_api.py, репозиторий lms) — шире
-    # прежнего дефолта "sidebar": главный онбординг, страница программы, личный
-    # кабинет индивидуального обучения.
+    # Полный список историй онбординга — enum в бандле портала (develop, 13.10.2026:
+    # /assets/index-*.js, `e.SIDEBAR="sidebar", … e.HOMEWORK_TABS="homework_tabs"`).
+    # Изначально перенесён из DEFAULT_ONBOARDING_STORIES коллеги (репозиторий lms);
+    # 13.10 добавлены четыре истории, которых там не было: ЛПД в индивидуальном обучении и
+    # программе, вкладки ДЗ, «program» — без них у подготовленного через API пользователя
+    # тур всё равно всплывал на этих экранах. Админка (/admin, отдельный бандл) онбординга
+    # не имеет вовсе. GET /onboarding отдаёт список уже закрытых историй.
     DEFAULT_STORIES = [
         "sidebar",
         "knowledge_base_library",
         "support",
         "main_education",
+        "program",
         "program_education_information",
         "program_education_schedule",
         "program_education_tabs",
         "program_education_activities",
+        "program_education_lpd",
         "individual_education_tabs",
         "individual_education_schedule",
         "individual_education_activities",
+        "individual_education_lpd",
+        "homework_tabs",
         "knowledge_base_tabs",
         "knowledge_base_favorite",
     ]

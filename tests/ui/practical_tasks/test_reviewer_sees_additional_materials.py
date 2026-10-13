@@ -41,7 +41,7 @@ class TestReviewerSeesAdditionalMaterials:
     )
     def test_reviewer_sees_additional_materials(
         self, page, browser, env, api_client, tincan_endpoint, assignments_endpoint, homework_endpoint,
-        assigned_user, created_module, created_homework, created_user,
+        assigned_user, created_module, created_homework, prepared_user,
     ):
         homework_id = None
         console_errors: list[str] = []
@@ -53,7 +53,7 @@ class TestReviewerSeesAdditionalMaterials:
                 assigned = assigned_user()
                 user = assigned["user"]
                 stream = assigned["stream"]
-                reviewer = created_user()
+                reviewer = prepared_user()  # анкета и онбординг закрыты через API
                 module = created_module(program_id=stream["program_id"], stream_id=stream["id"])
 
                 cover_uuid = tincan_endpoint.upload_cover(str(TEST_DATA_DIR / "practical_task_cover.png"))

@@ -21,7 +21,6 @@ import allure
 import pytest
 from playwright.sync_api import expect
 
-from api.helpers.user_prepare_api import prepare_user_for_tests_via_api
 from ui.pages.admin_stream_groups_page import AdminStreamGroupsPage
 from ui.pages.login_page import LoginPage
 from ui.pages.practical_task_page import PracticalTaskPage
@@ -55,12 +54,14 @@ class TestGroupPracticalTaskFlow:
     @pytest.mark.groups
     def test_group_practical_task_flow(
         self, admin_page, browser, env, api_client, tincan_endpoint, assignments_endpoint,
-        users_endpoint, created_user, group_practical_task,
+        users_endpoint, prepared_user, group_practical_task,
     ):
         with allure.step("1. Подготовить поток, модуль, ПЗ, двух слушателей и проверяющего через API"):
-            user1 = created_user()
-            user2 = created_user()
-            reviewer = created_user()
+            # prepared_user: согласие на ПД, отказ от рассылки и все истории онбординга закрыты
+            # через API — ни у слушателей, ни у проверяющего в UI не всплывают анкета и тур.
+            user1 = prepared_user()
+            user2 = prepared_user()
+            reviewer = prepared_user()
             users_endpoint.assign_roles(reviewer["id"], [4])
 
             cover_uuid = tincan_endpoint.upload_cover(str(TEST_DATA_DIR / "practical_task_cover.png"))
@@ -76,11 +77,6 @@ class TestGroupPracticalTaskFlow:
             )
 
             assignments_endpoint.assign(stream["program_id"], stream["id"], [user1["id"], user2["id"]])
-
-            # Без этого «Моё обучение» показывает только 2 демо-карточки вместо
-            # реально назначенной программы (см. test_complete_practical_task.py).
-            prepare_user_for_tests_via_api(env, user1["email"], user1["password"])
-            prepare_user_for_tests_via_api(env, user2["email"], user2["password"])
 
             program_name = api_client.get(f"/programs/{stream['program_id']}").json()["data"]["attributes"]["name"]
             user1_full_name = f"{user1['surname']} {user1['name']} {user1['patronymic']}"

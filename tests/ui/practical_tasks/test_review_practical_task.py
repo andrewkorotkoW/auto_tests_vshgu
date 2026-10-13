@@ -54,7 +54,7 @@ class TestReviewPracticalTask:
     @pytest.mark.practical_tasks
     def test_review_practical_task(
         self, page, browser, env, api_client, tincan_endpoint, assignments_endpoint,
-        users_endpoint, assigned_user, created_module, created_homework, created_user,
+        users_endpoint, assigned_user, created_module, created_homework, prepared_user,
         register_practical_homework,
     ):
         homework_id = None
@@ -64,7 +64,9 @@ class TestReviewPracticalTask:
                 assigned = assigned_user()
                 user = assigned["user"]
                 stream = assigned["stream"]
-                reviewer = created_user()
+                # prepared_user: анкета и все истории онбординга закрыты через API — у проверяющего
+                # в UI нечему всплывать, dismiss_popups после логина отрабатывает за секунды.
+                reviewer = prepared_user()
                 users_endpoint.assign_roles(reviewer["id"], [4])
                 module = created_module(program_id=stream["program_id"], stream_id=stream["id"])
 
