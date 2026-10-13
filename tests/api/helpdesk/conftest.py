@@ -41,10 +41,21 @@ def helpdesk_endpoint(helpdesk_client):
 
 
 @pytest.fixture
-def user_helpdesk_endpoint(env, user_session):
+def user_helpdesk_endpoint(env, created_user):
     """HelpdeskEndpoint от имени обычного пользователя портала без ролей хелпдеска —
-    для негативных проверок доступа."""
-    client = ApiClient(session=user_session, base_url=_helpdesk_base_url(env), cookie_name=env.cookie_name)
+    для негативных проверок доступа.
+
+    Не user_session: в .env нет <ENV>_USER_LOGIN ни для develop, ни для k8s, и role="user"
+    падает обратно на учётку админа (GET /auth/me для admin/user/default — один id=3,
+    проверено 13.10.2026) — негативная проверка уходила от администратора. Создаём
+    свежего пользователя через API (roles=[]) и логинимся под ним так же, как браузер
+    (config.environments.login); кука общая для поддомена, хелпдеск её принимает:
+    POST /admin/group от такого пользователя — 403 (проверено живым запросом на develop)."""
+    from config.environments import login
+
+    user = created_user()
+    session = login(env, user["email"], user["password"])
+    client = ApiClient(session=session, base_url=_helpdesk_base_url(env), cookie_name=env.cookie_name)
     return HelpdeskEndpoint(client)
 
 

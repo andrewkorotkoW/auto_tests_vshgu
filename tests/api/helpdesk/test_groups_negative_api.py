@@ -18,14 +18,9 @@ class TestGroupsNegativeApi:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(
-        strict=False,
-        reason="user_session и admin_session из корневого conftest.py на develop резолвятся в один "
-        "и тот же аккаунт (id=3, подтверждено GET /auth/me для обеих сессий) — отдельного тестового "
-        "пользователя без доступа к Helpdesk через эти фикстуры получить нельзя. Запрос реально уходит "
-        "от администратора и получает 422 (валидационная ошибка, как у admin), а не 403.",
-    )
     def test_create_group_forbidden_for_non_admin(self, user_helpdesk_endpoint):
+        # user_helpdesk_endpoint — свежий пользователь без ролей (см. conftest). До 13.10.2026 фикстура
+        # брала user_session, которая на обоих стендах резолвится в админа, и тест был xfail с 422.
         client = user_helpdesk_endpoint.client
         resp = client.session.post(
             f"{client.base_url}{user_helpdesk_endpoint.GROUP_PATH}",
