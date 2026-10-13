@@ -26,7 +26,8 @@ _BLACKLIST_500_DEFECT_REASON = (
     "Дефект стенда (тот же, что в tests/api/helpdesk/test_dictionaries_api.py, не правим — "
     "ui/pages/helpdesk_dict_page.py защищена условиями задачи): создание записи чёрного "
     "списка падает на сервере 500 при валидации уникальности email, строка не появляется "
-    "в списке — page.create() падает по таймауту, ожидая строку после сохранения."
+    "в списке — page.create() падает по таймауту, ожидая строку после сохранения. На релизной "
+    "сборке k8s (13.10.2026) создание исправлено — кейс проходит (XPASS); снять после выкатки на develop."
 )
 
 _DICT_CASES = [
@@ -87,16 +88,26 @@ def test_dictionary_crud(admin_page, helpdesk_ui_base_url, key, dict_label, path
 
     deleted = False
     try:
-        new_value = f"{value}_upd"
-        with allure.step("Открыть запись на редактирование и изменить значение"):
-            row = page.row(value)
-            row.locator("a[bp-button='update']").first.click()
-            page.wait_loaded()
-            page.field(value_field).fill(new_value)
-            page.submit_form()
+        new_value = value
+        if key == "blacklist":
+            # У чёрного списка нет редактирования по дизайну (нет кнопки «Изменить» в строке,
+            # маршрут admin/blacklist/{id} принимает только GET/HEAD/DELETE) — проверяем, что
+            # кнопки действительно нет, и идём к удалению.
+            with allure.step("У записи чёрного списка нет кнопки «Изменить» (редактирование не предусмотрено)"):
+                assert page.row(value).locator("a[bp-button='update']").count() == 0, (
+                    "У чёрного списка появилась кнопка «Изменить» — сценарий нужно расширить редактированием"
+                )
+        else:
+            new_value = f"{value}_upd"
+            with allure.step("Открыть запись на редактирование и изменить значение"):
+                row = page.row(value)
+                row.locator("a[bp-button='update']").first.click()
+                page.wait_loaded()
+                page.field(value_field).fill(new_value)
+                page.submit_form()
 
-        with allure.step("Изменение сохранилось и видно в списке"):
-            assert page.row(new_value).count() > 0, f"Изменённое значение {new_value!r} не видно в списке"
+            with allure.step("Изменение сохранилось и видно в списке"):
+                assert page.row(new_value).count() > 0, f"Изменённое значение {new_value!r} не видно в списке"
 
         with allure.step("Удалить запись через иконку-корзину с подтверждением"):
             page.delete(new_value)

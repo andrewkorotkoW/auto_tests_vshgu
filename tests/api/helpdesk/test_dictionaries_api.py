@@ -30,7 +30,9 @@ _BLACKLIST_500_DEFECT_REASON = (
     "('SQLSTATE[22P02]: invalid input syntax for type bigint: \"deleted_at\"' на SQL-запросе "
     "'select count(*) ... from blacklist ...') — бэкенд некорректно связывает параметры "
     "запроса проверки уникальности. Запись в БД не создаётся, воспроизведено и напрямую "
-    "через requests с полным набором полей формы (включая скрытый created_by), и через UI."
+    "через requests с полным набором полей формы (включая скрытый created_by), и через UI. "
+    "На релизной сборке k8s (13.10.2026) создание исправлено — там кейс проходит (XPASS); "
+    "на develop 500 воспроизводится, пометку снять после выкатки на develop."
 )
 
 _DICT_CASES = [
@@ -88,16 +90,24 @@ class TestDictionariesApi:
 
         deleted = False
         try:
-            new_value = f"{value}_upd"
-            with allure.step("Отредактировать значение записи"):
-                resp = dict_ep.update(item_id, new_value, group_id)
-                assert resp.status_code < 400, f"Не удалось обновить запись: {resp.status_code} {resp.text[:300]}"
+            new_value = value
+            if key == "blacklist":
+                # У чёрного списка нет редактирования по дизайну: маршрут admin/blacklist/{id}
+                # принимает только GET/HEAD/DELETE (PUT → 405, k8s 13.10.2026), в списке нет
+                # кнопки «Изменить» — для него проверяем только создание и удаление.
+                allure.attach("Чёрный список: редактирования нет (PUT → 405), шаг пропущен",
+                              name="update_skipped", attachment_type=allure.attachment_type.TEXT)
+            else:
+                new_value = f"{value}_upd"
+                with allure.step("Отредактировать значение записи"):
+                    resp = dict_ep.update(item_id, new_value, group_id)
+                    assert resp.status_code < 400, f"Не удалось обновить запись: {resp.status_code} {resp.text[:300]}"
 
-            with allure.step("Изменение сохранилось"):
-                found_updated = dict_ep.find_by_value(new_value)
-                assert found_updated is not None and found_updated["id"] == item_id, (
-                    "Изменённое значение не найдено в списке"
-                )
+                with allure.step("Изменение сохранилось"):
+                    found_updated = dict_ep.find_by_value(new_value)
+                    assert found_updated is not None and found_updated["id"] == item_id, (
+                        "Изменённое значение не найдено в списке"
+                    )
 
             with allure.step("Удалить запись"):
                 resp = dict_ep.delete(item_id)
