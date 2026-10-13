@@ -9,9 +9,9 @@ INTERNAL = list(SIDEBAR_BUTTONS.items())
 
 
 @pytest.fixture
-def logged_in_user(page, env, created_user):
+def logged_in_user(page, env, prepared_user):
     """API: создать пользователя → UI: войти по его email/паролю через форму → закрыть попапы."""
-    user = created_user()
+    user = prepared_user()
     logger.info(f"Пользователь: id={user['id']} {user['email']}")
     LoginPage(page).login(user["email"], user["password"], base_url=env.ui_base_url)
     sidebar = UserSidebarPage(page)

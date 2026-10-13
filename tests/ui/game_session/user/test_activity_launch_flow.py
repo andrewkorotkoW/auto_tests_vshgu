@@ -17,7 +17,7 @@ class TestActivityLaunchFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    def test_activity_launch(self, page, api_client, created_user, created_program,
+    def test_activity_launch(self, page, api_client, prepared_user, created_program,
                               created_stream, created_module, assignments_endpoint,
                               external_system_client):
         from api.helpers.data_generator import generate_external_content_payload
@@ -37,7 +37,7 @@ class TestActivityLaunchFlow:
             module = created_module(program_id=program["id"], stream_id=stream["id"])
 
         with allure.step("4. Создать пользователя"):
-            user = created_user()
+            user = prepared_user()
 
         with allure.step("5. Назначить пользователя на поток"):
             assignments_endpoint.assign(program["id"], stream["id"], [user["id"]])

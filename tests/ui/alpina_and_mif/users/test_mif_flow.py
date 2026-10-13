@@ -19,13 +19,13 @@ class TestMifFlow:
             "переписывания под новую схему (не дефект стенда)"
         ),
     )
-    def test_mif_access(self, page, created_user, mif_endpoint):
+    def test_mif_access(self, page, prepared_user, mif_endpoint):
         from config.settings import settings
 
         login_page = LoginPage(page)
 
         with allure.step("1. Создать пользователя"):
-            user = created_user()
+            user = prepared_user()
 
         with allure.step("2. Открыть доступ к MIF"):
             mif_endpoint.set_access([user["id"]], True)

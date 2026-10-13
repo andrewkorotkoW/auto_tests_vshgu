@@ -16,9 +16,10 @@ def _shot(page, name, title):
 
 
 @pytest.fixture
-def buk_synced_user(created_user, external_buk_endpoint):
-    """API: пользователь АСУО + приём в БУК → дождаться sync_status=synced."""
-    user = created_user()
+def buk_synced_user(prepared_user, external_buk_endpoint):
+    """API: пользователь АСУО (анкета и онбординг закрыты через API — в UI проверяем меню,
+    а не тур) + приём в БУК → дождаться sync_status=synced."""
+    user = prepared_user()
     payload = generate_buk_user_payload(from_user=user)
     external_buk_endpoint.post_user(payload)
     result = external_buk_endpoint.wait_for_match(payload)
@@ -139,8 +140,8 @@ class TestBukUserMenuUI:
     @allure.title("Пользователь без синхронизации с БУК: пункта БУК в меню нет")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
-    def test_no_buk_button_for_unsynced_user(self, page, env, created_user, external_buk_endpoint):
-        user = created_user()
+    def test_no_buk_button_for_unsynced_user(self, page, env, prepared_user, external_buk_endpoint):
+        user = prepared_user()
         sidebar = _login(page, env, user)
         items = sidebar.user_menu_items()
         _shot(page, f"buk_menu_absent_{user['id']}", "Меню пользователя без БУК")

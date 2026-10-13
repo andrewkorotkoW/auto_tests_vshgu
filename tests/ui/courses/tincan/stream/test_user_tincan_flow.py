@@ -26,7 +26,7 @@ class TestUserTincanFlow:
         ),
         strict=False,
     )
-    def test_user_open_tincan(self, page, api_client, created_user, created_program,
+    def test_user_open_tincan(self, page, api_client, prepared_user, created_program,
                                created_stream, created_module, assignments_endpoint):
         """API: создать → UI: логин → пройти курс."""
 
@@ -44,7 +44,7 @@ class TestUserTincanFlow:
             module = created_module(program_id=program["id"], stream_id=stream["id"])
 
         with allure.step("4. Создать пользователя"):
-            user = created_user()
+            user = prepared_user()
 
         with allure.step("5. Назначить пользователя на поток"):
             assignments_endpoint.assign(program["id"], stream["id"], [user["id"]])

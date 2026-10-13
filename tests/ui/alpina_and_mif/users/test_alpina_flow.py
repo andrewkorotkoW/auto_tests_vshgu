@@ -19,13 +19,13 @@ class TestAlpinaFlow:
             "переписывания под новую схему (не дефект стенда)"
         ),
     )
-    def test_alpina_access(self, page, created_user, alpina_endpoint):
+    def test_alpina_access(self, page, prepared_user, alpina_endpoint):
 
         login_page = LoginPage(page)
 
         # ========== API ==========
         with allure.step("1. Создать пользователя"):
-            user = created_user()
+            user = prepared_user()
             logger.info(f"Пользователь: {user['email']}")
 
         with allure.step("2. Открыть доступ к Альпине"):

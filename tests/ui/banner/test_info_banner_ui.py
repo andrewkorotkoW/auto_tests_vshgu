@@ -15,11 +15,11 @@ class TestInfoBannerUI:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
-    def test_info_banner_toggle_ui(self, page, info_banner_on, created_user):
+    def test_info_banner_toggle_ui(self, page, info_banner_on, prepared_user):
         """API: включить → проверить → выключить → проверить."""
 
         with allure.step("1. Создать пользователя"):
-            user = created_user()
+            user = prepared_user()
 
         with allure.step("2. Баннер включён через глобальный API (фикстура info_banner_on, выключение гарантировано после теста)"):
             info_banner_endpoint = info_banner_on
@@ -36,9 +36,11 @@ class TestInfoBannerUI:
 
         with allure.step("4. Логин и проверка баннера после входа"):
             login_page = LoginPage(page)
-            login_page.login(user["email"], user["password"])
-            # Новая анкета «заполните данные о себе» перекрывает страницу и крестик баннера — закрываем только её,
-            # dismiss_popups() здесь не подходит: он убирает и саму плашку техработ
+            # handle_onboarding=False: login() иначе зовёт dismiss_popups(), а тот убирает из DOM
+            # саму плашку техработ (remove_tech_banner) — предмет этого теста. Пользователь
+            # подготовлен через API (prepared_user), анкеты и тура у него нет; на всякий случай
+            # закрываем только их, без dismiss_popups.
+            login_page.login(user["email"], user["password"], handle_onboarding=False)
             sidebar = UserSidebarPage(page)
             sidebar.dismiss_anketa()
             sidebar.pass_onboarding()  # вводное окно тура лежит поверх страницы и перехватывает клики
@@ -64,7 +66,7 @@ class TestInfoBannerUI:
             expect(page.locator("div.tech-alert.show")).to_have_count(0, timeout=5000)
 
         with allure.step("8. Повторный вход и проверка отсутствия баннера"):
-            login_page.login(user["email"], user["password"])
+            login_page.login(user["email"], user["password"], handle_onboarding=False)
             page.screenshot(path="allure-results/banner_off_after_login.png")
             allure.attach.file("allure-results/banner_off_after_login.png", "После входа без баннера", allure.attachment_type.PNG)
             # именно плашка техработ: другие v-alert (тосты «Подборка обновилась» и т. п.) не в счёт

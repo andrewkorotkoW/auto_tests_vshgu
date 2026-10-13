@@ -19,13 +19,13 @@ class TestKnowledgeBaseFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.develop
     @pytest.mark.ui
-    def test_create_course_and_view_in_ui(self, page, api_client, created_user):
+    def test_create_course_and_view_in_ui(self, page, api_client, prepared_user):
         kb_ep = KnowledgeBaseEndpoint(api_client)
         tincan_ep = TincanEndpoint(api_client)
 
         # ========== API: Подготовка данных ==========
         with allure.step("1. Создать пользователя"):
-            user = created_user()
+            user = prepared_user()
             logger.info(f"Пользователь: ID={user['id']}, email={user['email']}")
 
         with allure.step("2. Загрузить обложку и архив, создать курс Tincan"):
