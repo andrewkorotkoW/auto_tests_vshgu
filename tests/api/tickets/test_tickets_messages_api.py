@@ -7,21 +7,14 @@ import pytest
 class TestTicketsMessagesApi:
 
     @allure.title("POST /tickets/{id}/messages — сообщение добавляется (200); GET messages "
-                  "возвращает первое и добавленное сообщение в правильном порядке")
+                  "возвращает оба сообщения, новое — первым (порядок по убыванию created_at)")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Кандидат в дефект / смена контракта (develop, 13.10.2026): GET /tickets/{id}/messages "
-            "стал отдавать сообщения по убыванию created_at (новое первым) — 6/6 повторов, метки "
-            "времени различаются на 2–3 с, это не гонка. 09.10 (run 64 в test_hub) порядок был "
-            "по возрастанию, как и закреплено здесь с 24.09. Порядок нигде не задокументирован — "
-            "уточнить у разработки, намеренно ли; если да — перевернуть ожидания и снять маркер."
-        ),
-    )
     def test_add_message_and_order(self, tickets_endpoint, created_ticket):
+        """Порядок — контракт, подтверждённый владельцем 13.10.2026: сообщения отдаются по
+        убыванию created_at (новое первым). До 09.10 API отдавал по возрастанию, тест
+        закреплял тот порядок — изменение намеренное, см. README (особенности тикетов)."""
         ticket = created_ticket()
 
         with allure.step("До добавления — в переписке одно (первое) сообщение с текстом обращения"):
@@ -35,10 +28,11 @@ class TestTicketsMessagesApi:
             resp_data = tickets_endpoint.add_message(ticket["id"], added_text)
             assert resp_data == {"message": "Ok"}
 
-        with allure.step("GET messages содержит оба сообщения, добавленное — вторым (после первого)"):
+        with allure.step("GET messages содержит оба сообщения, добавленное — первым (новое сверху)"):
             messages = tickets_endpoint.get_messages(ticket["id"])
             assert len(messages) == 2
-            assert messages[0]["message_id"] == first_message_id
-            assert messages[0]["text"] == ticket["text"]
-            assert messages[1]["text"] == added_text
-            assert messages[1]["message_id"] != first_message_id
+            assert messages[0]["text"] == added_text
+            assert messages[0]["message_id"] != first_message_id
+            assert messages[1]["message_id"] == first_message_id
+            assert messages[1]["text"] == ticket["text"]
+            assert messages[0]["created_at"] >= messages[1]["created_at"]
