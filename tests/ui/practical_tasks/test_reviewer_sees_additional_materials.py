@@ -3,8 +3,9 @@
 Сопутствующий баг задачи VSHGU2-1263: на develop при нажатии «Проверить» во вкладке «Новые»
 в консоли падает `TypeError: Cannot read properties of undefined (reading 'type')`
 (чанк HomeWorkTeacherView), а блок «Дополнительные материалы по заданию» остаётся пустым.
-На ветке 1263 исправлено (проверено 29.09.2026), поэтому тест помечен xfail без strict:
-на develop до выкатки — xfail, после выкатки — xpass, тогда пометку снять.
+На ветке 1263 исправлено (проверено 29.09.2026); до 13.10.2026 тест был помечен xfail без
+strict. Пометка снята: XPASS на develop (контрольный прогон 13.10) и на k8s (run 67), затем
+3 из 3 на k8s с --runxfail — исправление выкачено.
 """
 from pathlib import Path
 
@@ -31,14 +32,6 @@ class TestReviewerSeesAdditionalMaterials:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
-    @pytest.mark.xfail(
-        reason=(
-            "VSHGU2-1263 (сопутствующий баг): на develop при открытии «Проверить» для ПЗ с файлом в "
-            "«Дополнительных материалах» в консоли TypeError (reading 'type'), блок доп. материалов пустой. "
-            "Исправлено на ветке 1263, снять xfail после выкатки на develop."
-        ),
-        strict=False,
-    )
     def test_reviewer_sees_additional_materials(
         self, page, browser, env, api_client, tincan_endpoint, assignments_endpoint, homework_endpoint,
         assigned_user, created_module, created_homework, prepared_user,

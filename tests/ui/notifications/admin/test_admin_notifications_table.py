@@ -1,8 +1,9 @@
 """UI: админка → «Уведомления» → вкладка «Все уведомления» — созданное уведомление
 должно быть видно в таблице.
 
-xfail: подтверждённый разведкой (ad-hoc скрипт вне pytest, дважды) кандидат в дефект —
-см. докстринг ui/pages/admin_notifications_page.py и README §13.
+До 13.10.2026 был помечен xfail (кандидат в дефект: отправленное через resend уведомление
+не появлялось в таблице — см. докстринг ui/pages/admin_notifications_page.py и README §13).
+Снято: XPASS в ночном develop (run 65) и на k8s (run 67), затем 3 из 3 на k8s с --runxfail.
 """
 import allure
 import pytest
@@ -19,17 +20,6 @@ class TestAdminNotificationsTable:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.notifications
-    @pytest.mark.xfail(
-        reason=(
-            "Кандидат в дефект: уведомление, созданное через POST /notifications/create "
-            "(send_at=null) и затем явно отправленное через POST /notifications/resend/{id} "
-            "(ответ 200 {'status': 'success'}), не появляется в таблице админки «Все "
-            "уведомления» (/admin/notifications?i=3) — воспроизведено дважды ad-hoc "
-            "скриптом вне pytest: ни сразу после открытия таблицы, ни после ~20 c ожидания "
-            "с перезагрузкой страницы."
-        ),
-        strict=False,
-    )
     def test_admin_sees_created_notification_in_table(
         self, admin_page, env, created_notification, current_user_id, notifications_endpoint
     ):

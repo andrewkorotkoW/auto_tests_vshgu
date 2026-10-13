@@ -13,6 +13,10 @@ src/ui/pages/dashboard_page.py коллеги.
 на "пройдено" и ожидания 120с эти поля статистики курса не обновляются на develop
 (похоже на отдельный дефект стенда, не связанный с рендером дашборда, воспроизведено
 разведочным прогоном; в тест не включаем, чтобы не завязываться на асинхронный пересчёт).
+
+До 13.10.2026 был помечен xfail (develop 07.10: completeness_schedule_items не пересчитывался
+после регистрации через API, qa_analysis/cases/schedule_completeness_develop_2026-10-07).
+Снято: XPASS в ночном develop (run 65) и на k8s (run 67), затем 3 из 3 на k8s с --runxfail.
 """
 import allure
 import pytest
@@ -26,10 +30,6 @@ class TestAdminChecksProgramAndCourseDashboards:
 
     @allure.title("UI: Администратор проверяет строки дашбордов программ и курсов")
     @allure.severity(allure.severity_level.NORMAL)
-    @pytest.mark.xfail(
-        reason="develop: completeness_schedule_items в /statistics/programs не пересчитывается после регистрации на мероприятие через API (0 вместо 1 спустя 10 мин опроса API, 07.10; qa_analysis/cases/schedule_completeness_develop_2026-10-07); на k8s v2 06.10 тот же сценарий давал 1 — дефект пересчёта на develop, не поиска и не лаг",
-        strict=False,
-    )
     @pytest.mark.ui
     @pytest.mark.dashboards
     def test_admin_checks_program_and_course_dashboards(self, dashboards_admin_page, dashboard_data, env):
