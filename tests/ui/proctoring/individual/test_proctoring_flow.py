@@ -81,15 +81,25 @@ class TestUIProctoringFlow:
         with allure.step("5. Начать тест — открывается тестовая среда прокторинга (Mock Examus)"):
             # На develop прокторинг подключён к тестовой заглушке (Mock Examus,
             # /api/mock-examus/start/), которая открывается в той же вкладке (не в
-            # новой) и не содержит реальных вопросов — только кнопку завершения
-            page.evaluate("""
-                () => {
-                    const btns = document.querySelectorAll('button.v-btn');
-                    for (const b of btns) {
-                        if (b.textContent.includes('Начать')) { b.click(); break; }
+            # новой) и не содержит реальных вопросов — только кнопку завершения.
+            # Разведка 13.10.2026: заглушка держит плеер портала в iframe, и именно плеер,
+            # загружаясь, регистрирует попытку — GET /assignments/{uuid}/contents/{id}/launch
+            # (201), затем /tests/try/{try_id}/intro. Кнопка «Завершить тест» видна раньше,
+            # чем эта цепочка отработает, а сама по себе никакого запроса не порождает —
+            # уйдя со страницы до launch, тест в шаге 7 не находил попытки («Попытка» не
+            # появлялась). Раньше это прикрывал networkidle (~3.5 с); ждём сам ответ intro —
+            # последний запрос загрузки плеера.
+            with page.expect_response(
+                lambda r: "/tests/try/" in r.url and r.url.endswith("/intro"), timeout=60000
+            ):
+                page.evaluate("""
+                    () => {
+                        const btns = document.querySelectorAll('button.v-btn');
+                        for (const b of btns) {
+                            if (b.textContent.includes('Начать')) { b.click(); break; }
+                        }
                     }
-                }
-            """)
+                """)
             finish_btn = page.locator("text=Завершить тест").first
             expect(finish_btn).to_be_visible(timeout=15000)
             page.screenshot(path="allure-results/proctoring_ui_04_mock_examus.png")
@@ -98,21 +108,14 @@ class TestUIProctoringFlow:
 
         with allure.step("6. Завершить тест в тестовой среде"):
             finish_btn.click(force=True)
-            # Здесь и в шаге 7 networkidle оставлен намеренно (единственные два места в
-            # проекте). Разведка 12.10.2026: заглушка /api/mock-examus/start/ держит плеер в
-            # iframe, который опрашивает /api/mock-examus/check-status каждые 5 с; «Завершить
-            # тест» ни запроса, ни редиректа не порождает, а networkidle здесь отрабатывает за
-            # ~0.5 с между опросами. Замены на wait_loaded()/ожидание «Попытка» до 45 с
-            # (с wait_loaded до и после клика по карточке) стабильно роняли шаг 7: панель
-            # результатов не догружалась. Нужна отдельная разведка плеера, не этой правки.
-            page.wait_for_load_state("networkidle")
             page.screenshot(path="allure-results/proctoring_ui_05_finished.png")
             allure.attach.file("allure-results/proctoring_ui_05_finished.png", "Тест завершён", allure.attachment_type.PNG)
 
         with allure.step("7. Проверить, что попытка зафиксирована"):
-            UserSidebarPage(page).open_individual_tab("Курсы и тесты")
+            shell = UserSidebarPage(page)
+            shell.open_individual_tab("Курсы и тесты")
             page.locator(f"text={display_name}").first.click(force=True)
-            page.wait_for_load_state("networkidle")  # см. комментарий в шаге 6
+            shell.wait_loaded()
             attempt = page.locator("text=Попытка").first
             expect(attempt).to_be_visible(timeout=15000)
             page.screenshot(path="allure-results/proctoring_ui_06_result.png")
