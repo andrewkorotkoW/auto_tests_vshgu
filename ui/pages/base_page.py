@@ -26,11 +26,19 @@ class BasePage:
     def _locator(self, selector) -> Locator:
         return self.page.locator(selector) if isinstance(selector, str) else selector
 
-    # Видимые индикаторы загрузки Vuetify/портала: крутилка, скелетон, элемент в состоянии
-    # «занят». v-progress-linear сюда не входит — верхняя полоса остаётся в DOM видимой и после
-    # полной загрузки (разведка 12.10.2026), признаком она не является.
+    # Видимые индикаторы загрузки Vuetify/портала: крутилка, скелетоны (Vuetify и портальный
+    # .vs-skeleton-table/.skeleton — так грузятся таблицы админки), элемент в состоянии «занят».
+    # Сюда НЕ входят v-progress-linear (верхняя полоса остаётся видимой и после полной загрузки)
+    # и tr.v-data-table__progress (висит в DOM таблицы всегда) — разведка 12–13.10.2026.
     LOADING_INDICATORS = (
-        ".v-progress-circular--indeterminate:visible, .v-skeleton-loader:visible, [aria-busy='true']:visible"
+        ".v-progress-circular--indeterminate:visible, .v-skeleton-loader:visible, "
+        ".vs-skeleton-table:visible, .skeleton:visible, [aria-busy='true']:visible"
+    )
+    # Самая ранняя стадия после goto/reload: SPA ещё не смонтировано, в body только пустая
+    # оболочка и безклассовые <svg><circle> (дуга-лоадер), всего ~6 элементов. У неё нет
+    # классов, по которым можно ждать, поэтому признак — «в body есть что-то кроме лоадера».
+    _SPA_BOOTED_JS = (
+        "() => !(document.body.querySelectorAll('*').length < 20 && document.body.querySelector('svg circle'))"
     )
 
     def wait_loaded(self, timeout: int = None):
@@ -43,6 +51,7 @@ class BasePage:
         оба случая. Ждём состояние страницы, а не тишину сети."""
         timeout = timeout or settings.UI_TIMEOUT
         self.page.wait_for_load_state("domcontentloaded", timeout=timeout)
+        self.page.wait_for_function(self._SPA_BOOTED_JS, timeout=timeout)
         expect(self.page.locator(self.LOADING_INDICATORS)).to_have_count(0, timeout=timeout)
 
     def wait_visible(self, selector, timeout: int = None) -> Locator:

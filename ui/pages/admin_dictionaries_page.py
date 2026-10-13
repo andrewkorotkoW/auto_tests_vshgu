@@ -48,8 +48,15 @@ class AdminDictionariesPage(BasePage):
         super().__init__(page)
 
     def open(self, ui_base_url: str, dictionary_type: str) -> None:
-        """Прямой переход на подстраницу типа справочника по URL."""
-        self.page.goto(f"{ui_base_url.rstrip('/')}{self.PATHS[dictionary_type]}")
+        """Прямой переход на подстраницу типа справочника по URL. Строки таблицы приходят
+        отдельным GET /api/v1/dictionaries?filters[type]=… уже после монтирования SPA и
+        скелетона (разведка 13.10.2026) — ждём сам ответ, иначе values() читает пустую
+        таблицу."""
+        with self.page.expect_response(
+            lambda r: "/api/v1/dictionaries?" in r.url and "filters%5Btype%5D=" in r.url,
+            timeout=30000,
+        ):
+            self.page.goto(f"{ui_base_url.rstrip('/')}{self.PATHS[dictionary_type]}")
         self.wait_loaded()
 
     def open_via_menu(self, dictionary_type: str) -> None:
