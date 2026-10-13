@@ -11,10 +11,12 @@ class TestTicketsMessagesApi:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    def test_add_message_and_order(self, tickets_endpoint, created_ticket):
+    def test_add_message_and_order(self, tickets_endpoint, created_ticket, env):
         """Порядок — контракт, подтверждённый владельцем 13.10.2026: сообщения отдаются по
         убыванию created_at (новое первым). До 09.10 API отдавал по возрастанию, тест
-        закреплял тот порядок — изменение намеренное, см. README (особенности тикетов)."""
+        закреплял тот порядок — изменение намеренное, см. README (особенности тикетов).
+        Релизная сборка на k8s это изменение ещё не содержит (13.10: ASC) — там xfail до
+        релиза, см. ветку ниже."""
         ticket = created_ticket()
 
         with allure.step("До добавления — в переписке одно (первое) сообщение с текстом обращения"):
@@ -31,6 +33,11 @@ class TestTicketsMessagesApi:
         with allure.step("GET messages содержит оба сообщения, добавленное — первым (новое сверху)"):
             messages = tickets_endpoint.get_messages(ticket["id"])
             assert len(messages) == 2
+            if env.name == "k8s" and messages[0]["message_id"] == first_message_id:
+                pytest.xfail(
+                    "Релизная сборка k8s ещё отдаёт сообщения по возрастанию created_at; "
+                    "контракт DESC (новое первым) подтверждён для develop 13.10.2026 — снять после релиза"
+                )
             assert messages[0]["text"] == added_text
             assert messages[0]["message_id"] != first_message_id
             assert messages[1]["message_id"] == first_message_id
