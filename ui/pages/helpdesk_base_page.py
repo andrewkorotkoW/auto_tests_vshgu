@@ -43,8 +43,18 @@ DELETE_CONFIRM_BUTTON_RE = re.compile(r"^(Удалить|Да)$")
 class HelpdeskAdminPage(BasePage):
     PATH = ""  # переопределить в наследнике, например "/admin/group"
 
+    # DataTables в Backpack — server-side: после загрузки страницы списка (и после
+    # редиректа с сабмита формы) строки дотягиваются отдельным POST …/search, а таблица
+    # на это время затемнена. Разведка develop 13.10.2026: проверка строки между
+    # отправкой этого запроса и ответом видела старый список (test_dictionary_crud).
+    # Поэтому open()/submit_form() ждут сам ответ /search, а не косвенные признаки.
+    @staticmethod
+    def _is_table_search(response) -> bool:
+        return response.request.method == "POST" and response.url.split("?")[0].endswith("/search")
+
     def open(self, ui_base_url: str) -> None:
-        self.page.goto(f"{ui_base_url.rstrip('/')}{self.PATH}")
+        with self.page.expect_response(self._is_table_search, timeout=30000):
+            self.page.goto(f"{ui_base_url.rstrip('/')}{self.PATH}")
         self.wait_loaded()
 
     @property
@@ -81,8 +91,10 @@ class HelpdeskAdminPage(BasePage):
         self.wait_loaded()
 
     def submit_form(self) -> None:
-        """Сабмит текущей открытой формы создания/редактирования."""
-        self.page.locator("button[type=submit], input[type=submit]").first.click()
+        """Сабмит текущей открытой формы создания/редактирования: POST формы → 302 на
+        список → DataTables подгружает строки POST …/search — ждём его ответ."""
+        with self.page.expect_response(self._is_table_search, timeout=30000):
+            self.page.locator("button[type=submit], input[type=submit]").first.click()
         self.wait_loaded()
 
     def delete_row(self, text: str) -> None:
@@ -95,5 +107,9 @@ class HelpdeskAdminPage(BasePage):
         row.locator("[data-button-type='delete']").first.click()
         confirm_button = self.page.get_by_role("button", name=DELETE_CONFIRM_BUTTON_RE)
         expect(confirm_button).to_be_visible(timeout=15000)
-        confirm_button.click()
+        # После подтверждения Backpack удаляет запись ajax-запросом и перерисовывает
+        # таблицу тем же POST …/search; на больших справочниках («Категории», 500+
+        # записей) перерисовка дольше 10 с wait_hidden — ждём сам ответ /search.
+        with self.page.expect_response(self._is_table_search, timeout=30000):
+            confirm_button.click()
         self.wait_hidden(row)
