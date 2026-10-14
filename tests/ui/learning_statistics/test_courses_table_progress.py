@@ -84,6 +84,7 @@ class TestCoursesTableProgress:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.statistics
+    @pytest.mark.e2e
     def test_status_passed_updates_after_change_state(
         self, admin_page, env, course_with_listeners, assignments_endpoint, dashboards_endpoint
     ):

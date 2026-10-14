@@ -31,6 +31,7 @@ class TestUserCreatesTicket:
     @allure.title("Пользователь создаёт обращение через форму, видит его в списке и своё сообщение в переписке")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
+    @pytest.mark.e2e
     def test_user_creates_ticket_and_sees_it(self, user_page, env, tickets_endpoint):
         payload = generate_ticket_payload(text="Автотест текст обращения для проверки переписки")
         title = payload["title"]
