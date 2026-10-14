@@ -129,7 +129,7 @@ Docker-образ, без volume, `STAND_URL` на develop — результа�
 | Задание | Стенд | Запуск |
 |---|---|---|
 | `tests:develop:api` | develop, `tests/api` | по расписанию (Schedules) или вручную, таймаут 2 ч |
-| `tests:develop:ui` | develop, `tests/ui tests/e2e` | по расписанию (Schedules) или вручную, таймаут 2 ч |
+| `tests:develop:ui` | develop, `tests/ui tests/e2e tests/stage_lpd` | по расписанию (Schedules) или вручную, таймаут 2 ч |
 | `tests:stage` | stage, полный | только вручную, таймаут 2 ч |
 | `tests:prod-smoke` | prod, `-m smoke` | только вручную |
 
