@@ -44,9 +44,13 @@
 - **Sentry:** проект `vshgu-dev-lrs` (env `development`) — за 14 дней только инфраструктурные
   ошибки (postgres/redis «host not found», ~800 событий, последние 13.10 18:51 UTC) — LRS на
   develop периодически теряет базу/редис, это надо учитывать в ожиданиях тестов.
-- **Исходники statements:** на develop xAPI-statement'ы должны приходить от плееров курсов
-  (tincan/cmi5, `tests/ui/courses/tincan/*`) — связь «прошёл курс → statement в LRS» пока не
-  подтверждена, это первый кейс разведки.
+- **Исходники statements — подтверждено на k8s** (разведка `docs/lrs/lrs_recon.md`): в
+  `default store` лежат statements от наших же тестов (Agent = id пользователей прогона #67,
+  verb `answered`/`passed` — плеер конструктора тестов), states — от tincan-курсов Courseditor.
+  Плееры шлют xAPI на `https://lrs-<стенд>/xAPI` с Basic-авторизацией клиента хранилища
+  («Клиенты хранилища»: логин/пароль видны в UI). Структура OpenLRS, URL-ы разделов, фильтры,
+  DataTables `POST …/statement/search`, маршрут отчёта `…/statement/report_generation` — в
+  recon-документе.
 
 ## Нужно до старта
 
@@ -65,13 +69,10 @@
 
 ## Части миссии
 
-### Часть 0 — разведка (без автотестов)
-`docs/lrs/lrs_recon.md`: вход в OpenLRS под учёткой, структура меню (хранилища, вкладки
-Statements/Agents/…), колонки таблиц и фильтры, URL-ы страниц и XHR (DataTables? как у
-хелпдеска), откуда берётся `account_name`, куда ведут ссылки Agent/ID (`/admin/users/{id}` в
-LMS?), что происходит по «Генерация отчета» (запросы к LMS, запись в `/exports`, время
-выполнения джобы), появляется ли statement после прохождения tincan-курса на develop и с
-какой задержкой. Итог — список кейсов `docs/test_cases/lrs/*.md` по образцу helpdesk.
+### Часть 0 — разведка (сделана 14.10, `docs/lrs/lrs_recon.md`) + кейсы
+Осталось: нажать «Генерация отчета» один раз руками/скриптом и зафиксировать, что уходит в LMS
+(`POST …/statement/report_generation` → `/exports` type 14, статусы, время джобы, содержимое
+xlsx), и написать кейсы `docs/test_cases/lrs/*.md` по образцу helpdesk.
 
 ### Часть 1 — API LMS для LRS (`tests/api/lrs/`)
 - `POST /external/lrs/report`: цикл `pending → in_progress → completed` с файлом: запись
