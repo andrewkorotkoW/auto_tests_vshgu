@@ -1,0 +1,101 @@
+# Миссия: e2e-набор слушателя — маркер `e2e`, структура папок, кейсы (14.10.2026)
+
+Цель владельца: иметь в репозитории один набор сквозных сценариев слушателя, который
+запускается одной командой (`pytest -m e2e`, в test_hub — прогон по маркеру `e2e`) на
+develop и k8s, и перечень того, чего в этом наборе ещё нет.
+
+Правила как в `docs/plans/2026-10-14_lrs_mission.md`: **агентам прогоны на стендах
+запрещены** — только `pytest --collect-only` и юнит-проверки; логику существующих тестов
+не менять (только маркеры, перенос файлов, документация); пуш не делать.
+
+## Контекст
+
+- `tests/e2e/` сегодня — это бывший `tests/stage`: сквозные сценарии ЛПД (`api/`, `ui/`,
+  `conftest.py` с фикстурами `individual_lpd`/`program_lpd`), привязанные к stage
+  (`@pytest.mark.env("stage")`). Stage сейчас живёт на ветке ЛПД/БУК, поэтому эти
+  сценарии **не входят** в e2e-набор develop/k8s — они стендовые. Настоящие e2e в
+  `tests/e2e/` сейчас только `tests/e2e/lrs/`.
+- Маркер `e2e` уже объявлен в `pytest.ini` («Сквозные сценарии (несколько систем)»),
+  стоит на 2 тестах LRS (`tests/ui/lrs/test_lrs_report.py`, `tests/e2e/lrs/…`).
+- CI: `.gitlab-ci.yml` job `tests:develop:ui` гоняет `tests/ui tests/e2e`
+  (`docs/DEVOPS.md:132`), README описывает `tests/e2e` в строках ~80, ~116, ~133.
+- Список сценариев слушателя — от владельца (14.10.2026), ниже разложен на «уже есть» и
+  «надо написать».
+
+## Часть 1. Структура: ЛПД-сценарии отдельно от e2e
+
+1. `git mv tests/e2e/api tests/stage_lpd/api`, `git mv tests/e2e/ui tests/stage_lpd/ui`,
+   `git mv tests/e2e/conftest.py tests/stage_lpd/conftest.py`, добавить `tests/stage_lpd/__init__.py`.
+   `tests/e2e/` остаётся для сквозных сценариев (сейчас `lrs/`), `tests/e2e/__init__.py` сохранить.
+2. Обновить все упоминания: `.gitlab-ci.yml` (`PYTEST_ARGS: "tests/ui tests/e2e"` →
+   `"tests/ui tests/e2e tests/stage_lpd"`, чтобы набор CI не изменился), `docs/DEVOPS.md`,
+   README (структура `tests/`, абзац про «переименованный бывший tests/stage», примеры
+   `@pytest.mark.env("stage")`), `pytest.ini` (описание маркера `lrs`, если упоминает пути).
+3. Проверка: `pytest --collect-only -q tests/stage_lpd` и `pytest --collect-only -q tests/e2e`
+   собираются, число тестов в `tests/stage_lpd` = числу, что было в `tests/e2e/{api,ui}`.
+
+## Часть 2. Маркер `e2e` на существующие сквозные сценарии слушателя
+
+Поставить `@pytest.mark.e2e` (рядом с существующими маркерами, логику не трогать) на:
+
+| № | Сценарий из списка владельца | Тест |
+|---|---|---|
+| 1 | Вход → онбординг (модалка согласия, тур, cookie) | `tests/ui/users/test_user_cookie_banner.py` |
+| 2 | Программа → поток → модуль (админ) | `tests/ui/practical_tasks/test_add_practical_task_to_schedule.py` |
+| 3 | Курс (поток) | `tests/ui/courses/tincan/stream/test_user_tincan_flow.py` |
+| 4 | Тест (поток) | `tests/ui/tests/stream/test_user_test_stream_flow.py` |
+| 5 | ПЗ: слушатель сдаёт | `tests/ui/practical_tasks/test_complete_practical_task.py` |
+| 6 | ПЗ: проверяющий оценивает | `tests/ui/practical_tasks/test_review_practical_task.py` |
+| 7 | Групповые ПЗ | `tests/ui/practical_tasks/groups/test_group_practical_task_flow.py` |
+| 8 | АОС (авторизованный) | `tests/ui/aos/user/test_user_aos_flow.py` |
+| 9 | АОС по публичной ссылке без авторизации | `tests/ui/aos/user/test_aos_public_link.py` |
+| 10 | Игровая сессия | `tests/ui/game_session/user/test_activity_launch_flow.py` |
+| 11 | Уведомления | `tests/ui/notifications/user/test_user_sees_notification.py` |
+| 12 | Инд. трек: курс | `tests/ui/courses/tincan/individual/test_user_tincan_individual_flow.py` (оба теста файла) |
+| 13 | Инд. трек: опрос | `tests/ui/polls/individual/test_poll_flow.py` |
+| 14 | Инд. трек: ПЗ | `tests/ui/practical_tasks/personal_assignment/test_complete_and_review_personal_assignment.py` |
+| 15 | Курс из БЗ, назначенный на инд. трек | `tests/ui/courses/tincan/knowledge_base/test_knowledge_base_flow.py` |
+| 16 | Домашнее задание (инд. трек) | `tests/ui/homework/individual/test_ui_homework_flow.py` |
+
+Уже помечены: `tests/ui/lrs/test_lrs_report.py::…::test_generate_report_appears_in_lms_exports`,
+`tests/e2e/lrs/test_statement_after_test_pass.py`. Проверка: `pytest --collect-only -q -m e2e`
+→ 19 тестов (16 файлов выше = 17 тестов + 2 LRS).
+
+Маркер `smoke`/`develop`/`xfail` у этих тестов не снимать и не добавлять.
+
+## Часть 3. Кейсы `docs/test_cases/e2e.md`
+
+По шаблону `docs/test_cases/TEMPLATE.md` и образцу `docs/test_cases/lrs.md`:
+
+- **TC-E2E-001…017** — по одному на тест из таблицы части 2 (№ 12 даёт два кейса): шаги
+  и ожидаемые результаты переписать из `allure.step` самого теста (не выдумывать), строка
+  `- Автотест: <nodeid>`, роли, тип `e2e`, стенд `develop|k8s`.
+- **TC-E2E-018…022** — черновики без автотеста, с пометкой «ждёт разведки на k8s
+  (владелец)», шаги предположительные:
+  18. Очное мероприятие в потоке: админ создаёт мероприятие в расписании модуля
+      (`tests/api/programs/test_create_schedule_item_api.py` — как создаётся элемент),
+      слушатель видит его в программе, админ отмечает посещение, слушатель видит отметку.
+  19. Очное мероприятие в инд. треке: то же через индивидуальное назначение.
+  20. Опрос в потоке + неавторизованная попытка: опрос назначен на модуль потока, слушатель
+      проходит; ссылка на плеер без сессии → редирект на `/auth`, прогресса нет.
+  21. Сертификат слушателя: шаблон сертификата программы (`tests/api/certificates/`),
+      слушатель завершает программу, в кабинете появляется сертификат, файл скачивается.
+  22. Достижение слушателя: достижение «Количество материалов = 1» (`tests/ui/knowledge_base/
+      test_create_achievement.py`), слушатель открывает материал БЗ, в его профиле появляется
+      достижение (сейчас есть только проверка глазами админа —
+      `admin_statistics/test_admin_sees_user_achievement_history.py`).
+
+Импорт кейсов в test_hub делает владелец вручную (`POST /api/projects/VSHGU/testcases/import`).
+
+## Часть 4. Документация и отчёт
+
+- README: раздел «e2e-набор слушателя» — что входит, как запускать (`pytest -m e2e --env k8s -n 0`,
+  в test_hub — маркер `e2e`), чем отличается от `tests/stage_lpd`, список того, чего нет (18–22).
+- `docs/reports/2026-10-14_e2e_markers.md`: что перенесено, что помечено, вывод
+  `pytest --collect-only -q -m e2e` и `… tests/stage_lpd`.
+
+## Не делать
+
+- Не запускать тесты на стендах (develop лежит, k8s — только владелец через test_hub).
+- Не менять логику тестов, фикстур и page objects; не трогать `tests/ui/lrs` (правятся отдельно).
+- Не писать автотесты для 18–22 — сначала разведка на k8s владельцем, потом отдельная миссия.
