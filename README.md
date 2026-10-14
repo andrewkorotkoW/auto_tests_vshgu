@@ -1171,3 +1171,42 @@ CLI-опций. Мобильный профиль контекста — кон�
 (версия про «зависающий спиннер» на «Профиле» не подтвердилась 07.10, см. `layout_facts.md` п. 5). Каждый тест ставит
 `allure.dynamic.parameter("device", "Pixel 7")` и прикладывает финальный скриншот в Allure — не только
 при падении.
+
+## 20. LRS
+
+Миссия `docs/plans/2026-10-14_lrs_mission.md`, разведка — `docs/lrs/lrs_recon.md`, итоговый отчёт —
+`docs/reports/2026-10-14_lrs_autotests.md`. LRS — отдельное приложение **OpenLRS** (Laravel Backpack,
+тема tabler, тот же DataTables-стек, что у хелпдеска, см. п. 18): хранилище statements/states xAPI,
+своя панель `/lrs-admin`.
+
+**Отдельной учётки LRS в тестах нет.** OpenLRS не принимает учётки LMS собственной формой
+(`/lrs-admin/login`) — штатный вход всегда SSO через OAuth2 (Laravel Passport): сессия LMS →
+`GET <lrs>/oauth2/auth/callback` → LMS под веб-сессией выдаёт код → OpenLRS логинит того же
+пользователя LMS. В коде — `LrsAdminPage.login_via_sso` (`ui/pages/lrs_admin_page.py`): логинится
+в LMS обычной формой, затем идёт на callback.
+
+Хост OpenLRS вычисляется функцией `lrs_base_url(env)` из `env.ui_base_url` заменой `portal-`/`portal.`
+→ `lrs-`/`lrs.` — без доп. настройки. Переменная **`LRS_URL`** (`.env.example`) — опциональный явный
+override этого хоста, приоритетнее вычисленного значения; нужна только если хост LRS стенда не
+подчиняется схеме `portal-<стенд>` → `lrs-<стенд>`.
+
+**На develop UI-тесты LRS сейчас не запускаются**: callback `GET <lrs>/oauth2/auth/callback` ловит
+`401 {"error":"invalid_client"}` от LMS — OAuth-клиент OpenLRS (`client_id 9cc31531-…`) не
+зарегистрирован в Passport портала develop (кнопки «Перейти в LRS» в «Логах» там тоже нет — см.
+`docs/lrs/lrs_recon.md`, раздел «Вход»). Починка — на стороне девопс/разработки. Поэтому все тесты
+LRS (`tests/ui/lrs/`, `tests/e2e/lrs/`, маркеры `lrs`/`e2e` в `pytest.ini`) помечены
+`@pytest.mark.env("k8s")` (кроме двух, не зависящих от SSO — форма логина и чистый контекст без
+сессии) и собираются/прогоняются на k8s, а не на develop.
+
+Отчёты, которые создаёт тест «Генерация отчета» (кейс TC-LRS-011) в LMS «Отчёты»
+(`lrs_statement_export_*.xlsx`, `type: 14`, API `api/endpoints/exports.py::ExportsEndpoint`),
+подчищаются в teardown фикстурой `lrs_reports_cleanup` (`conftest.py`) через
+`DELETE /exports/mass-delete` — удаляются только id, накопленные тестом, посторонние отчёты не
+трогаются. **Statements и states, которые тесты видят или создают прохождением теста/курса
+(TC-LRS-013), автотестами не удаляются** — это данные хранилища `default store`, общие для стенда.
+
+Кейсы — `docs/test_cases/lrs.md` (15 штук, TC-LRS-001…015, у каждого `- Автотест: <nodeid>`),
+page object — `ui/pages/lrs_admin_page.py` (SSO, хранилища, клиенты, Statements/Agents/States),
+тесты — `tests/ui/lrs/{test_lrs_navigation,test_lrs_stores,test_lrs_statements,test_lrs_report}.py`
+и `tests/e2e/lrs/test_statement_after_test_pass.py` (15 тестов, `pytest --collect-only` проходит
+без ошибок).
