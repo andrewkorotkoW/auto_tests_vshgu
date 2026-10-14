@@ -20,6 +20,7 @@ class TestAddPracticalTaskToSchedule:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
+    @pytest.mark.e2e
     def test_add_practical_task_to_schedule(
         self, admin_page, env, created_module, created_homework, register_practical_homework
     ):

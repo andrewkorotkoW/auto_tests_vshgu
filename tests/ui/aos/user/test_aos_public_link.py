@@ -12,6 +12,7 @@ class TestAosPublicLink:
     @allure.title("Пройти АОС по публичной ссылке без авторизации")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
+    @pytest.mark.e2e
     def test_public_aos_pass(self, page, created_aos, aos_endpoint):
         from config.settings import settings
 

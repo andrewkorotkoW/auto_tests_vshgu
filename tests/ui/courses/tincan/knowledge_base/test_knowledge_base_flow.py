@@ -19,6 +19,7 @@ class TestKnowledgeBaseFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.develop
     @pytest.mark.ui
+    @pytest.mark.e2e
     def test_create_course_and_view_in_ui(self, page, api_client, prepared_user):
         kb_ep = KnowledgeBaseEndpoint(api_client)
         tincan_ep = TincanEndpoint(api_client)

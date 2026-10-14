@@ -15,6 +15,7 @@ class TestUserTincanIndividualFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
+    @pytest.mark.e2e
     @pytest.mark.xfail(
         strict=False,
         reason=(
@@ -84,6 +85,7 @@ class TestUserTincanIndividualFlow:
     @allure.title("Инд. обучение: в карточке курса отображается доп. файл (как в потоке)")
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
+    @pytest.mark.e2e
     @pytest.mark.xfail(
         strict=False,
         reason=(

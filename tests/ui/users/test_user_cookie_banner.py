@@ -15,6 +15,7 @@ class TestUserCookieBanner:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
+    @pytest.mark.e2e
     def test_user_cookie_banner(self, page, env, created_user):
         """Ожидаемое поведение (владелец, 23.09.2026): баннер показывается после входа в систему,
         на странице входа его нет. После «Принимаю» повторно не показывается."""

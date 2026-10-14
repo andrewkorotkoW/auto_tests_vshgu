@@ -17,6 +17,7 @@ class TestActivityLaunchFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
+    @pytest.mark.e2e
     def test_activity_launch(self, page, api_client, prepared_user, created_program,
                               created_stream, created_module, assignments_endpoint,
                               external_system_client):

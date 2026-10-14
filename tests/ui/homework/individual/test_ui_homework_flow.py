@@ -20,6 +20,7 @@ class TestUIHomeworkFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.develop
     @pytest.mark.ui
+    @pytest.mark.e2e
     def test_homework_ui_flow(self, page, api_client, prepared_user, created_homework):
         # Создаём все необходимые объекты в начале, чтобы они были доступны всегда
         tincan_ep = TincanEndpoint(api_client)

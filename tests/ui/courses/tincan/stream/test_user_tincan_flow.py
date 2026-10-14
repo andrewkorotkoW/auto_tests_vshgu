@@ -16,6 +16,7 @@ class TestUserTincanFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
+    @pytest.mark.e2e
     @pytest.mark.xfail(
         reason=(
             "Тот же класс дефекта, что в tests/ui/aos/user/test_user_aos_flow.py: страница "
