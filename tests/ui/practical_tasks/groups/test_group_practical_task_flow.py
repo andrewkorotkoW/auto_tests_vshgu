@@ -52,6 +52,7 @@ class TestGroupPracticalTaskFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.groups
+    @pytest.mark.e2e
     def test_group_practical_task_flow(
         self, admin_page, browser, env, api_client, tincan_endpoint, assignments_endpoint,
         users_endpoint, prepared_user, group_practical_task,

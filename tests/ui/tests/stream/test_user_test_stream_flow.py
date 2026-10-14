@@ -14,6 +14,7 @@ class TestUserTestStreamFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
+    @pytest.mark.e2e
     def test_user_open_test_stream(self, page, api_client, created_user, tests_endpoint, assignments_endpoint, created_program, created_stream, created_module):
         """API: программа → поток → модуль → пользователь → Тест → UI: логин → открыть Тест."""
 

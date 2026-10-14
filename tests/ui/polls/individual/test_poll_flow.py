@@ -16,6 +16,7 @@ class TestUIPollFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.develop
     @pytest.mark.ui
+    @pytest.mark.e2e
     def test_ui_poll_flow(self, page, api_client, prepared_user, created_poll, polls_endpoint):
         """API: создать пользователя, опрос, назначить → UI: логин, пройти опрос."""
 

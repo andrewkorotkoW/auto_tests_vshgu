@@ -22,6 +22,7 @@ class TestUserSeesNotification:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.notifications
+    @pytest.mark.e2e
     def test_user_sees_notification(self, user_page, env, created_notification, current_user_id):
         notification = created_notification(users=[current_user_id])
         caption = notification["caption"]

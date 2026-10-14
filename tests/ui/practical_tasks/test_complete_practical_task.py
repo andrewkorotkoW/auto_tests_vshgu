@@ -29,6 +29,7 @@ class TestCompletePracticalTask:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
+    @pytest.mark.e2e
     def test_complete_practical_task(
         self, page, env, api_client, tincan_endpoint, assignments_endpoint,
         assigned_user, created_module, created_homework, register_practical_homework,

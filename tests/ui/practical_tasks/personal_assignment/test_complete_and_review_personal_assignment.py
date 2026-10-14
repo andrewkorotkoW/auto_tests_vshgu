@@ -59,6 +59,7 @@ class TestCompleteAndReviewPersonalAssignment:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
+    @pytest.mark.e2e
     def test_complete_and_review_personal_assignment(
         self, page, env, api_client, tincan_endpoint,
         prepared_user, created_homework, register_practical_homework,

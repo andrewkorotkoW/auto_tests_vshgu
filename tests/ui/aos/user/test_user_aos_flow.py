@@ -16,6 +16,7 @@ class TestUserAosFlow:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
+    @pytest.mark.e2e
     @pytest.mark.xfail(
         reason=(
             "Дефект «контент не виден у слушателя» НЕ подтвердился и исправлен: карточка "
