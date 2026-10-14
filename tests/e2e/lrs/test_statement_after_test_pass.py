@@ -75,14 +75,13 @@ class TestLrsStatementFlow:
                 try:
                     LoginPage(student_page).login(student["email"], student["password"], base_url=env.ui_base_url)
                     UserSidebarPage(student_page).dismiss_popups()
-                    UserSidebarPage(student_page).open_individual_tab("Курсы и тесты")
 
-                    display_name = test.get("name_client") or test["name"]
-                    card = student_page.locator(f"text={display_name}").first
-                    expect(card).to_be_visible(timeout=30000)
-                    card.click(force=True)
-
+                    # Плеер открываем напрямую по content_id, как остальные тесты
+                    # конструктора: клик по карточке в «Курсы и тесты» вёл на страницу
+                    # активности с собственной кнопкой «Начать», и до вопроса плеер не
+                    # доходил (прогон k8s 14.10).
                     player = ConstructorPlayerPage(student_page)
+                    player.open_by_content_id(env.ui_base_url, test["id"])
                     player.start()
                     player.answer_question(_CORRECT_ANSWER)
                     player.finish_test()

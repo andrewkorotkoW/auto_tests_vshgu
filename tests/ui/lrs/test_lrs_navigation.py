@@ -16,11 +16,12 @@ import re
 
 import allure
 import pytest
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import expect
 
 from config.environments import get_credentials
 from config.settings import settings
-from ui.pages.lrs_admin_page import LrsAdminPage, lrs_base_url, open_lrs_from_logs
+from ui.pages.lrs_admin_page import LMS_LOGS_CHANGES_PATH, LrsAdminPage, lrs_base_url, open_lrs_from_logs
 from ui.pages.login_page import LoginPage
 
 
@@ -38,18 +39,19 @@ class TestLrsNavigation:
         if not (email and password):
             pytest.skip(f"Нет учётки администратора для {env.name} в .env")
 
-        with allure.step("1. Открыть «Логи» — над таблицей есть кнопка «Перейти в LRS»"):
+        with allure.step("1. Открыть «Логи» → «Изменения» — над таблицей есть кнопка «Перейти в LRS»"):
             LoginPage(page).login(email, password, base_url=env.ui_base_url, handle_onboarding=False)
-            page.goto(f"{env.ui_base_url.rstrip('/')}/admin/logs")
+            page.goto(f"{env.ui_base_url.rstrip('/')}{LMS_LOGS_CHANGES_PATH}")
             link = page.get_by_role("link", name="Перейти в LRS")
             expect(link).to_be_visible(timeout=settings.UI_TIMEOUT)
             href = link.get_attribute("href") or ""
             assert "/oauth2/auth/callback" in href, f"Неожиданный href кнопки «Перейти в LRS»: {href}"
 
-        with allure.step("2-3. Нажать кнопку — попадаем в OpenLRS под текущим пользователем, без формы входа"):
-            open_lrs_from_logs(page)
-            expect(page).to_have_title(re.compile(r"Панель управления.*OpenLRS"), timeout=settings.UI_TIMEOUT)
-            expect(page.locator('input[name="email"]')).to_have_count(0)
+        with allure.step("2-3. Нажать кнопку — в новой вкладке OpenLRS под текущим пользователем, без формы входа"):
+            lrs = open_lrs_from_logs(page)
+            expect(lrs.page).to_have_title(re.compile(r"Панель управления.*OpenLRS"), timeout=settings.UI_TIMEOUT)
+            expect(lrs.page.locator('input[name="email"]')).to_have_count(0)
+            expect(page).to_have_url(re.compile(r"/admin/logs"))
 
     @allure.title("UI: прямой переход на callback без кнопки логинит авторизованного пользователя")
     @allure.severity(allure.severity_level.NORMAL)
@@ -93,14 +95,21 @@ class TestLrsNavigation:
     def test_user_without_admin_rights_cannot_enter_lrs(self, page, env, prepared_user):
         user = prepared_user()
 
-        with allure.step("1. У слушателя в «Логах» нет кнопки «Перейти в LRS»"):
+        with allure.step("1. У слушателя в «Логах» → «Изменения» нет кнопки «Перейти в LRS»"):
             LoginPage(page).login(user["email"], user["password"], base_url=env.ui_base_url)
-            page.goto(f"{env.ui_base_url.rstrip('/')}/admin/logs")
+            page.goto(f"{env.ui_base_url.rstrip('/')}{LMS_LOGS_CHANGES_PATH}")
             expect(page.get_by_role("link", name="Перейти в LRS")).to_have_count(0)
 
         with allure.step("2. OpenLRS не пускает слушателя через callback (иначе — кандидат в дефект)"):
-            page.goto(f"{lrs_base_url(env)}/oauth2/auth/callback")
+            # На k8s callback для слушателя обрывает навигацию (`net::ERR_ABORTED`, прогон
+            # 14.10) — это и есть «не пустил», а не ошибка теста.
+            try:
+                page.goto(f"{lrs_base_url(env)}/oauth2/auth/callback")
+            except PlaywrightError as exc:
+                assert "ERR_ABORTED" in str(exc), exc
             expect(page).not_to_have_url(re.compile(r"/lrs-admin/store"), timeout=settings.UI_TIMEOUT)
+            page.goto(f"{lrs_base_url(env)}/lrs-admin/store")
+            expect(page).not_to_have_url(re.compile(r"/lrs-admin/store$"), timeout=settings.UI_TIMEOUT)
 
     @allure.title("UI: возврат в LMS по кнопке «Перейти в LMS»")
     @allure.severity(allure.severity_level.NORMAL)
@@ -115,10 +124,11 @@ class TestLrsNavigation:
         with allure.step("1. Войти в OpenLRS по SSO"):
             lrs = LrsAdminPage.login_via_sso(page, env, email, password)
 
-        with allure.step("2. «Перейти в LMS» открывает главную LMS без повторного входа"):
-            lrs.go_to_lms()
-            expect(page).to_have_url(re.compile(r"/admin/programs"), timeout=settings.UI_TIMEOUT)
-            expect(page).not_to_have_url(re.compile(r"/auth/(main|login)"))
+        with allure.step("2. «Перейти в LMS» открывает главную LMS в новой вкладке без повторного входа"):
+            lms_page = lrs.go_to_lms()
+            expect(lms_page).to_have_url(re.compile(r"/admin/programs"), timeout=settings.UI_TIMEOUT)
+            expect(lms_page).not_to_have_url(re.compile(r"/auth/(main|login)"))
+            expect(page).to_have_url(re.compile(r"/lrs-admin"))
 
     @allure.title("UI: форма входа OpenLRS не принимает учётку LMS")
     @allure.severity(allure.severity_level.MINOR)

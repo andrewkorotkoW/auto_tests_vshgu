@@ -79,12 +79,15 @@ class LrsAdminPage(BasePage):
         self.page.get_by_role("button", name="Войти").click()
         self.wait_loaded()
 
-    def go_to_lms(self) -> None:
-        """Клик «Перейти в LMS» в боковом меню — обычная ссылка на главную LMS без
-        авторизации (docs/lrs/lrs_recon.md)."""
-        with self.page.expect_navigation():
+    def go_to_lms(self) -> Page:
+        """Клик «Перейти в LMS» в боковом меню — ссылка на `/admin/programs` LMS с
+        `target=_blank` (прогон k8s 14.10): открывается новая вкладка, её и возвращаем.
+        Текущая страница остаётся в OpenLRS."""
+        with self.page.context.expect_page(timeout=settings.UI_TIMEOUT) as page_info:
             self.page.get_by_role("link", name="Перейти в LMS").click()
-        self.wait_loaded()
+        lms_page = page_info.value
+        lms_page.wait_for_load_state()
+        return lms_page
 
     def open_stores(self) -> "LrsStoresPage":
         with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
@@ -93,15 +96,23 @@ class LrsAdminPage(BasePage):
         return LrsStoresPage(self.page)
 
 
+LMS_LOGS_CHANGES_PATH = "/admin/logs/changes"
+
+
 def open_lrs_from_logs(page: Page) -> LrsAdminPage:
-    """Клик «Перейти в LRS» на уже открытой `/admin/logs` (кнопка-ссылка над таблицей,
-    `href` = `<lrs>/oauth2/auth/callback`, см. TC-LRS-001; на develop кнопки нет —
-    docs/lrs/lrs_recon.md). Отдельная функция, а не метод LMS-страниц: навигация между
+    """Клик «Перейти в LRS» на уже открытой `/admin/logs/changes` (кнопка-ссылка над
+    таблицей, `href` = `<lrs>/oauth2/auth/callback`, `target=_blank`, см. TC-LRS-001; на
+    develop кнопки нет — docs/lrs/lrs_recon.md). По прогону k8s 14.10 кнопка есть только
+    на вкладке «Изменения» (`/admin/logs/changes`), на `/admin/logs` её нет. OpenLRS
+    открывается в новой вкладке — возвращаем page object над ней, исходная вкладка LMS
+    остаётся на логах. Отдельная функция, а не метод LMS-страниц: навигация между
     приложениями здесь нужна только со стороны LRS."""
-    with page.expect_navigation():
+    with page.context.expect_page(timeout=settings.UI_TIMEOUT) as page_info:
         page.get_by_role("link", name="Перейти в LRS").click()
-    expect(page).to_have_url(re.compile(r"/lrs-admin"), timeout=settings.UI_TIMEOUT)
-    return LrsAdminPage(page)
+    lrs_page = page_info.value
+    lrs_page.wait_for_load_state()
+    expect(lrs_page).to_have_url(re.compile(r"/lrs-admin"), timeout=settings.UI_TIMEOUT)
+    return LrsAdminPage(lrs_page)
 
 
 class LrsStoresPage(LrsAdminPage):
@@ -130,10 +141,12 @@ class LrsStoresPage(LrsAdminPage):
         return int(self.row(name).locator("td").nth(self._STATEMENTS_COUNT_COLUMN).inner_text().strip())
 
     def open_store(self, name: str = "default store") -> "LrsStoreClientsPage":
-        """Клик по строке хранилища → переход в «Клиенты хранилища» (store_id берётся из
-        итогового URL, без хардкода)."""
+        """Клик по названию хранилища в строке → переход в «Клиенты хранилища» (store_id
+        берётся из итогового URL, без хардкода). Переход делает только ссылка-название:
+        клик по самой строке (по ячейке «Папка»/«Размер») ничего не открывает — так
+        сложились 8 падений первого прогона на k8s 14.10."""
         with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            self.row(name).click()
+            self.row(name).get_by_role("link", name=name).first.click()
         self.wait_loaded()
         match = re.search(r"/store/(\d+)/client", self.page.url)
         store_id = int(match.group(1)) if match else 1

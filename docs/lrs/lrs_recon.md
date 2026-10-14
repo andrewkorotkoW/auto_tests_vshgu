@@ -11,7 +11,7 @@
   учётки LMS она **не принимает** ни на develop, ни на k8s (OpenLRS хранит пользователей у
   себя: раздел «Пользователи» — `admin1/3/5@org2.ru`, созданы SSO-входами).
 - **Штатный вход — SSO через OAuth2 (Laravel Passport)**, OpenLRS = OAuth-клиент LMS:
-  1. админка LMS → «Логи» → кнопка «Перейти в LRS» = `<a href="https://lrs-<стенд>/oauth2/auth/callback">`
+  1. админка LMS → «Логи» → вкладка «Изменения» (`/admin/logs/changes`, на `/admin/logs` кнопки нет) → кнопка «Перейти в LRS» = `<a href="https://lrs-<стенд>/oauth2/auth/callback" target="_blank">` (новая вкладка; прогон k8s 14.10)
      (на k8s есть, на develop кнопки нет);
   2. `GET /oauth2/auth/callback` без `code` → 302 на LMS
      `GET /api/v1/oauth/authorize?client_id=9cc31531-bfd4-4b4a-b1b0-9869ccbaf489&scope=user-info%20user-role&response_type=code&approval_prompt=auto&state=…&redirect_uri=https://lrs-<стенд>/oauth2/auth/callback`;
@@ -22,7 +22,7 @@
 - **develop:** LMS отвечает `401 {"error":"invalid_client","error_description":"Client authentication failed"}` —
   OAuth-клиент `9cc31531-…` не зарегистрирован в Passport develop. До правки девопсом UI LRS на
   develop недоступен; `lrs_uri` в `GET /auth/me` = callback (есть на обоих стендах).
-- «Перейти в LMS» в меню OpenLRS → `https://portal-<стенд>/admin/programs` (без авторизации — просто ссылка).
+- «Перейти в LMS» в меню OpenLRS → `https://portal-<стенд>/admin/programs` (без авторизации — просто ссылка, `target=_blank`: открывается новой вкладкой, вкладка OpenLRS остаётся).
 - Выход: `/lrs-admin/logout`; «Мой аккаунт»: `/lrs-admin/edit-account-info`.
 
 ## Структура OpenLRS (k8s, 14.10)

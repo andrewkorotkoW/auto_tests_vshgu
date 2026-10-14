@@ -17,8 +17,8 @@
 - Предусловия: admin авторизован в LMS формой (web-сессия; API-кука для OAuth не подходит)
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | Открыть админку → «Логи» (`/admin/logs`) | Над таблицей справа есть кнопка-ссылка «Перейти в LRS», `href` = `https://lrs-<стенд>/oauth2/auth/callback` |
-| 2 | Нажать кнопку | Цепочка: `302` → LMS `GET /api/v1/oauth/authorize?client_id=…&scope=user-info user-role&approval_prompt=auto` → `302` обратно на callback с `code` → страница `/lrs-admin`, заголовок «Панель управления :: OpenLRS» |
+| 1 | Открыть админку → «Логи» → вкладка «Изменения» (`/admin/logs/changes`) | Над таблицей справа есть кнопка-ссылка «Перейти в LRS», `href` = `https://lrs-<стенд>/oauth2/auth/callback`, открывается в новой вкладке (`target=_blank`); на `/admin/logs` кнопки нет |
+| 2 | Нажать кнопку | В новой вкладке цепочка: `302` → LMS `GET /api/v1/oauth/authorize?client_id=…&scope=user-info user-role&approval_prompt=auto` → `302` обратно на callback с `code` → страница `/lrs-admin`, заголовок «Панель управления :: OpenLRS» |
 | 3 | Проверить шапку OpenLRS | ФИО и организация текущего пользователя LMS (например «Вера Сергеев / Главная»), форма входа не показывалась |
 
 ### TC-LRS-002 Прямой переход на callback без кнопки
@@ -45,8 +45,8 @@
 - Предусловия: `prepared_user` (свежий слушатель), авторизован в LMS формой
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | Открыть `/admin/logs` | Доступ в админку закрыт (редирект/«нет прав»), кнопки «Перейти в LRS» нет |
-| 2 | Открыть `https://lrs-<стенд>/oauth2/auth/callback` | OpenLRS не пускает: форма входа или сообщение об отказе; `/lrs-admin/store` недоступен. Если LRS впускает слушателя — зафиксировать как кандидата в дефект (scope `user-role` должен ограничивать) |
+| 1 | Открыть `/admin/logs/changes` | Доступ в админку закрыт (редирект/«нет прав»), кнопки «Перейти в LRS» нет |
+| 2 | Открыть `https://lrs-<стенд>/oauth2/auth/callback` | OpenLRS не пускает: форма входа, сообщение об отказе или обрыв навигации (на k8s — `net::ERR_ABORTED`); `/lrs-admin/store` недоступен. Если LRS впускает слушателя — зафиксировать как кандидата в дефект (scope `user-role` должен ограничивать) |
 
 ### TC-LRS-005 Возврат в LMS по кнопке «Перейти в LMS»
 - Автотест: tests/ui/lrs/test_lrs_navigation.py::TestLrsNavigation::test_back_to_lms_button
@@ -54,7 +54,7 @@
 - Предусловия: admin в OpenLRS (TC-LRS-001)
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | В боковом меню OpenLRS нажать «Перейти в LMS» | Открывается `https://portal-<стенд>/admin/programs`, пользователь по-прежнему авторизован в LMS (без формы входа) |
+| 1 | В боковом меню OpenLRS нажать «Перейти в LMS» | В новой вкладке (`target=_blank`) открывается `https://portal-<стенд>/admin/programs`, пользователь по-прежнему авторизован в LMS (без формы входа); вкладка OpenLRS остаётся |
 
 ### TC-LRS-006 Список хранилищ и переход в хранилище
 - Автотест: tests/ui/lrs/test_lrs_stores.py::TestLrsStores::test_stores_list_and_open_default_store
