@@ -1084,3 +1084,23 @@ def external_buk_endpoint(env, env_session):
             endpoint.delete_users(ids)
         except Exception as exc:  # noqa: BLE001 — teardown не должен ронять прогон
             logger.warning(f"BUK cleanup failed for {ids}: {exc}")
+
+
+# ---------- Отчёты LMS (GET/DELETE /exports), в т.ч. отчёты LRS ----------
+
+@pytest.fixture
+def lrs_reports_cleanup(api_client):
+    """Список для накопления id отчётов, созданных тестом (test.append(export_id)).
+    В teardown удаляет только накопленные id через ExportsEndpoint.mass_delete —
+    посторонние отчёты не трогает."""
+    from api.endpoints.exports import ExportsEndpoint
+
+    export_ids = []
+
+    yield export_ids
+
+    if export_ids:
+        try:
+            ExportsEndpoint(api_client).mass_delete(export_ids)
+        except Exception as exc:  # noqa: BLE001 — teardown не должен ронять прогон
+            logger.warning(f"LRS reports cleanup failed for {export_ids}: {exc}")
