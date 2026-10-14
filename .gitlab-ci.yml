@@ -62,7 +62,7 @@ tests:develop:ui:
   timeout: 2h
   variables:
     STAND: "develop"
-    PYTEST_ARGS: "tests/ui tests/e2e"
+    PYTEST_ARGS: "tests/ui tests/e2e tests/stage_lpd"
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - when: manual
