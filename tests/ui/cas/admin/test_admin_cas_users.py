@@ -1,8 +1,11 @@
 import allure
 import pytest
 from playwright.sync_api import expect
+from ui.pages.admin_users_page import AdminUsersPage, BUK_SYNCED_TOOLTIP
 from ui.pages.user_sidebar_page import UserSidebarPage
 from utils.logger import logger
+
+GREEN = "rgb(126, 211, 33)"
 
 
 @allure.feature("UI Tests")
@@ -30,68 +33,64 @@ class TestAdminCasUsers:
             )
             user_data = external_cas_endpoint.create_user(user_payload)
             user_id = user_data.get("user_id")
-            user_fio = f"{user_payload['surname']} {user_payload['name']} {user_payload['patronymic']}"
-            logger.info(f"CAS пользователь: ID={user_id}, ФИО={user_fio}")
+            logger.info(f"CAS пользователь: ID={user_id}, ФИО={user_payload['surname']} {user_payload['name']}")
 
         # ========== UI ==========
-        # admin_page — уже авторизованная под администратором страница (storage_state),
-        # логин через форму под settings.TEST_USER_EMAIL и клик по «Админка» в меню
-        # пользователя (ui/pages/admin_page.py.go_to_admin) не нужны.
-        with allure.step("3. Открыть «Базу Пользователей»"):
+        # Интерфейс обновился (15.10.2026): статус синхронизации теперь — чип с иконкой
+        # прямо в колонке «Синхронизация» списка «База Пользователей» (как у БУК, см.
+        # tests/ui/buk/test_buk_admin_users_ui.py), а не текст внутри карточки пользователя —
+        # заходить в карточку больше не нужно. admin_page — уже авторизованная под
+        # администратором страница (storage_state).
+        admin_users = AdminUsersPage(admin_page)
+        with allure.step("3. Открыть «Базу Пользователей» и найти CAS-пользователя"):
             shell = UserSidebarPage(admin_page)
             shell.dismiss_popups()
             admin_page.goto(f"{env.ui_base_url}/admin/users")
-            # /admin/users держит фоновый поллинг — networkidle здесь ждал 21–22 с
+            # /admin/users держит фоновый поллинг — networkidle здесь ждал 21-22с
             # (разведка 12.10.2026); нужна только готовность таблицы.
             shell.wait_loaded()
-
-        with allure.step("4. Найти пользователя по ФИО"):
-            admin_page.locator('[data-qa="km-search"]').fill(user_fio)
-            admin_page.locator(f"text={user_fio}").first.click(force=True)
-            shell.wait_loaded()
+            row = admin_users.row_for(user_payload)
             admin_page.screenshot(path="allure-results/cas_admin_user.png")
             allure.attach.file("allure-results/cas_admin_user.png", "Пользователь КАС", allure.attachment_type.PNG)
 
-        with allure.step("5. Проверить тип регистрации — КАС"):
-            assert admin_page.locator("text=КАС").first.is_visible(timeout=5000), "Тип регистрации не КАС!"
-            logger.info("Тип регистрации: КАС подтверждён")
+        with allure.step("4. В колонке «Синхронизация» есть чип «КАС» с зелёной иконкой"):
+            chip = admin_users.sync_chip(row, "КАС")
+            assert chip.is_visible(timeout=5000), "чип «КАС» не отображается"
+            color = admin_users.chip_icon_color(chip)
+            allure.attach(color, "Цвет иконки", allure.attachment_type.TEXT)
+            assert color == GREEN, f"иконка КАС должна быть зелёной, сейчас {color}"
 
-        with allure.step("6. Проверить статус синхронизации"):
-            synced_chip = admin_page.locator("span.v-chip__content:has-text('Синхронизирован')")
-            assert synced_chip.first.is_visible(timeout=5000), "Статус 'Синхронизирован' не отображается!"
-
-            assert admin_page.locator("text=Синхронизация с КАС").first.is_visible(timeout=3000), "Заголовок не отображается!"
-
-            logger.info("Синхронизация с КАС подтверждена")
+        with allure.step("5. Навести курсор на «КАС»: подсказка «Синхронизирован»"):
+            tooltip = admin_users.tooltip_of(chip)
             admin_page.screenshot(path="allure-results/cas_admin_user_synced.png")
             allure.attach.file("allure-results/cas_admin_user_synced.png", "Синхронизация КАС",
                                allure.attachment_type.PNG)
+            assert tooltip == BUK_SYNCED_TOOLTIP, f"подсказка: {tooltip!r}"
 
-        with allure.step("6.1. Снять синхронизацию (API)"):
+        with allure.step("5.1. Снять синхронизацию (API)"):
             external_cas_endpoint.delete_user(user_id)
             logger.info("Синхронизация снята")
 
-        with allure.step("6.2. Обновить страницу и проверить отсутствие синхронизации"):
+        with allure.step("5.2. Обновить страницу и проверить, что подсказка больше не «Синхронизирован»"):
+            # Даже с поллингом стенд develop иногда не успевает отразить снятую
+            # синхронизацию сразу — тот же приём, что был в прежней версии теста.
             admin_page.reload()
             shell.wait_loaded()
-            # Повторный поиск
-            admin_page.locator('[data-qa="km-search"]').fill(user_fio)
-            admin_page.locator(f"text={user_fio}").first.click(force=True)
-            shell.wait_loaded()
-
-            # is_visible() не ждёт — однократная проверка DOM, без поллинга; заменено на
-            # expect(...).to_be_hidden() — тот же приём, что в соседних CAS/UI тестах (см.
-            # test_cas_flow.py, test_user_cookie_banner.py). Даже с 10с поллинга стенд develop
-            # иногда не успевает отразить снятую синхронизацию в карточке — см. xfail на тесте.
-            expect(admin_page.locator("span.v-chip__content:has-text('Синхронизирован')").first).to_be_hidden(
-                timeout=10000)
+            row = admin_users.row_for(user_payload)
+            chip = admin_users.sync_chip(row, "КАС")
+            if chip.count() and chip.is_visible(timeout=10000):
+                tooltip = admin_users.tooltip_of(chip)
+                allure.attach(str(tooltip), "Подсказка после разрыва", allure.attachment_type.TEXT)
+                assert tooltip != BUK_SYNCED_TOOLTIP, tooltip
+                logger.info(f"После разрыва чип КАС показывает: {tooltip!r}")
+            else:
+                logger.info("После разрыва чип КАС не отображается")
             admin_page.screenshot(path="allure-results/cas_admin_user_unsynced.png")
             allure.attach.file("allure-results/cas_admin_user_unsynced.png", "Синхронизация снята",
                                allure.attachment_type.PNG)
-            logger.info("Синхронизация снята — статус исчез")
 
         # ========== CLEANUP ==========
-        with allure.step("7. Очистка"):
+        with allure.step("6. Очистка"):
             # Снять синхронизацию (если ещё не снята)
             external_cas_endpoint.delete_user(user_id)
             # Удалить обычного пользователя через уже авторизованную фикстуру api_client
