@@ -1,5 +1,7 @@
 """Разведка TC-E2E-039 (сертификат слушателя программы, слушательская часть — кабинет,
-скачивание), develop, 15.10.2026. Одноразовый скрипт, не часть прогона. Запуск:
+скачивание), develop, 15.10.2026, раунд 2 (с подсказками владельца: сертификат приходит в
+уведомлениях и во вкладке «Сертификаты» профиля; предыдущий раунд не дождался пройдено —
+увеличен таймаут дашборда до 60с, как в проверенном тесте). Запуск:
     .venv/bin/python -m pytest scripts/_recon_certificate_listener.py --env develop -s -v
 """
 import os
@@ -19,7 +21,7 @@ def test_certificate_listener_recon(page, env, api_client, created_user, created
                                       assignments_endpoint, certificates_endpoint, dashboards_endpoint):
     os.makedirs(D, exist_ok=True)
 
-    program = created_program(name="QA_recon_Cert")
+    program = created_program(name="QA_recon_Cert2")
     stream = created_stream(program_id=program["id"])
     module = created_module(program_id=program["id"], stream_id=stream["id"])
 
@@ -50,84 +52,60 @@ def test_certificate_listener_recon(page, env, api_client, created_user, created
         state=CONTENT_STATE_PASSED,
     )
     print("CHANGE_STATE_DONE")
-    import time as _time
-    for wait_s in (0, 3, 10):
-        if wait_s:
-            _time.sleep(wait_s)
-        after = assignments_endpoint.list_for_stream(program["id"], stream["id"], [stream_content_id])
-        after_row = next(i for i in after if int(i["user_id"]) == user["id"])
-        print(f"AFTER_CHANGE_STATE_ROW (+{wait_s}s)", {"state": after_row.get("state"), "status": after_row.get("status")})
 
-    # list_for_stream может отражать другое поле, не то, что меняет change-state — сверяем
-    # с проверенным источником (дашборд курса), которым пользуется рабочий тест
-    # test_courses_table_progress.py::test_status_passed_updates_after_change_state.
+    # Таймаут 60с — тот же, что в проверенном test_status_passed_updates_after_change_state
+    # (предыдущий раунд ждал только 30с и мог не дождаться пропагации).
     try:
         course_row = dashboards_endpoint.wait_for_course_row(
-            course["name"], stream["id"], predicate=lambda row: row.get("passed", 0) >= 1, timeout=30,
+            course["name"], stream["id"], predicate=lambda row: row.get("passed", 0) >= 1, timeout=60,
         )
         print("DASHBOARD_COURSE_ROW", course_row)
+        passed_confirmed = course_row.get("passed", 0) >= 1
     except Exception as e:
         print("DASHBOARD_COURSE_ROW_TIMEOUT", str(e)[:200])
+        passed_confirmed = False
+    print("PASSED_CONFIRMED", passed_confirmed)
 
     LoginPage(page).login(user["email"], user["password"], base_url=env.ui_base_url)
     page.wait_for_timeout(2000)
     sidebar = UserSidebarPage(page)
     page.screenshot(path=f"{D}/00_home.png")
 
-    items = sidebar.user_menu_items()
-    print("USER_MENU_ITEMS", items)
-    page.screenshot(path=f"{D}/01_user_menu.png")
-    sidebar.close_menu()
+    # Уведомления — владелец: сертификат приходит в уведомлениях.
+    page.goto(f"{env.ui_base_url}/portal-notifications", wait_until="load")
+    page.wait_for_timeout(2000)
+    sidebar.dismiss_popups()
+    page.screenshot(path=f"{D}/01_notifications.png", full_page=True)
+    notif_body = page.locator("body").inner_text()
+    print("NOTIFICATIONS_HAS_CERT_WORD", "сертификат" in notif_body.lower())
+    print("NOTIFICATIONS_BODY_HEAD", notif_body[:500].replace("\n", " | "))
 
-    # «Моё обучение» / программа — если программа видна и помечена пройденной
-    program_element = page.locator(f"text={program['name']}").first
-    if program_element.count():
-        page.screenshot(path=f"{D}/02_home_with_program.png")
-        print("PROGRAM_VISIBLE_ON_HOME", True)
-    else:
-        print("PROGRAM_VISIBLE_ON_HOME", False)
-
+    # «Мой профиль» — сначала разобраться, что это (ссылка/модалка), прежде чем кликать вслепую.
     page.goto(f"{env.ui_base_url}/education", wait_until="load")
     page.wait_for_timeout(1500)
     sidebar.dismiss_popups()
-    go_to_program = page.locator("text=Перейти к программе").first
-    if go_to_program.count():
-        go_to_program.click(force=True)
-        page.wait_for_timeout(2500)
-        sidebar.dismiss_popups()
-        page.screenshot(path=f"{D}/04_program_detail.png", full_page=True)
-        body = page.locator("body").inner_text()
-        print("PROGRAM_DETAIL_URL", page.url)
-        print("PROGRAM_DETAIL_HAS_CERT_WORD", "сертификат" in body.lower())
-        if "сертификат" in body.lower():
-            idx = body.lower().index("сертификат")
-            print("PROGRAM_DETAIL_CERT_CONTEXT", body[max(0, idx - 80):idx + 150].replace("\n", " | "))
-        print("PROGRAM_DETAIL_BODY_HEAD", body[:600].replace("\n", " | "))
+    menu = sidebar.open_user_menu()
+    profile_item = menu.locator("a, .v-list-item").filter(has_text="Мой профиль").first
+    tag_info = profile_item.evaluate("el => ({tag: el.tagName, href: el.getAttribute('href'), outerHTML: el.outerHTML.slice(0, 300)})")
+    print("PROFILE_ITEM_INFO", tag_info)
+
+    profile_item.click(force=True)
+    page.wait_for_timeout(2500)
+    print("AFTER_PROFILE_CLICK_URL", page.url)
+    page.screenshot(path=f"{D}/02_after_profile_click.png", full_page=True)
+    body = page.locator("body").inner_text()
+    print("AFTER_PROFILE_CLICK_HAS_CERT_WORD", "сертификат" in body.lower())
+
+    # Если «Сертификаты» — таб/пункт где-то на этой странице (модалка или настоящая страница).
+    cert_tab = page.locator("text=Сертификат").first
+    if cert_tab.count():
+        print("CERT_TAB_FOUND_TEXT", cert_tab.count())
+        cert_tab.click(force=True)
+        page.wait_for_timeout(1500)
+        page.screenshot(path=f"{D}/03_cert_tab.png", full_page=True)
+        print("CERT_TAB_BODY", page.locator("body").inner_text()[:800].replace("\n", " | "))
     else:
-        print("GO_TO_PROGRAM_BUTTON_NOT_FOUND")
+        print("CERT_TAB_NOT_FOUND")
 
-    # «Мой профиль» в выпадающем меню — проверить, модалка или переход
-    sidebar.open_user_menu()
-    profile_link = page.locator(".v-overlay--active a:has-text('Мой профиль'), .v-overlay--active .v-list-item:has-text('Мой профиль')").first
-    if profile_link.count():
-        profile_link.click(force=True)
-        page.wait_for_timeout(2000)
-        page.screenshot(path=f"{D}/05_my_profile.png", full_page=True)
-        print("MY_PROFILE_URL", page.url)
-        body = page.locator("body").inner_text()
-        print("MY_PROFILE_HAS_CERT_WORD", "сертификат" in body.lower())
-
-    for path, tag in [("/profile", "profile"), ("/education", "education")]:
-        page.goto(f"{env.ui_base_url}{path}", wait_until="load")
-        page.wait_for_timeout(2000)
-        sidebar.dismiss_popups()
-        page.screenshot(path=f"{D}/03_{tag}.png", full_page=True)
-        body = page.locator("body").inner_text()
-        has_cert_word = "сертификат" in body.lower()
-        print(f"PAGE {path} HAS_CERT_WORD", has_cert_word, "URL", page.url)
-        if has_cert_word:
-            idx = body.lower().index("сертификат")
-            print(f"PAGE {path} CERT_CONTEXT", body[max(0, idx - 80):idx + 120].replace("\n", " | "))
-
-    logger.info("Разведка сертификата слушателя завершена (без очистки — фикстуры удалят данные)")
+    logger.info("Разведка сертификата слушателя (раунд 2) завершена")
     print("DONE")
