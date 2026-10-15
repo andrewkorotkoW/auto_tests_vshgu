@@ -3,7 +3,6 @@ from playwright.sync_api import expect
 import pytest
 from ui.pages.login_page import LoginPage
 from ui.pages.user_sidebar_page import UserSidebarPage
-from ui.pages.region_page import RegionPage
 from utils.logger import logger
 from api.helpers.expectations import expect_status
 
@@ -12,7 +11,7 @@ from api.helpers.expectations import expect_status
 @allure.story("CAS Flow")
 class TestCasFlow:
 
-    @allure.title("Пользователь CAS: логин → регион → онбординг → ЛК")
+    @allure.title("Пользователь CAS: логин → онбординг → ЛК")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.smoke
@@ -36,20 +35,31 @@ class TestCasFlow:
             user_email = user_payload["email"]
             logger.info(f"Пользователь CAS: user_id={user_id}, email={user_email}")
 
-        with allure.step("2.5. Установить пароль"):
+        with allure.step("2.5. Установить пароль и муниципалитет"):
             # api_client — уже авторизованная фикстура вместо отдельного
             # ApiClient(cookie=settings.DEVELOP_COOKIE)/сырых requests с ручной кукой:
             # settings.DEVELOP_COOKIE всегда указывает на develop независимо от --env
             # и раньше давал 401 при попытке использовать его напрямую.
+            #
+            # region_id/municipality_id — иначе анкета «данные о себе» после логина требует
+            # выбрать «Муниципальное образование» (поле появилось позже, dismiss_anketa()
+            # про него не знает и не умеет закрыть анкету без него — разведка 15.10.2026,
+            # dismiss_popups глохнет на "anketa остаётся на экране"). 1/844 — Москва/Центральный
+            # округ на develop (municipality_id формы — id сущности, не id записи /dictionaries,
+            # см. tests/api/users/test_create_user_api.py). Заодно убирает отдельный экран
+            # выбора региона после логина — у подготовленного так пользователя SPA ведёт сразу
+            # на «Моё обучение», отдельный шаг выбора региона (RegionPage) больше не нужен.
             get_resp = api_client.get(f"/users/{user_id}")
             expect_status(get_resp, 200)
             user_attrs = get_resp.json()["data"]["attributes"]
             user_attrs["tags"] = []
             user_attrs["password"] = "SecurePass123"
             user_attrs["system_password"] = "SecurePass123"
+            user_attrs["region_id"] = 1
+            user_attrs["municipality_id"] = 844
             resp = api_client.put(f"/users/{user_id}", json={"data": {"attributes": user_attrs}})
             expect_status(resp, 200)
-            logger.info(f"Пароль установлен для user_id={user_id}")
+            logger.info(f"Пароль и муниципалитет установлены для user_id={user_id}")
 
         # ========== UI ==========
         with allure.step("3. Логин"):
@@ -58,18 +68,10 @@ class TestCasFlow:
             page.screenshot(path="allure-results/cas_01_login.png")
             allure.attach.file("allure-results/cas_01_login.png", "Логин", allure.attachment_type.PNG)
 
-        with allure.step("4. Выбрать регион и муниципалитет"):
-            region_page = RegionPage(page)
-            region_page.select_region("Москва")
-            region_page.select_municipality("Центральный округ")
-            region_page.accept_agreement()
-            region_page.click_continue()
-            page.screenshot(path="allure-results/cas_02_region.png")
-            allure.attach.file("allure-results/cas_02_region.png", "Регион выбран", allure.attachment_type.PNG)
-
-        with allure.step("5. Онбординг"):
-            # Новые модалки после анкеты региона: уведомление «Вы отказались от рассылки» («Понятно»),
-            # затем вводное окно тура «Интерактивное руководство» → шаги → «Завершить». Всё закрывает общий помощник.
+        with allure.step("4. Онбординг"):
+            # Модалки после анкеты «данные о себе»: уведомление «Вы отказались от рассылки»
+            # («Понятно»), затем вводное окно тура «Интерактивное руководство» → шаги →
+            # «Завершить». Всё закрывает общий помощник.
             notice_ok = page.locator("button:has-text('Понятно')").first
             if notice_ok.is_visible(timeout=5000):
                 notice_ok.click()
@@ -78,7 +80,7 @@ class TestCasFlow:
             page.screenshot(path="allure-results/cas_03_onboarding.png")
             allure.attach.file("allure-results/cas_03_onboarding.png", "Онбординг", allure.attachment_type.PNG)
 
-        with allure.step("6. Перейти в ЛК"):
+        with allure.step("5. Перейти в ЛК"):
             # cookie-баннер появляется после тура и перекрывает низ страницы — принять до работы с меню
             accept_cookie = page.locator("button:has-text('Принимаю')").first
             if accept_cookie.is_visible(timeout=3000):
@@ -100,12 +102,12 @@ class TestCasFlow:
             logger.info("Перешли в Личный кабинет")
             lk_page.close()
 
-        with allure.step("7. Снять синхронизацию"):
+        with allure.step("6. Снять синхронизацию"):
             success = external_cas_endpoint.delete_user(user_id)
             assert success, f"Не удалось снять синхронизацию {user_id}"
             logger.info(f"Синхронизация CAS снята: user_id={user_id}")
 
-        with allure.step("8. Повторный вход — ЛК не видна"):
+        with allure.step("7. Повторный вход — ЛК не видна"):
             page.context.clear_cookies()
             # login() сам открывает /auth/main и ждёт готовности SPA после входа.
             login_page.login(user_email, "SecurePass123")
@@ -115,7 +117,7 @@ class TestCasFlow:
             assert not page.locator("div.v-list-item-title:has-text('Личный кабинет обучающегося')").is_visible(timeout=3000)
             logger.info("ЛК не отображается")
 
-        with allure.step("9. Очистка"):
+        with allure.step("8. Очистка"):
             from api.endpoints.users import UsersEndpoint
             UsersEndpoint(api_client).delete(user_id)
             logger.info(f"Пользователь удалён: user_id={user_id}")
