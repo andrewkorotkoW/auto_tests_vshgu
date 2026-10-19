@@ -414,3 +414,52 @@ def test_finalize_test_video_does_not_attach_to_allure_for_passed_tests(monkeypa
     th_conftest._finalize_test_video(request, "page", page, time.monotonic())
 
     assert attached == []
+
+
+# ---------- обрезка кадра трансляции до viewport (_crop_live_frame) ----------
+# Page.screencastFrame отдаёт видимую область окна: в headed-режиме окно шире
+# мобильного viewport 412×839, и справа в кадр попадала белая полоса — в рамке
+# Pixel 7 в test_hub кадр не заполнял экран (19.10.2026).
+
+def _jpeg(width, height):
+    import cv2
+    import numpy as np
+
+    img = np.full((height, width, 3), 255, dtype=np.uint8)
+    img[:, : width // 2] = (0, 0, 255)  # левая половина красная — проверяем, что режем справа
+    ok, out = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    assert ok
+    return out.tobytes()
+
+
+def _jpeg_size(data):
+    import cv2
+    import numpy as np
+
+    img = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
+    return img.shape[1], img.shape[0]
+
+
+def test_crop_live_frame_cuts_window_area_outside_viewport():
+    # окно 500×839 DIP при viewport 412×839 → кадр 600×1007 режется до 412/500 ширины
+    frame = _jpeg(600, 1007)
+    cropped = th_plugin._crop_live_frame(frame, {"deviceWidth": 500, "deviceHeight": 839}, {"width": 412, "height": 839})
+    assert _jpeg_size(cropped) == (494, 1007)
+
+
+def test_crop_live_frame_noop_when_window_matches_viewport():
+    frame = _jpeg(412, 839)
+    same = th_plugin._crop_live_frame(frame, {"deviceWidth": 412, "deviceHeight": 839}, {"width": 412, "height": 839})
+    assert same is frame
+    # headless: окно даже меньше viewport не бывает, но и тут ничего не режем
+    smaller = th_plugin._crop_live_frame(frame, {"deviceWidth": 400, "deviceHeight": 800}, {"width": 412, "height": 839})
+    assert smaller is frame
+
+
+def test_crop_live_frame_noop_without_metadata_or_viewport_or_on_bad_jpeg():
+    frame = _jpeg(100, 60)
+    assert th_plugin._crop_live_frame(frame, {}, {"width": 50, "height": 60}) is frame
+    assert th_plugin._crop_live_frame(frame, None, None) is frame
+    assert th_plugin._crop_live_frame(frame, {"deviceWidth": 100, "deviceHeight": 60}, {}) is frame
+    garbage = b"not a jpeg"
+    assert th_plugin._crop_live_frame(garbage, {"deviceWidth": 100, "deviceHeight": 60}, {"width": 50, "height": 60}) is garbage

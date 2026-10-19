@@ -282,6 +282,41 @@ def _sync_live_session(item):
         logger.info(f"[test_hub] ошибка синхронизации трансляции: {exc}")
 
 
+def _crop_live_frame(jpeg_bytes, metadata, viewport):
+    """Page.screencastFrame отдаёт видимую область окна, а не эмулированный viewport:
+    в headed-режиме окно Chromium шире viewport 412×839 (профиль Pixel 7), и в кадр
+    попадает белая полоса справа от страницы — в рамке Pixel 7 в test_hub кадр
+    получался пропорцией 361×600 вместо 412×839 и не заполнял экран (19.10.2026).
+    metadata.deviceWidth/deviceHeight — размер захваченной области в DIP, viewport —
+    page.viewport_size; страница в окне прижата к левому верхнему углу, поэтому
+    режем от (0, 0). Любая ошибка (нет cv2, битый JPEG) — отдаём кадр как есть."""
+    try:
+        dw = float((metadata or {}).get("deviceWidth") or 0)
+        dh = float((metadata or {}).get("deviceHeight") or 0)
+        vw = float((viewport or {}).get("width") or 0)
+        vh = float((viewport or {}).get("height") or 0)
+        if not (dw and dh and vw and vh):
+            return jpeg_bytes
+        if vw >= dw - 1 and vh >= dh - 1:
+            return jpeg_bytes  # окно не больше viewport — резать нечего
+        import cv2  # noqa: PLC0415 — тяжёлый импорт только когда кадр реально надо резать
+        import numpy as np  # noqa: PLC0415
+
+        img = cv2.imdecode(np.frombuffer(jpeg_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if img is None:
+            return jpeg_bytes
+        h, w = img.shape[:2]
+        crop_w = min(w, int(round(w * min(vw, dw) / dw)))
+        crop_h = min(h, int(round(h * min(vh, dh) / dh)))
+        if crop_w <= 0 or crop_h <= 0 or (crop_w == w and crop_h == h):
+            return jpeg_bytes
+        ok, out = cv2.imencode(".jpg", img[:crop_h, :crop_w], [int(cv2.IMWRITE_JPEG_QUALITY), 50])
+        return out.tobytes() if ok else jpeg_bytes
+    except Exception as exc:  # noqa: BLE001 — обрезка не должна ронять трансляцию
+        logger.info(f"[test_hub] не удалось обрезать кадр трансляции до viewport: {exc}")
+        return jpeg_bytes
+
+
 def _start_live_session(nodeid, page):
     try:
         if page.is_closed():
@@ -295,6 +330,11 @@ def _start_live_session(nodeid, page):
         logger.info(f"[test_hub] не удалось открыть CDP-сессию трансляции для {nodeid}: {exc}")
         return None
 
+    try:
+        viewport = dict(page.viewport_size or {})
+    except Exception:  # noqa: BLE001 — без viewport кадр просто не режется
+        viewport = {}
+
     slot = {"frame": None, "lock": threading.Lock()}
 
     def _on_frame(params):
@@ -305,7 +345,7 @@ def _start_live_session(nodeid, page):
         try:
             data = params.get("data")
             if data:
-                frame_bytes = base64.b64decode(data)
+                frame_bytes = _crop_live_frame(base64.b64decode(data), params.get("metadata") or {}, viewport)
                 with slot["lock"]:
                     slot["frame"] = frame_bytes
         except Exception as exc:  # noqa: BLE001
