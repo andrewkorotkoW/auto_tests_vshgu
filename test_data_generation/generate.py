@@ -31,6 +31,7 @@ from lib import Ctx, Manifest, build_clients  # noqa: E402
 from scenarios import (  # noqa: E402
     achievements,
     activities,
+    aos,
     banner_and_partners,
     buk,
     cas,
@@ -38,11 +39,14 @@ from scenarios import (  # noqa: E402
     courses,
     demo,
     homework,
+    individual_track,
     learner_progress,
     lpd,
     materials,
+    polls,
     program_full,
-    tests_polls,
+    scorm,
+    tests,
     users,
 )
 
@@ -52,10 +56,14 @@ SCENARIOS = {
     "users": users,
     "program_full": program_full,
     "learner_progress": learner_progress,
+    "individual_track": individual_track,
     "activities": activities,
-    "tests_polls": tests_polls,
+    "tests": tests,
+    "polls": polls,
+    "aos": aos,
     "homework": homework,
     "courses": courses,
+    "scorm": scorm,
     "lpd": lpd,
     "materials": materials,
     "achievements": achievements,
@@ -86,10 +94,14 @@ CATEGORIES = {
     "users": ("Пользователи и программы", "Пользователи по ролям"),
     "program_full": ("Пользователи и программы", "Программа с потоком, слушателями и сертификатом"),
     "learner_progress": ("Пользователи и программы", "Слушатели на программе с ДЗ"),
+    "individual_track": ("Пользователи и программы", "Слушатели с активностями на инд. треке"),
     "activities": ("Активности", "Все типы активностей в модуле"),
-    "tests_polls": ("Активности", "Тесты и опросы"),
+    "tests": ("Активности", "Тесты"),
+    "polls": ("Активности", "Опросы"),
+    "aos": ("Активности", "Анкеты обратной связи (АОС)"),
     "homework": ("Активности", "Практические задания (3 типа оценки)"),
     "courses": ("Активности", "Курсы Tincan + материал БЗ"),
+    "scorm": ("Активности", "Курсы SCORM"),
     "lpd": ("Активности", "LPD (только stage)"),
     "materials": ("База знаний", "Материалы всех типов"),
     "achievements": ("База знаний", "Достижения"),
@@ -207,6 +219,7 @@ def _cleanup_handlers(api_client, cas_client, env):
     """entity -> функция(id) -> bool|None. None означает «нет DELETE-метода»."""
     from api.endpoints.alpina import AlpinaEndpoint
     from api.endpoints.aos import AosEndpoint
+    from api.endpoints.assignments import AssignmentsEndpoint
     from api.endpoints.certificates import CertificatesEndpoint
     from api.endpoints.external_buk import ExternalBukEndpoint
     from api.endpoints.external_cas import ExternalCasEndpoint
@@ -229,6 +242,7 @@ def _cleanup_handlers(api_client, cas_client, env):
     from api.endpoints.users import UsersEndpoint
 
     users_ep = UsersEndpoint(api_client)
+    assignments_ep = AssignmentsEndpoint(api_client)
     programs_ep = ProgramsEndpoint(api_client)
     streams_ep = StreamsEndpoint(api_client)
     modules_ep = ModulesEndpoint(api_client)
@@ -249,6 +263,16 @@ def _cleanup_handlers(api_client, cas_client, env):
     banner_ep = InfoBannerEndpoint(api_client)
     alpina_ep = AlpinaEndpoint(api_client)
     mif_ep = MifEndpoint(api_client)
+
+    def _detach_individual(id_):
+        """Снятие активностей с инд. трека. В манифесте individual_track запись стоит сразу
+        после слушателей, поэтому к моменту detach сами активности уже удалены (см.
+        комментарий в scenarios/individual_track.py) — если detach на удалённый контент
+        отвечает ошибкой, но всех content_ids на стенде уже нет, назначений тоже нет."""
+        content_ids, user_ids = id_
+        if assignments_ep.detach_from_individual(content_ids, user_ids):
+            return True
+        return all(api_client.get(f"/content/{content_id}").status_code == 404 for content_id in content_ids)
 
     def _delete_buk_user(buk_user_id):
         if not env.buk_token:
@@ -279,6 +303,9 @@ def _cleanup_handlers(api_client, cas_client, env):
         "certificate_template": lambda id_: certificates_ep.delete_templates([id_]),
         "stream_assignment": None,
         "certificate_assignment": None,
+        # id = [content_ids, user_ids]; detach идёт первым (манифест разбирается с конца),
+        # затем удаляются сами активности и пользователи.
+        "individual_assignment": _detach_individual,
         "tincan": lambda id_: tincan_ep.mass_delete([id_]),
         "scorm": lambda id_: tincan_ep.mass_delete([id_]),
         "external_content": lambda id_: ext_content_ep.delete(id_),
