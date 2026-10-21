@@ -17,6 +17,7 @@ JSON-список сценариев; --json при --scenario/--cleanup доб�
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -145,6 +146,12 @@ def list_scenarios(as_json: bool = False) -> None:
         print(f"  {'':18} --count: {info['count_help']}")
 
 
+def _unescape(text: str) -> str:
+    """Бэкенд экранирует кириллицу в JSON (\\u041f…) — в заметках манифеста и логе
+    читаемее настоящие буквы."""
+    return re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), text)
+
+
 def emit_result(args, payload: dict) -> None:
     """Последняя строка stdout при --json — «__TH_DATAGEN_RESULT__ {json}» (см. RESULT_MARKER)."""
     if getattr(args, "json", False):
@@ -264,6 +271,26 @@ def _cleanup_handlers(api_client, cas_client, env):
     alpina_ep = AlpinaEndpoint(api_client)
     mif_ep = MifEndpoint(api_client)
 
+    def _dismiss_cas(id_):
+        """Снятие зачисления CAS. Два случая, когда 422 от dismiss — не провал:
+        - пользователь уже удалён (повторный --cleanup после частичного: «Пользователь N
+          должен быть синхронизирован», GET /users/{id} → 404) — назначения больше нет;
+        - бэкенд отвечает «Удаление назначений невозможно: есть назначения со статусом …»
+          (зачисление приказом нельзя снять через dismiss) — следующая запись манифеста
+          удаляет самого пользователя, и назначение уходит вместе с ним."""
+        stream_id, user_id = id_
+        try:
+            return ext_ep.dismiss_assignments(stream_id, [user_id]) is not None
+        except AssertionError as exc:
+            message = _unescape(str(exc))
+            if api_client.get(f"/users/{user_id}").status_code == 404:
+                logger.info(f"   пользователь {user_id} уже удалён — зачисление снято вместе с ним")
+                return True
+            if "невозможно" in message:
+                logger.info(f"   dismiss отклонён ({message[:120]}…) — зачисление снимется при удалении пользователя")
+                return True
+            raise
+
     def _detach_individual(id_):
         """Снятие активностей с инд. трека. В манифесте individual_track запись стоит сразу
         после слушателей, поэтому к моменту detach сами активности уже удалены (см.
@@ -292,7 +319,7 @@ def _cleanup_handlers(api_client, cas_client, env):
         "cas_stream": lambda id_: ext_ep.delete_stream(*id_),
         "cas_module": lambda id_: modules_ep.delete(*id_),
         "cas_user": lambda id_: users_ep.delete(id_),
-        "cas_assignment": lambda id_: ext_ep.dismiss_assignments(id_[0], [id_[1]]) is not None,
+        "cas_assignment": _dismiss_cas,
         "user": lambda id_: users_ep.delete(id_),
         # DELETE /programs/{id} отдаёт 405 (Supported methods: GET, HEAD, PUT) — рабочий способ
         # удалить одну программу это mass-delete с одним id.
@@ -323,6 +350,51 @@ def _cleanup_handlers(api_client, cas_client, env):
         "alpina_access": lambda id_: bool(alpina_ep.set_status(id_, status=False)),
         "mif_access": lambda id_: bool(mif_ep.set_access(id_, access=False)),
     }
+
+
+# Как проверить, что сущности уже нет на стенде (повторный --cleanup после частичного,
+# ручное удаление в админке): GET по этому пути отвечает 404. entity -> шаблон пути по id
+# (составной id подставляется позиционно). Для тестов/опросов/АОС отдельного GET нет.
+_EXISTENCE_PROBES = {
+    "user": "/users/{0}",
+    "cas_user": "/users/{0}",
+    "program": "/programs/{0}",
+    "stream": "/programs/{0}/streams/{1}",
+    "module": "/programs/{0}/streams/{1}/modules/{2}",
+    "cas_module": "/programs/{0}/streams/{1}/modules/{2}",
+    "tincan": "/content/{0}",
+    "scorm": "/content/{0}",
+    "external_content": "/content/{0}",
+    "homework_five_point": "/content/{0}",
+    "homework_ten_point": "/content/{0}",
+    "homework_pass_fail": "/content/{0}",
+    "lpd": "/content/{0}",
+}
+
+
+def _already_gone(entity: str, id_, api_client, cas_client, error: str) -> bool:
+    """Провал удаления — не провал, если сущности уже нет: GET отвечает 404, либо для
+    синхронизации CAS бэкенд говорит «должен(а) быть синхронизирован(а)» — синк уже снят
+    (delete_program/delete_stream возвращают False без текста ответа, поэтому запрос
+    повторяется напрямую, чтобы прочитать тело 400)."""
+    if entity in ("cas_program", "cas_stream"):
+        if "синхронизирован" in error:
+            return True
+        path = (f"/external/cas/sync/programs/{id_}" if entity == "cas_program"
+                else f"/external/cas/sync/programs/{id_[0]}/streams/{id_[1]}")
+        try:
+            resp = cas_client.delete(path)
+        except Exception:  # noqa: BLE001
+            return False
+        return resp.status_code == 400 and "синхронизирован" in _unescape(resp.text)
+    template = _EXISTENCE_PROBES.get(entity)
+    if template is None:
+        return False
+    parts = id_ if isinstance(id_, (list, tuple)) else [id_]
+    try:
+        return api_client.get(template.format(*parts)).status_code == 404
+    except Exception:  # noqa: BLE001 — проверка вспомогательная, не должна ронять cleanup
+        return False
 
 
 def run_cleanup(args) -> int:
@@ -358,15 +430,21 @@ def run_cleanup(args) -> int:
             skipped += 1
             results.append({"entity": entity, "id": id_, "status": "skipped", "note": note})
             continue
+        error = ""
         try:
             success = bool(handler(id_))
         except Exception as exc:  # noqa: BLE001 — репортим и продолжаем удалять остальное
             success = False
-            note = f"{note}; ошибка: {exc}"
+            error = _unescape(str(exc))
+            note = f"{note}; ошибка: {error}"
+        gone = False
+        if not success and _already_gone(entity, id_, api_client, cas_client, error):
+            success, gone = True, True
         if success:
             ok += 1
-            print(f"{entity:22} {str(id_):30} удалено")
-            results.append({"entity": entity, "id": id_, "status": "deleted", "note": None})
+            print(f"{entity:22} {str(id_):30} {'уже отсутствует' if gone else 'удалено'}")
+            results.append({"entity": entity, "id": id_, "status": "deleted",
+                            "note": "уже отсутствовало на стенде" if gone else None})
         else:
             failed += 1
             print(f"{entity:22} {str(id_):30} НЕ удалено ({note})")
