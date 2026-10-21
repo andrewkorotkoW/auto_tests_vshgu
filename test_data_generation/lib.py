@@ -132,7 +132,15 @@ class DryRunClient:
         return self._fake_response("DELETE", endpoint, json)
 
     def upload(self, endpoint: str, files: dict, data: dict = None) -> DryRunResponse:
-        return self._fake_response("UPLOAD", endpoint, data)
+        """Загрузка файла: /upload/material_files отвечает списком data=[{uuid, attributes}]
+        (KnowledgeBaseEndpoint.upload_material_file читает data[0]["uuid"]), а не словарём,
+        как остальные ручки — поэтому синтетический ответ тут своей формы."""
+        fake = self._fake_response("UPLOAD", endpoint, data)
+        fake_id = fake.json()["id"]
+        return DryRunResponse(200, {"data": [{
+            "uuid": f"00000000-0000-0000-0000-{fake_id:012d}",
+            "attributes": {"name": next(iter(files.values()))[0] if files else f"dry-run-{fake_id}"},
+        }]})
 
 
 class ResilientClient:

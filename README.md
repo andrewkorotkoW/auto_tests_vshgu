@@ -224,19 +224,29 @@ pytest --env=stage tests/api/buk
 манифест созданного в `test_data_generation/manifests/<env>_<scenario>_<ts>.json`.
 
 ```
-python test_data_generation/generate.py --env <develop|stage> --scenario <имя> \
-    [--count N] [--tenant ID] [--prefix STR] [--dry-run] [--list] [--cleanup manifest.json]
+python test_data_generation/generate.py --env <develop|stage|k8s|stand> --scenario <имя> \
+    [--count N] [--tenant ID] [--prefix STR] [--dry-run] [--list] [--cleanup manifest.json] \
+    [--json] [--manifest-out PATH]
 ```
 
-- `--env` — `develop` (по умолчанию) или `stage`.
+- `--env` — `develop` (по умолчанию), `stage`, либо произвольный стенд `k8s`/`stand`
+  (хост из `STAND_URL`, см. раздел 4) — так CLI зовёт test_hub для выбранного стенда.
 - `--scenario` — имя сценария (см. таблицу ниже), обязателен, если не указаны `--list`/`--cleanup`.
-- `--count` — сколько сущностей на единицу плана (смысл зависит от сценария, по умолчанию 1).
+- `--count` — сколько сущностей на единицу плана (смысл зависит от сценария, по умолчанию 1;
+  `--list` печатает подсказку «--count: …» под каждым сценарием).
 - `--tenant` — `tenant_organization_id`, если нужен конкретный тенант.
 - `--prefix` — суффикс имён создаваемых сущностей: `Автотест_<prefix>_<ts>`.
 - `--dry-run` — без единого сетевого вызова: план шагов и синтетические id в лог, манифест не
   сохраняется (удалять нечего).
 - `--list` — вывести список сценариев с описанием и выйти.
 - `--cleanup manifest.json` — не создавать, а удалить сущности из ранее сохранённого манифеста.
+- `--json` — машинный режим для test_hub (вкладка «Данные» проекта): `--list` печатает JSON-список
+  `[{name, description, count_help}]`; `--scenario`/`--cleanup` добавляют последней строкой stdout
+  `__TH_DATAGEN_RESULT__ {json}` с манифестом (`ok`, `manifest`, `manifest_path`, при сбое —
+  `partial: true` и `error`) или итогом удаления (`deleted`/`failed`/`skipped`, `results`), а сбой
+  сценария не бросает исключение наружу — код возврата `1`.
+- `--manifest-out PATH` — сохранить манифест по заданному пути (и частичный при сбое) вместо
+  `test_data_generation/manifests/<env>_<scenario>_<ts>.json`.
 
 ### Сценарии
 
@@ -251,8 +261,24 @@ python test_data_generation/generate.py --env <develop|stage> --scenario <имя
 | `certificates` | шаблон сертификата для потока программы (program_stream) и для активности (activity) + назначение |
 | `banner_and_partners` | включение инфо-баннера + выдача доступа Alpina/MIF N пользователям |
 | `demo` | демо-наполнение стенда: `users` + `program_full` + `activities` + `certificates` + `banner_and_partners` (count=1 на каждый шаг) |
+| `tests_polls` | N тестов (по два вопроса single) + N опросов (один вопрос), без программы |
+| `courses` | N курсов Tincan (архив `test_data/course_tincan.zip`) + материал БЗ «курс» на каждый, без программы |
+| `materials` | N материалов БЗ каждого типа: статья / книга / файл / аудио / видео (файлы из `test_data/`) |
+| `achievements` | N достижений с условием «изучено N материалов-статей», активные, стандартная иконка |
+| `homework` | N практических заданий каждого типа оценки (5-балльное / 10-балльное / зачёт-незачёт), без программы |
+| `lpd` | N активностей LPD, без программы — только на stage (на остальных окружениях шаг `skipped`) |
 
-`buk` и активность LPD внутри `activities` реально доступны только на stage (см. раздел 8) —
+Сценарии сгруппированы по категориям (`CATEGORIES` в `generate.py`: «Пользователи и
+программы», «Активности», «База знаний», «Сертификаты», «Интеграции», «Наборы»), у каждого есть
+короткое человеческое название — `--list` печатает их по группам, `--list --json` отдаёт поля
+`category`/`title`, а test_hub показывает селект с `optgroup` по этим категориям.
+
+Сценарии `tests_polls` … `lpd` — «точечные»: одна сущность нужного вида без цепочки
+программа → поток → модуль, для ручных проверок и наполнения стенда через test_hub.
+Достижение в `activities` с 21.10.2026 создаётся по-настоящему (`KnowledgeBaseEndpoint.
+create_achievement`), а не помечается «только через UI».
+
+`buk` и активность LPD внутри `activities`/`lpd` реально доступны только на stage (см. раздел 8) —
 на develop эти шаги пишутся в манифест как `skipped` с причиной, а не падают.
 
 Пароль создаваемых тестовых пользователей — общий `DEFAULT_PASSWORD` (`test_data_generation/lib.py`,

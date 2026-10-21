@@ -4,9 +4,9 @@ assign_content_to_module (один и тот же mass-addition эндпоинт
 
 LPD создаётся только при --env stage (см. tests/api/create_activity/lpd — маркер
 env("stage")); на develop шаг помечается пропущенным и в логе, и в манифесте.
-Достижение (achievement) создаётся только через UI (ui/pages/admin_knowledge_base_page.py) —
-в api/endpoints/knowledge_base.py нет метода создания достижения, поэтому шаг тоже
-только помечается, без выдумывания несуществующего эндпоинта.
+Достижение создаётся через KnowledgeBaseEndpoint.create_material_count_achievement
+(API-путь появился вместе с tests/ui/knowledge_base/user_achievements; раньше шаг только
+помечался как «только через UI») — условие «изучен 1 материал-статья».
 """
 from datetime import datetime, timedelta
 
@@ -51,11 +51,6 @@ DESCRIPTION = ("программа -> поток -> модуль -> по одн�
                "материал БЗ + достижение)")
 
 LPD_STAGE_ONLY_REASON = "LPD доступен только на stage, пропущено"
-ACHIEVEMENT_UI_ONLY_REASON = (
-    "achievement — только через UI, API-путь отсутствует "
-    "(в api/endpoints/knowledge_base.py есть create_material/toggle_visibility, "
-    "но метода создания достижения нет; см. ui/pages/admin_knowledge_base_page.py)"
-)
 
 
 def run(ctx) -> None:
@@ -191,8 +186,21 @@ def run(ctx) -> None:
         ctx.manifest.record("knowledge_base_material", material["id"], "knowledge_base.delete_materials([id])")
         kb_ep.toggle_visibility(material["id"], is_visible=True)
 
-        logger.info(f"13. Достижение{suffix}...")
-        ctx.manifest.skip("achievement", ACHIEVEMENT_UI_ONLY_REASON)
+        logger.info(f"13. Достижение{suffix} (условие: изучен 1 материал-статья)...")
+        # В dry-run DryRunClient отдаёт data-словарь, а не список иконок — uuid фейковый.
+        icon_uuid = ctx.dry_or(
+            "GET /admin/achievements/achievement-default-icons (uuid стандартной иконки)",
+            "00000000-0000-0000-0000-00000000icon",
+            kb_ep.get_default_achievement_icon_uuid,
+        )
+        achievement = kb_ep.create_achievement({
+            "name": ctx.name(f"Achievement{suffix}"),
+            "description": "Автотестовое достижение (сгенерировано test_data_generation)",
+            "is_active": True,
+            "icon_uuid": icon_uuid,
+            "conditions": [{"type": "material_count", "count": 1, "material_type": "article"}],
+        })
+        ctx.manifest.record("achievement", achievement["id"], "knowledge_base.delete_achievement(id)")
 
     logger.info("Готово.")
     logger.info(f"  Программа: {program['id']}, поток: {stream['id']}, модуль: {module['id']}")
