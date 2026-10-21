@@ -397,32 +397,13 @@ def _already_gone(entity: str, id_, api_client, cas_client, error: str) -> bool:
         return False
 
 
-def run_cleanup(args) -> int:
-    manifest_path = Path(args.cleanup)
-    manifest = Manifest.load(manifest_path)
-    env = ENVIRONMENTS[manifest.env]
-    logger.info(f"Cleanup манифеста {manifest_path} (env={env.name}, scenario={manifest.scenario}, "
-                f"{len(manifest.created)} записей, в обратном порядке создания)")
-
-    if args.dry_run:
-        for entry in reversed(manifest.created):
-            logger.info(f"[dry-run] был бы удалён {entry['entity']} id={entry['id']} ({entry['how_to_delete']})")
-        emit_result(args, {"ok": True, "dry_run": True, "deleted": 0, "failed": 0, "skipped": 0, "results": []})
-        return 0
-
-    api_client, cas_client, _ = build_clients(env, dry_run=False)
-    handlers = _cleanup_handlers(api_client, cas_client, env)
-
-    if manifest.skipped:
-        print("Ранее осознанно пропущено (нечего удалять):")
-        for entry in manifest.skipped:
-            print(f"  {entry['entity']:22} {entry['reason']}")
-        print()
-
+def _delete_entries(entries, handlers, api_client, cas_client):
+    """Удаляет записи манифеста в обратном порядке создания. Возвращает
+    (ok, failed, skipped, results) — results в формате JSON-итога (--json)."""
     print(f"{'сущность':22} {'id':30} результат")
     ok, failed, skipped = 0, 0, 0
     results = []
-    for entry in reversed(manifest.created):
+    for entry in reversed(entries):
         entity, id_, note = entry["entity"], entry["id"], entry["how_to_delete"]
         handler = handlers.get(entity)
         if handler is None:
@@ -449,11 +430,214 @@ def run_cleanup(args) -> int:
             failed += 1
             print(f"{entity:22} {str(id_):30} НЕ удалено ({note})")
             results.append({"entity": entity, "id": id_, "status": "failed", "note": note})
-
     print(f"\nУдалено: {ok}, не удалено: {failed}, пропущено (нет DELETE): {skipped}")
+    return ok, failed, skipped, results
+
+
+def run_cleanup(args) -> int:
+    manifest_path = Path(args.cleanup)
+    manifest = Manifest.load(manifest_path)
+    env = ENVIRONMENTS[manifest.env]
+    logger.info(f"Cleanup манифеста {manifest_path} (env={env.name}, scenario={manifest.scenario}, "
+                f"{len(manifest.created)} записей, в обратном порядке создания)")
+
+    if args.dry_run:
+        for entry in reversed(manifest.created):
+            logger.info(f"[dry-run] был бы удалён {entry['entity']} id={entry['id']} ({entry['how_to_delete']})")
+        emit_result(args, {"ok": True, "dry_run": True, "deleted": 0, "failed": 0, "skipped": 0, "results": []})
+        return 0
+
+    api_client, cas_client, _ = build_clients(env, dry_run=False)
+    handlers = _cleanup_handlers(api_client, cas_client, env)
+
+    if manifest.skipped:
+        print("Ранее осознанно пропущено (нечего удалять):")
+        for entry in manifest.skipped:
+            print(f"  {entry['entity']:22} {entry['reason']}")
+        print()
+
+    ok, failed, skipped, results = _delete_entries(manifest.created, handlers, api_client, cas_client)
     emit_result(args, {
         "ok": failed == 0, "dry_run": False, "deleted": ok, "failed": failed, "skipped": skipped,
         "results": results, "manifest_path": str(manifest_path),
+    })
+    return 0 if failed == 0 else 1
+
+
+# ---------------------------------------------------------------- очистка после прогона автотестов
+
+# Данные автотестов на стенде: имена сущностей (api/helpers/data_generator.py — «Автотест_…»,
+# программы некоторых тестов — «API-test_…»/«E2E_…») и email пользователей (random_email —
+# «auto_test_…», сценарий cas — «cas_user_…»).
+AUTOTEST_NAME_PREFIXES = ("Автотест", "API-test", "E2E")
+AUTOTEST_EMAIL_PREFIXES = ("auto_test_", "cas_user_")
+CLEANUP_AFTER_RUN_SCENARIO = "cleanup_after_run"
+
+# /activities отдаёт content_type; удаляются через те же обработчики, что и в манифестах
+# сценариев. Неизвестный тип идёт в tincan.mass_delete — это общий /content mass-delete.
+_ACTIVITY_ENTITY = {
+    "course-tincan": "tincan",
+    "scorm": "scorm",
+    "homework": "homework_five_point",
+    "external_content": "external_content",
+    "lpd": "lpd",
+}
+_TEST_ENTITY = {"test": "test", "poll": "poll", "feedback": "aos"}
+
+
+def _parse_since(value: str):
+    """--since из test_hub — runs.started, локальное время машины без зоны (ISO)."""
+    from datetime import datetime
+
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.astimezone()  # naive = локальное время этой машины
+    return dt
+
+
+def _created_at(raw):
+    """created_at стенда в aware-datetime: «2026-10-21 15:39:40» — локальное время сервера
+    (совпадает с локальным временем машины, проверено на develop 21.10.2026),
+    «2026-07-31T07:09:05.000000Z» — UTC (пользователи), «22.09.26» — только дата
+    (материалы БЗ, берём полночь). None, если формат неизвестен."""
+    from datetime import datetime
+
+    if not raw:
+        return None
+    text = str(raw)
+    try:
+        if re.fullmatch(r"\d{2}\.\d{2}\.\d{2}", text):
+            return datetime.strptime(text, "%d.%m.%y").astimezone()
+        dt = datetime.fromisoformat(text.replace("Z", "+00:00").replace(" ", "T"))
+        return dt if dt.tzinfo else dt.astimezone()
+    except ValueError:
+        return None
+
+
+def _iter_pages(api_client, path: str, per_page: int = 100):
+    """Все элементы пагинированного списка (meta.last_page), с & или ? по ситуации."""
+    page = 1
+    sep = "&" if "?" in path else "?"
+    while True:
+        resp = api_client.get(f"{path}{sep}per-page={per_page}&page={page}")
+        if resp.status_code != 200:
+            logger.warning(f"GET {path} page={page} -> {resp.status_code}: {resp.text[:200]}")
+            return
+        body = resp.json()
+        data = body.get("data") or []
+        if isinstance(data, dict):
+            data = data.get("materials") or data.get("items") or []
+        for item in data:
+            yield item
+        meta = body.get("meta") or {}
+        if not data or page >= int(meta.get("last_page") or 1):
+            return
+        page += 1
+
+
+def collect_autotest_leftovers(api_client, since) -> list:
+    """Сущности автотестов, созданные на стенде не раньше since — в виде записей манифеста
+    (entity/id/how_to_delete), в порядке «создания» (users → programs → БЗ → активности →
+    тесты), чтобы _delete_entries удалял их в обратном: сначала контент, потом программы и
+    пользователей. Сущности без разбираемого created_at пропускаются с предупреждением."""
+    entries = []
+    seen = set()
+
+    def add(entity, id_, note, created_raw, label):
+        created = _created_at(created_raw)
+        if created is None:
+            logger.warning(f"   {label}: created_at={created_raw!r} не разобран — пропущено")
+            return
+        if created < since or (entity, str(id_)) in seen:
+            return
+        seen.add((entity, str(id_)))
+        entries.append({"entity": entity, "id": id_, "how_to_delete": note})
+        logger.info(f"   + {entity} {id_} ({label}, {created_raw})")
+
+    logger.info("1. Пользователи auto_test_* / cas_user_* ...")
+    for prefix in AUTOTEST_EMAIL_PREFIXES:
+        for item in _iter_pages(api_client, f"/users?filters[email]={prefix.rstrip('_')}"):
+            attrs = item.get("attributes", item)
+            email = str(attrs.get("email") or "")
+            if email.startswith(prefix):
+                add("user", item["id"], "users.delete(user_id)", attrs.get("created_at"), email)
+
+    logger.info("2. Программы Автотест_* / API-test_* / E2E_* ...")
+    for prefix in AUTOTEST_NAME_PREFIXES:
+        for item in _iter_pages(api_client, f"/programs?filters[name]={prefix}"):
+            attrs = item.get("attributes", item)
+            name = str(attrs.get("name") or "")
+            if name.startswith(prefix):
+                add("program", item["id"], "programs.mass_delete([id])", attrs.get("created_at"), name)
+
+    logger.info("3. База знаний: материалы и достижения Автотест* ...")
+    for item in _iter_pages(api_client, "/knowledge-base/admin/materials?filters[name]=Автотест"):
+        attrs = item.get("attributes", item)
+        name = str(attrs.get("name") or "")
+        if "Автотест" in name:
+            add("knowledge_base_material", item["id"], "knowledge_base.delete_materials([id])", attrs.get("created_at"), name)
+    for item in _iter_pages(api_client, "/admin/achievements?filters[name]=Автотест"):
+        attrs = item.get("attributes", item)
+        name = str(attrs.get("name") or "")
+        if "Автотест" in name:
+            add("achievement", item["id"], "knowledge_base.delete_achievement(id)", attrs.get("created_at"), name)
+
+    logger.info("4. Активности Автотест* (курсы, ДЗ, внешний контент, LPD) ...")
+    for item in _iter_pages(api_client, "/activities?filters[name]=Автотест"):
+        attrs = item.get("attributes", item)
+        name = str(attrs.get("name") or "")
+        if "Автотест" not in name:
+            continue
+        entity = _ACTIVITY_ENTITY.get(str(attrs.get("content_type") or ""), "tincan")
+        add(entity, item["id"], "tincan.mass_delete([id])" if entity in ("tincan", "scorm") else f"{entity}.mass_delete([id])",
+            attrs.get("created_at"), f"{name} [{attrs.get('content_type')}]")
+
+    logger.info("5. Тесты, опросы, АОС Автотест* ...")
+    for item in _iter_pages(api_client, "/tests?filters[name]=Автотест"):
+        attrs = item.get("attributes", item)
+        name = str(attrs.get("name") or "")
+        if "Автотест" not in name:
+            continue
+        entity = _TEST_ENTITY.get(str(attrs.get("type") or ""), "test")
+        add(entity, item.get("id") or attrs.get("content_id"), f"{entity}s.mass_delete([id])" if entity != "aos" else "aos.mass_delete([id])",
+            attrs.get("created_at"), f"{name} [{attrs.get('type')}]")
+
+    return entries
+
+
+def run_cleanup_autotests(args) -> int:
+    """--cleanup-autotests --since <ISO>: найти на стенде данные автотестов, созданные
+    не раньше since (старт прогона в test_hub), и удалить их. Итог — как у --cleanup,
+    плюс manifest найденного (test_hub хранит его как партию «очистка после прогона»)."""
+    env = ENVIRONMENTS[args.env]
+    since = _parse_since(args.since)
+    logger.info(f"Очистка данных автотестов на {env.name} ({env.api_base_url}), созданных с {since.isoformat()}")
+
+    api_client, cas_client, _ = build_clients(env, dry_run=False)
+    api_client.timeout = 120
+    entries = collect_autotest_leftovers(api_client, since)
+    manifest = Manifest(env.name, CLEANUP_AFTER_RUN_SCENARIO)
+    manifest.created = entries
+    logger.info(f"Найдено сущностей: {len(entries)}")
+
+    manifest_path = None
+    if args.manifest_out:
+        manifest_path = manifest.save(args.manifest_out)
+
+    if args.dry_run:
+        for entry in reversed(entries):
+            logger.info(f"[dry-run] был бы удалён {entry['entity']} id={entry['id']}")
+        emit_result(args, {"ok": True, "dry_run": True, "since": since.isoformat(), "manifest": manifest.to_dict(),
+                           "manifest_path": str(manifest_path) if manifest_path else None,
+                           "deleted": 0, "failed": 0, "skipped": 0, "results": []})
+        return 0
+
+    handlers = _cleanup_handlers(api_client, cas_client, env)
+    ok, failed, skipped, results = _delete_entries(entries, handlers, api_client, cas_client)
+    emit_result(args, {
+        "ok": failed == 0, "dry_run": False, "since": since.isoformat(), "manifest": manifest.to_dict(),
+        "manifest_path": str(manifest_path) if manifest_path else None,
+        "deleted": ok, "failed": failed, "skipped": skipped, "results": results,
     })
     return 0 if failed == 0 else 1
 
@@ -468,6 +652,11 @@ def main() -> int:
     parser.add_argument("--tenant", type=int, default=None, help="tenant_organization_id")
     parser.add_argument("--prefix", default=None, help="суффикс имён: 'Автотест_<prefix>_<ts>'")
     parser.add_argument("--cleanup", metavar="MANIFEST.json", help="удалить сущности из манифеста в обратном порядке")
+    parser.add_argument("--cleanup-autotests", action="store_true",
+                        help="удалить данные автотестов (Автотест_*/API-test_*/E2E_*, auto_test_*), созданные на стенде "
+                             "не раньше --since (кнопка «Удалить данные прогона» в test_hub)")
+    parser.add_argument("--since", metavar="ISO", default=None,
+                        help="нижняя граница created_at для --cleanup-autotests (локальное время, как runs.started в test_hub)")
     parser.add_argument("--json", action="store_true",
                         help="машинный вывод: --list печатает JSON, --scenario/--cleanup добавляют строку "
                              f"'{RESULT_MARKER} {{json}}' с итогом (для test_hub)")
@@ -482,8 +671,13 @@ def main() -> int:
     if args.cleanup:
         return run_cleanup(args)
 
+    if args.cleanup_autotests:
+        if not args.since:
+            parser.error("--cleanup-autotests требует --since <ISO>")
+        return run_cleanup_autotests(args)
+
     if not args.scenario:
-        parser.error("нужен --scenario NAME, --list или --cleanup MANIFEST.json")
+        parser.error("нужен --scenario NAME, --list, --cleanup MANIFEST.json или --cleanup-autotests --since ISO")
 
     return run_scenario(args)
 
