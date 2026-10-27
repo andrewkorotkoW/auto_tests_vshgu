@@ -2,8 +2,8 @@
 
 | Параметр | Значение |
 |---|---|
-| Область | tests/ui/lrs, tests/e2e/lrs |
-| Стенд | k8s (`https://lrs-k8s-release.v2.gosedu.ru/lrs-admin`, вход SSO из `portal-k8s-release`); develop — после регистрации OAuth-клиента LRS в Passport (сейчас `invalid_client`, см. docs/lrs/lrs_recon.md) |
+| Область | tests/ui/lrs, tests/e2e/lrs (конструктор и SCORM) |
+| Стенд | ревью-стенды `https://lrs-<ветка>.d2.devspark.ru/lrs-admin` (вход SSO из `portal-<ветка>`; эталон — vshgu2-2420-filters, 27.10.2026) и k8s (выведен); develop — после регистрации OAuth-клиента LRS в Passport (сейчас `invalid_client`, см. docs/lrs/lrs_recon.md) |
 | Роли | admin — пользователь LMS с правом `logs-index` («Логи»); user — слушатель без доступа в админку |
 
 <!-- Кейсы написаны вручную по разведке docs/lrs/lrs_recon.md (14.10.2026) и описанию
@@ -64,7 +64,7 @@
 |---|---|---|
 | 1 | Открыть «Хранилища» (`/lrs-admin/store`) | Таблица с колонками Название, Папка, Размер, Количество states, Количество statements; есть `default store`; кнопка «Добавить Хранилище» |
 | 2 | Нажать на `default store` | Открывается `/lrs-admin/store/1/client` («Клиенты хранилища»), вкладки: Клиенты хранилища, Statements, States, Activity profiles, Agents; в боковом меню хранилище подсвечено |
-| 3 | Сравнить «Количество statements» из шага 1 с числом записей на вкладке Statements (сумма по страницам / `recordsTotal` из `POST …/statement/search`) | Числа совпадают |
+| 3 | Сравнить «Количество statements» из шага 1 с числом записей на вкладке Statements (`recordsFiltered` из `POST …/statement/search`; `recordsTotal` там — размер страницы) | Счётчик в списке — кэш, отстаёт от таблицы (2420, 27.10.2026: «6» при 8 statements; при нуле — «-», размер 0 MB): число в списке не больше `recordsFiltered`, после обновления кэша совпадает |
 
 ### TC-LRS-007 Клиенты хранилища: xAPI-endpoint и Launch-ссылка
 - Автотест: tests/ui/lrs/test_lrs_stores.py::TestLrsStores::test_store_clients_launch_link
@@ -73,7 +73,7 @@
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть «Клиенты хранилища» | Таблица: Логин, Пароль, Дата создания, Launch, Действия (Предпросмотр, Редактировать, Удалить); кнопка «Добавить Клиент» |
-| 2 | Прочитать `href` ссылки «Launch» | Содержит `endpoint=https://lrs-<стенд>/xAPI` и `auth=Basic <base64 логин:пароль>` — base64 совпадает с логином/паролем из строки |
+| 2 | Прочитать `href` ссылки «Launch» | Query-строка `?endpoint=https://lrs-<стенд>/xAPI&auth=Basic+<base64 логин:пароль>&actor=…&registration=<uuid>&activity_id=` (пробел закодирован `+`, `activity_id` пустой) — base64 совпадает с логином/паролем из строки |
 | 3 | `GET https://lrs-<стенд>/xAPI/about` с этим Basic | Ответ 200, JSON с `version` (xAPI 1.0.x) |
 
 ### TC-LRS-008 Вкладка Statements: таблица, предпросмотр, ссылка в карточку пользователя LMS
@@ -82,9 +82,9 @@
 - Предусловия: admin в OpenLRS; в `default store` есть хотя бы один statement
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | Открыть `/lrs-admin/store/1/statement` | Колонки Agent, Verb, Activity, Дата создания statement-а, Действия; записи отсортированы по дате убыванием; кнопки «Скачать архив», «Генерация отчета», «Сбросить»; пагинация и «записей на странице» |
+| 1 | Открыть `/lrs-admin/store/1/statement` | Колонки Agent, Verb, Activity, Дата создания statement-а, Действия; записи отсортированы по дате убыванием; аккордеон «Скачать архив», кнопка «Генерация отчета», ссылка «Сбросить» у заголовка (сброс состояния таблицы), панель фильтров Agent ID / Verb / Activity ID / Registration / Date; пагинация и «записей на странице» |
 | 2 | Нажать «Предпросмотр» у первой записи | Страница `/statement/{id}/show`: поля Agent, Verb, Activity, Дата, Registration, Voided, Payload и JSON statement'а: `actor.account.name` = Agent из таблицы, `actor.account.homePage` = `https://portal-<стенд>/accounts/userid`, `verb.id` = `http://adlnet.gov/expapi/verbs/<verb>`; кнопка «Вернуться к списку» |
-| 3 | В таблице нажать на значение Agent | Открывается карточка пользователя LMS `https://portal-<стенд>/admin/users/{agent}`, id в URL = Agent |
+| 3 | В таблице нажать на значение Agent | В новой вкладке (`target=_blank`) открывается карточка пользователя LMS `https://portal-<стенд>/admin/users/{agent}`, id в URL = Agent |
 
 ### TC-LRS-009 Фильтры Statements: Agent ID, Verb, Date
 - Автотест: tests/ui/lrs/test_lrs_statements.py::TestLrsStatements::test_statements_filters
@@ -92,10 +92,10 @@
 - Предусловия: admin в OpenLRS; известен agent со statements (например из TC-LRS-013)
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | Фильтр «Agent ID» → выбрать/ввести id агента | В таблице только строки этого Agent; URL получает `agent_id=…`; `POST …/statement/search` возвращает `recordsFiltered` ≤ `recordsTotal` |
-| 2 | Фильтр «Verb» → `passed` | Только строки с verb `passed` |
-| 3 | Фильтр «Date» → сегодняшняя дата / интервал | Только записи с датой в интервале |
-| 4 | «Сбросить» | Фильтры сняты, URL без параметров, число строк как до фильтрации |
+| 1 | Раскрыть фильтр «Agent ID», ввести id агента в поиск select2, выбрать опцию | Через ~1 с (debounce) `POST …/statement/search?agent_id=["<id>"]`, URL страницы получает `agent_id=["<id>"]`; в таблице только строки этого Agent; в панели появляется «Сбросить» |
+| 2 | Раскрыть фильтр «Date», в daterangepicker выбрать пресет «Сегодня» | URL получает `statement_timestamp={"from":…,"to":…}`; все даты строк сегодняшние |
+| 3 | «Сбросить» в панели фильтров | URL без параметров, `recordsTotal` как до фильтрации, «Сбросить» скрыта |
+| 4 | Раскрыть фильтр «Verb», ввести `passed`, выбрать | Только строки с verb `passed`. На ветке 2420-filters (27.10.2026) виджет без опций (`#filter_verb` пуст, «Совпадений не найдено»), хотя прямой `?verb=["http://adlnet.gov/expapi/verbs/passed"]` фильтрует — дефект, автотест → xfail |
 
 ### TC-LRS-010 Вкладка Agents: ссылки Statements / State по агенту и переход в карточку LMS
 - Автотест: tests/ui/lrs/test_lrs_statements.py::TestLrsStatements::test_agents_tab_links
@@ -104,8 +104,8 @@
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | Открыть `/lrs-admin/store/1/agent` | Колонка `account_name` (id пользователя LMS) и кнопки Statements, State у каждой строки |
-| 2 | Нажать Statements у агента | Открывается `/statement?agent_id=<id>`, в таблице только его записи |
-| 3 | Нажать `account_name` | Карточка пользователя LMS `/admin/users/<id>` |
+| 2 | Нажать `account_name` | В новой вкладке карточка пользователя LMS `/admin/users/<id>` |
+| 3 | Нажать Statements у агента | Открывается `/statement?agent_id=<id>`, в таблице только его записи. На ветке 2420-filters (27.10.2026) `agent_id` передаётся скаляром и фильтр не применяется (видны все агенты; виджет пишет `agent_id=["<id>"]` и работает) — дефект, автотест → xfail |
 
 ### TC-LRS-011 Генерация отчёта из Statements → отчёт в LMS «Отчёты»
 - Автотест: tests/ui/lrs/test_lrs_report.py::TestLrsReport::test_generate_report_appears_in_lms_exports
@@ -113,7 +113,7 @@
 - Предусловия: admin в OpenLRS (SSO); отчёты, созданные тестом, удаляются в teardown через `DELETE /api/v1/exports/mass-delete`
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | На вкладке Statements (при необходимости — с фильтром Agent ID) нажать «Генерация отчета» | Запрос `…/store/1/statement/report_generation`; сообщение об успешной постановке; ошибок нет |
+| 1 | На вкладке Statements выбрать фильтр «Date» (без него сервер отвечает 422: `statement_timestamp` обязателен) и нажать «Генерация отчета» | `POST …/store/1/statement/report_generation?statement_timestamp=…` → 2xx, ошибок нет. На k8s (14.10) и 2420 (27.10.2026) — **500**, отчёт не создаётся — дефект, автотест → xfail |
 | 2 | `GET /api/v1/exports` в LMS под тем же админом (сразу) | Появился отчёт `type: 14`, `name` = `lrs_statement_export_<дата>_<ts>.xlsx`, `status` = `pending` или `in_progress`, `download_url` пустой |
 | 3 | Опрашивать `GET /api/v1/exports` до 3 минут | `status` = `completed`, `download_url` заполнен (`…/static/tmp/<uuid>/…zip`) |
 | 4 | Скачать файл по `download_url` | ZIP с xlsx внутри; в xlsx есть строки statements (при фильтре по агенту — только его) |
@@ -125,7 +125,7 @@
 - Предусловия: admin в OpenLRS
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | Нажать «Скачать архив» | Запрос `…/store/1/archive/download`, браузер получает файл-архив (zip), размер > 0 |
+| 1 | Раскрыть аккордеон «Скачать архив», выбрать день (поле «День», архив за один день) и нажать «Скачать» | `GET https://lrs-<стенд>/store/1/archive/download?date=YYYY-MM-DD` → zip, размер > 0. За день без собранного архива — 302 назад без файла (на свежем стенде архивов нет — автотест ищет день за последние 30 дней и скипается, если ни одного) |
 
 ### TC-LRS-013 Сквозной: слушатель проходит тест в LMS → statement в LRS с его id
 - Автотест: tests/e2e/lrs/test_statement_after_test_pass.py::TestLrsStatementFlow::test_passed_test_creates_statements
@@ -144,8 +144,8 @@
 - Предусловия: admin в OpenLRS; в хранилище есть states (tincan-курс Courseditor)
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | Открыть `/lrs-admin/store/1/state` | Колонки Agent, State key, Activity IRI, Registration, Действия (Предпросмотр, Удалить); фильтры по agent/stateKey/activityIri/registration |
-| 2 | Нажать на Agent | Карточка пользователя LMS `/admin/users/<id>` |
+| 1 | Открыть `/lrs-admin/store/1/state` | Колонки Agent, State key, Activity IRI, Registration, Действия (Предпросмотр, Удалить); панель фильтров ID agent / State key / Activity / Registration (`agent_id`, `activity_iri`, `registration` — текст, `state_key` — select2). Без states (тесты конструктора их не пишут, нужен SCORM/xAPI-курс) автотест скипается |
+| 2 | Нажать на Agent | В новой вкладке карточка пользователя LMS `/admin/users/<id>` |
 | 3 | «Предпросмотр» | Страница `/state/{id}/show` с содержимым state (JSON) |
 
 ### TC-LRS-015 Форма входа OpenLRS не принимает учётку LMS (документированное поведение)
@@ -155,3 +155,15 @@
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
 | 1 | На `/lrs-admin/login` ввести email/пароль админа LMS, «Войти» | Остаёмся на форме входа (OpenLRS хранит своих пользователей отдельно, штатный вход — SSO). Если форма впускает — поведение изменилось, кейс пересмотреть |
+
+### TC-LRS-016 Сквозной: слушатель проходит SCORM-курс → statements и state в LRS с его id
+- Автотест: tests/e2e/lrs/test_scorm_statements_in_lrs.py::TestLrsScormFlow::test_scorm_pass_creates_statements_and_state
+- Приоритет: high   Тип: e2e   Роли: admin, user
+- Предусловия: через API создан курс SCORM 2004 (`test_data/test_lms_scorm_2004.zip`) и назначен `prepared_user` в инд. обучение; admin — для OpenLRS (SSO). Statements/states не удаляются, курс удаляется
+| Шаг | Действие | Ожидаемый результат |
+|---|---|---|
+| 1 | Слушатель проходит курс в UI (TC-COURSES-004, шаги 1–5) | Results «Your Score: 100%», SCORM completed/passed/100, «Повторить» |
+| 2 | admin в OpenLRS → default store → Statements, фильтр Agent ID = id слушателя (ретраи до 60 с) | Записи с verb `initialized`, `launched`, `responded`, `passed`, `completed` (плюс `suspended` после закрытия плеера); Activity в таблице «-» |
+| 3 | Предпросмотр statement `passed` | JSON: `actor.account.name` = id слушателя, `actor.account.homePage` = `https://portal-<стенд>/accounts/userid`, `object.id` = `https://portal-<стенд>/content/<id курса>`, `object.definition.type` = `…/activities/course`, `context.registration` заполнен |
+| 4 | Вкладка States, фильтр «ID agent» = id слушателя | Есть запись: State key `activitystate`, Activity IRI = `https://portal-<стенд>/` (драйвер делает `PUT /xAPI/activities/state`) |
+| 5 | Сверить счёт: `result.score.raw` в statement `passed` и `cmi.score.raw` в SCORM API | Совпадают (100). На 2420 (27.10.2026) statement уходит с `result.score.raw = 0` при `cmi.score.raw = 100`, `cmi.score.scaled = 1` — кандидат в дефект конвертации SCORM → xAPI, автотест → xfail |

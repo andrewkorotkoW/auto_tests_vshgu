@@ -15,11 +15,16 @@ callback возвращает форму входа LMS/`invalid_client` (docs/p
 `POST …/search`, поэтому любое открытие/обновление таблицы ждёт именно этот ответ
 (`LrsAdminPage._is_table_search`, приём скопирован из HelpdeskAdminPage).
 
-Фильтры Statements/States (`filter_agentId`, `filter_verb`, `filter_lmsActivityId`,
-`daterangepicker-statementTimestamp` и т.п., docs/lrs/lrs_recon.md) собраны по описанию
-разведки без живой проверки на develop (SSO там сейчас недоступен) — точный тип виджета
-(select2 с поиском/обычный select/текстовое поле с датапикером) уточнится первым прогоном
-на k8s."""
+Фильтры Statements/States — панель Backpack `nav.navbar-filters`: каждый фильтр — `li[filter-name=…]`
+с `a.dropdown-toggle`, виджет внутри закрытого dropdown (сначала открыть, потом кликать по
+select2/полю). Statements: `agent_id` (select2 ajax, `/statement/filter/agent/account_name`),
+`verb` (select2 multiple), `lms_activity_id` (select2 ajax), `registration` (текст),
+`statement_timestamp` (daterangepicker с пресетами «Сегодня», «Вчера», «Последние 7 дней»…).
+States: `agent_id`/`activity_iri`/`registration` — текстовые `#text-filter-*`, `state_key` —
+select2 без id. Активный фильтр уходит в URL страницы (`?agent_id=["116"]`) и в
+`POST …/search?…`; «Сбросить» фильтров — `a.remove_filters_button`, видна только при активном
+фильтре (ссылка «Сбросить» рядом с заголовком — сброс состояния DataTables, другое).
+Проверено живьём на стенде vshgu2-2420-filters 27.10.2026 (до этого — k8s 14.10)."""
 import os
 import re
 
@@ -135,10 +140,11 @@ class LrsStoresPage(LrsAdminPage):
     def row(self, name: str) -> Locator:
         return self.table.locator(f"tbody tr:has-text('{name}')").first
 
-    def statements_count(self, name: str = "default store") -> int:
-        """Значение колонки «Количество statements» строки — для сверки с `recordsTotal`
-        вкладки Statements (TC-LRS-006)."""
-        return int(self.row(name).locator("td").nth(self._STATEMENTS_COUNT_COLUMN).inner_text().strip())
+    def statements_count(self, name: str = "default store"):
+        """Значение колонки «Количество statements» строки (TC-LRS-006). Счётчик кэшируется
+        и отстаёт от таблицы; при нуле показывается «-» — возвращаем None."""
+        text = self.row(name).locator("td").nth(self._STATEMENTS_COUNT_COLUMN).inner_text().strip()
+        return int(text) if text.isdigit() else None
 
     def open_store(self, name: str = "default store") -> "LrsStoreClientsPage":
         """Клик по названию хранилища в строке → переход в «Клиенты хранилища» (store_id
@@ -182,10 +188,79 @@ class LrsStoreSectionPage(LrsAdminPage):
     def row(self, index: int = 0) -> Locator:
         return self.table.locator("tbody tr").nth(index)
 
+    @property
+    def data_rows(self) -> Locator:
+        """Строки таблицы без заглушки «Совпадений не найдено» (DataTables рисует её тоже
+        как `tbody tr`, с одной ячейкой `td.dt-empty`/`dataTables_empty`)."""
+        return self.table.locator("tbody tr:has(td:nth-child(2))")
+
+    def _filter(self, name: str) -> Locator:
+        return self.page.locator(f"li[filter-name='{name}']")
+
+    def open_filter(self, name: str) -> Locator:
+        """Раскрыть dropdown фильтра `li[filter-name=name]` (если ещё не раскрыт) и вернуть
+        его `li` — виджет внутри кликабелен только после этого."""
+        li = self._filter(name)
+        menu = li.locator(".dropdown-menu")
+        if not menu.is_visible():
+            li.locator("a.dropdown-toggle").click()
+            expect(menu).to_be_visible(timeout=settings.UI_TIMEOUT)
+        return li
+
+    def filter_by_select2(self, name: str, text: str, option_text: str | None = None) -> None:
+        """Фильтры-select2 (с ajax-поиском и без): раскрыть, напечатать `text` в поле поиска,
+        дождаться опции и выбрать. Backpack применяет фильтр с задержкой (`filter-debounce`
+        1000 мс) — ждём именно `POST …/search`."""
+        li = self.open_filter(name)
+        li.locator(".select2-search__field").first.click()
+        self.page.keyboard.type(text)
+        option = self.page.locator(".select2-results__option").filter(has_text=option_text or text).first
+        expect(option).to_be_visible(timeout=settings.UI_TIMEOUT)
+        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
+            option.click()
+        self.wait_loaded()
+        self.page.keyboard.press("Escape")
+
+    def select2_options(self, name: str) -> list[str]:
+        """Опции, которые select2-виджет фильтра предлагает без ввода текста (для `verb`
+        на 2420 — пусто, см. отчёт 27.10)."""
+        li = self.open_filter(name)
+        li.locator(".select2-search__field").first.click()
+        self.page.wait_for_timeout(1000)
+        options = [
+            t.strip() for t in self.page.locator(".select2-results__option").all_inner_texts()
+            if t.strip() and "не найдено" not in t
+        ]
+        self.page.keyboard.press("Escape")
+        return options
+
+    def filter_by_text(self, name: str, value: str) -> None:
+        """Текстовые фильтры (`#text-filter-<key>`): раскрыть, ввести, Enter."""
+        li = self.open_filter(name)
+        field = li.locator("input[id^='text-filter-']").first
+        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
+            field.fill(value)
+            field.press("Enter")
+        self.wait_loaded()
+
+    @property
+    def reset_filters_button(self) -> Locator:
+        """«Сбросить» в панели фильтров — появляется только при активном фильтре."""
+        return self.page.locator("a.remove_filters_button")
+
     def reset_filters(self) -> None:
         with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            self.page.get_by_role("button", name="Сбросить").click()
+            self.reset_filters_button.click()
         self.wait_loaded()
+
+    def open_lms_user_card(self, link: Locator) -> Page:
+        """Ссылки на карточку пользователя LMS (`/admin/users/{id}`) в Statements/Agents/States
+        открываются в новой вкладке (`target=_blank`) — возвращаем её."""
+        with self.page.context.expect_page(timeout=settings.UI_TIMEOUT) as page_info:
+            link.click()
+        lms_page = page_info.value
+        lms_page.wait_for_load_state()
+        return lms_page
 
 
 class LrsStoreClientsPage(LrsStoreSectionPage):
@@ -208,52 +283,72 @@ class LrsStoreStatementsPage(LrsStoreSectionPage):
 
     SECTION = "statement"
 
+    ARCHIVE_PATH = "/store/{store_id}/archive/download"
+
     def filter_by_agent(self, agent_id) -> None:
-        """Фильтр «Agent ID» (`filter_agentId`, select2 с поиском по разведке)."""
-        combobox = self.page.locator("#filter_agentId").locator("xpath=..").get_by_role("combobox").first
-        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            combobox.click()
-            option = self.page.get_by_role("option", name=str(agent_id))
-            expect(option).to_be_visible(timeout=settings.UI_TIMEOUT)
-            option.click()
+        """Фильтр «Agent ID» — select2 с ajax-поиском по `account_name`; после выбора в URL
+        `?agent_id=["<id>"]`."""
+        self.filter_by_select2("agent_id", str(agent_id))
 
     def filter_by_verb(self, verb: str) -> None:
-        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            self.page.locator("#filter_verb").select_option(verb)
+        """Фильтр «Verb» — select2 multiple; `verb` — короткое имя (passed), опция ищется по нему."""
+        self.filter_by_select2("verb", verb)
 
-    def filter_by_activity(self, activity_iri: str) -> None:
-        field = self.page.locator("#filter_lmsActivityId")
-        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            field.fill(activity_iri)
-            field.press("Enter")
+    def filter_by_activity(self, activity: str) -> None:
+        self.filter_by_select2("lms_activity_id", activity)
 
-    def filter_by_date(self, date_range: str) -> None:
-        """`date_range` — текст в формате daterangepicker, например
-        `«ДД.MM.ГГГГ - ДД.MM.ГГГГ»`."""
-        field = self.page.locator("#daterangepicker-statementTimestamp")
+    def filter_by_registration(self, registration: str) -> None:
+        self.filter_by_text("registration", registration)
+
+    def filter_by_date_preset(self, preset: str = "Сегодня") -> None:
+        """Фильтр «Date»: раскрыть dropdown, открыть daterangepicker, выбрать пресет из
+        `.daterangepicker .ranges li` («Сегодня», «Вчера», «Последние 7 дней», «Последние
+        30 дней», «Текущий месяц», «Последний месяц»)."""
+        self.open_filter("statement_timestamp")
+        self.page.locator("#daterangepicker-statementTimestamp").click()
+        item = self.page.locator(".daterangepicker .ranges li", has_text=preset).first
+        expect(item).to_be_visible(timeout=settings.UI_TIMEOUT)
         with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            field.fill(date_range)
-            field.press("Enter")
+            item.click()
+        self.wait_loaded()
 
     def open_preview(self, index: int = 0) -> None:
         self.row(index).get_by_role("link", name="Предпросмотр").click()
         self.wait_loaded()
 
-    def open_agent_link(self, index: int = 0) -> None:
-        """Клик по значению Agent строки → карточка пользователя LMS (TC-LRS-008)."""
-        with self.page.expect_navigation():
-            self.row(index).locator("a[href*='/admin/users/']").first.click()
-        self.wait_loaded()
+    def open_agent_link(self, index: int = 0) -> Page:
+        """Клик по значению Agent строки → карточка пользователя LMS в новой вкладке (TC-LRS-008)."""
+        return self.open_lms_user_card(self.row(index).locator("a[href*='/admin/users/']").first)
 
-    def generate_report(self) -> None:
-        """«Генерация отчета»: ставит задачу `…/statement/report_generation`, отчёт
-        появляется в LMS «Отчёты» (TC-LRS-011) — проверка результата вне этой страницы."""
-        self.page.get_by_role("button", name="Генерация отчета").click()
+    def generate_report(self):
+        """«Генерация отчета»: JS-кнопка шлёт `POST …/statement/report_generation?<фильтры
+        страницы>`; без фильтра даты сервер отвечает 422 (`statement_timestamp` обязателен),
+        поэтому перед кликом нужен `filter_by_date_preset`. Возвращает ответ сервера —
+        тест сам решает, что считать успехом (TC-LRS-011)."""
+        with self.page.expect_response(
+            lambda r: r.url.split("?")[0].endswith("/report_generation"), timeout=settings.UI_TIMEOUT
+        ) as resp_info:
+            self.page.get_by_role("button", name="Генерация отчета").click()
+        return resp_info.value
 
-    def download_archive(self):
-        """«Скачать архив» (TC-LRS-012): возвращает Playwright `Download`."""
+    def archive_url(self, env: Environment, date: str) -> str:
+        """`GET <lrs>/store/{id}/archive/download?date=YYYY-MM-DD` (без `/lrs-admin`) — форма
+        аккордеона «Скачать архив». Если архива за день нет, сервер отвечает 302 назад."""
+        return f"{lrs_base_url(env)}{self.ARCHIVE_PATH.format(store_id=self.store_id)}?date={date}"
+
+    def archive_exists(self, env: Environment, date: str) -> bool:
+        response = self.page.request.get(self.archive_url(env, date), max_redirects=0)
+        return response.status == 200 and "zip" in response.headers.get("content-type", "")
+
+    def download_archive(self, date: str):
+        """«Скачать архив» (TC-LRS-012) — аккордеон с формой «День» (`input#date`, YYYY-MM-DD)
+        и кнопкой «Скачать»; возвращает Playwright `Download`."""
+        self.page.get_by_role("button", name="Скачать архив").click()
+        form = self.page.locator("form[action*='/archive/download']")
+        expect(form).to_be_visible(timeout=settings.UI_TIMEOUT)
+        form.locator("#date").fill(date)
         with self.page.expect_download(timeout=settings.UI_TIMEOUT) as download_info:
-            self.page.get_by_role("button", name="Скачать архив").click()
+            form.get_by_role("button", name="Скачать").click()
         return download_info.value
 
 
@@ -267,6 +362,8 @@ class LrsStoreAgentsPage(LrsStoreSectionPage):
         return self.row(index).locator("td").first.inner_text().strip()
 
     def open_statements_for_row(self, index: int = 0) -> LrsStoreStatementsPage:
+        """Ссылка «Statements» строки ведёт на `…/statement?agent_id=<id>` (скаляр, не JSON-массив
+        как у виджета) — страница перезагружается и шлёт свой `/search`."""
         with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
             self.row(index).get_by_role("link", name="Statements").click()
         self.wait_loaded()
@@ -278,44 +375,33 @@ class LrsStoreAgentsPage(LrsStoreSectionPage):
         self.wait_loaded()
         return LrsStoreStatesPage(self.page, store_id=self.store_id)
 
-    def open_account_link(self, index: int = 0) -> None:
-        """Клик по `account_name` строки → карточка пользователя LMS."""
-        with self.page.expect_navigation():
-            self.row(index).locator("a[href*='/admin/users/']").first.click()
-        self.wait_loaded()
+    def open_account_link(self, index: int = 0) -> Page:
+        """Клик по `account_name` строки → карточка пользователя LMS в новой вкладке."""
+        return self.open_lms_user_card(self.row(index).locator("a[href*='/admin/users/']").first)
 
 
 class LrsStoreStatesPage(LrsStoreSectionPage):
     """States хранилища (`/lrs-admin/store/{id}/state`): Agent, State key, Activity IRI,
-    Registration; фильтры по agent/stateKey/activityIri/registration (TC-LRS-014)."""
+    Registration; фильтры `agent_id`/`activity_iri`/`registration` (текст) и `state_key`
+    (select2) — `FILTER_NAMES` (TC-LRS-014). Появляются от плееров SCORM/xAPI
+    (courseditor), тесты конструктора states не пишут."""
 
     SECTION = "state"
 
+    FILTER_NAMES = ("agent_id", "state_key", "activity_iri", "registration")
+
     def filter_by_agent(self, agent_id) -> None:
-        combobox = self.page.locator("#filter_agentId").locator("xpath=..").get_by_role("combobox").first
-        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            combobox.click()
-            option = self.page.get_by_role("option", name=str(agent_id))
-            expect(option).to_be_visible(timeout=settings.UI_TIMEOUT)
-            option.click()
+        """На States «ID agent» — текстовый фильтр (`#text-filter-agentId`), не select2."""
+        self.filter_by_text("agent_id", str(agent_id))
 
     def filter_by_state_key(self, state_key: str) -> None:
-        field = self.page.locator("#filter_stateKey")
-        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            field.fill(state_key)
-            field.press("Enter")
+        self.filter_by_select2("state_key", state_key)
 
     def filter_by_activity_iri(self, activity_iri: str) -> None:
-        field = self.page.locator("#filter_activityIri")
-        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            field.fill(activity_iri)
-            field.press("Enter")
+        self.filter_by_text("activity_iri", activity_iri)
 
     def filter_by_registration(self, registration: str) -> None:
-        field = self.page.locator("#filter_registration")
-        with self.page.expect_response(self._is_table_search, timeout=settings.UI_TIMEOUT):
-            field.fill(registration)
-            field.press("Enter")
+        self.filter_by_text("registration", registration)
 
     def open_preview(self, index: int = 0) -> None:
         self.row(index).get_by_role("link", name="Предпросмотр").click()

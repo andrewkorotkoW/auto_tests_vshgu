@@ -239,10 +239,12 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.skip(reason="только в мобильном профиле (--mobile или MOBILE=1)"))
         marker = item.get_closest_marker("env")
         if marker is not None and marker.args:
-            required_env = marker.args[0]
-            if required_env != run_env:
+            # Несколько аргументов = любое из окружений подходит: env("k8s", "stand") —
+            # LRS-тесты со входом по SSO, который работает на k8s и на ревью-стендах
+            # (--env stand), где OAuth-клиент OpenLRS зарегистрирован.
+            if run_env not in marker.args:
                 item.add_marker(pytest.mark.skip(
-                    reason=f"тест требует env={required_env}, запуск идёт с env={run_env}"
+                    reason=f"тест требует env={'|'.join(marker.args)}, запуск идёт с env={run_env}"
                 ))
 
         if item.get_closest_marker("ui") is not None:

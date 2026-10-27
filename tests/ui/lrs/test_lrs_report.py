@@ -3,12 +3,15 @@
 TC-LRS-011/012 (docs/test_cases/lrs.md), разведка docs/lrs/lrs_recon.md («Отчёты»),
 page object — ui/pages/lrs_admin_page.py.
 
-Вход в OpenLRS через SSO (`LrsAdminPage.login_via_sso`) штатно работает только на
-k8s (develop: OAuth-клиент не зарегистрирован, docs/plans/2026-10-14_lrs_mission.md) —
-оба теста помечены `@pytest.mark.env("k8s")`. TC-LRS-011 дополнительно помечен
-`@pytest.mark.e2e` — кейс связывает два приложения (LRS и LMS «Отчёты»). Прогоны —
-только на k8s после 14:00 14.10.2026 (решение владельца), сейчас только
-`pytest --collect-only`.
+Вход в OpenLRS через SSO (`LrsAdminPage.login_via_sso`) работает на k8s и ревью-стендах
+(develop: OAuth-клиент не зарегистрирован, docs/plans/2026-10-14_lrs_mission.md) —
+оба теста помечены `@pytest.mark.env("k8s", "stand")`. TC-LRS-011 дополнительно помечен
+`@pytest.mark.e2e` — кейс связывает два приложения (LRS и LMS «Отчёты»).
+
+Факты стенда (k8s 14.10, 2420 27.10): «Генерация отчета» берёт фильтры из URL страницы и
+без фильтра даты отвечает 422, с датой — 500 (кандидат в дефект, тест → xfail); «Скачать
+архив» — аккордеон с выбором дня, архив за день собирается отдельно, за день без архива
+сервер отвечает 302 назад (на свежем стенде архивов нет — тест → skip).
 
 Отчёт в LMS «Отчёты» (`/admin/reports` или аналог) UI-кейсом не проверяется — страница
 не разведана (её нет ни в docs/lrs/lrs_recon.md, ни в существующих page objects), а
@@ -17,6 +20,7 @@ k8s (develop: OAuth-клиент не зарегистрирован, docs/plans
 import io
 import os
 import zipfile
+from datetime import date, timedelta
 
 import allure
 import openpyxl
@@ -52,16 +56,23 @@ class TestLrsReport:
     @pytest.mark.ui
     @pytest.mark.lrs
     @pytest.mark.e2e
-    @pytest.mark.env("k8s")
+    @pytest.mark.env("k8s", "stand")
     def test_generate_report_appears_in_lms_exports(self, page, env, api_client, lrs_reports_cleanup):
         exports_endpoint = ExportsEndpoint(api_client)
 
         with allure.step("0. Зафиксировать уже существующие отчёты LRS (type 14) — их не трогаем"):
             existing_ids = {item["id"] for item in exports_endpoint.find_lrs_export()}
 
-        with allure.step("1. На вкладке Statements нажать «Генерация отчета»"):
+        with allure.step("1. На вкладке Statements выбрать дату «Последние 30 дней» и нажать «Генерация отчета»"):
             statements_page = _login_statements(page, env)
-            statements_page.generate_report()
+            statements_page.filter_by_date_preset("Последние 30 дней")
+            response = statements_page.generate_report()
+            if response.status >= 500:
+                pytest.xfail(
+                    f"Дефект (k8s 14.10, 2420 27.10): POST …/statement/report_generation с фильтром "
+                    f"даты → {response.status}, отчёт в LMS «Отчёты» не создаётся"
+                )
+            assert response.ok, f"report_generation → {response.status}: {response.text()[:300]}"
 
         with allure.step("2. GET /exports (type=14) — появился новый отчёт lrs_statement_export_*"):
             def _new_export():
@@ -104,11 +115,23 @@ class TestLrsReport:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s")
+    @pytest.mark.env("k8s", "stand")
     def test_download_archive(self, page, env):
-        with allure.step("1. «Скачать архив» — браузер получает файл-архив ненулевого размера"):
+        with allure.step("1. Найти день с готовым архивом (вчера и ранее, до 30 дней назад)"):
             statements_page = _login_statements(page, env)
-            download = statements_page.download_archive()
+            day = next(
+                (
+                    d for d in (date.today() - timedelta(days=i) for i in range(1, 31))
+                    if statements_page.archive_exists(env, d.isoformat())
+                ),
+                None,
+            )
+            if day is None:
+                pytest.skip("На стенде нет собранных архивов statements за последние 30 дней (302 назад)")
+
+        with allure.step(f"2. «Скачать архив» → день {day} → «Скачать» — браузер получает zip ненулевого размера"):
+            download = statements_page.download_archive(day.isoformat())
             path = download.path()
             assert path, "Скачивание «Скачать архив» не вернуло файл"
             assert os.path.getsize(path) > 0, "Скачанный архив пуст"
+            assert zipfile.is_zipfile(path), f"Скачанный файл {download.suggested_filename} — не zip"

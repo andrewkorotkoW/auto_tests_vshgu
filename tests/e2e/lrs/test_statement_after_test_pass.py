@@ -10,10 +10,10 @@ docs/lrs/lrs_recon.md («Откуда берутся statements») — на k8s 
 (`AssignmentsEndpoint.assign_to_individual` + «Индивидуальное обучение» → «Курсы и
 тесты»), но без прокторинга — обычный тест с одним вопросом конструктора.
 
-SSO в OpenLRS штатно работает только на k8s (develop: OAuth-клиент не зарегистрирован,
-docs/plans/2026-10-14_lrs_mission.md) — тест помечен `@pytest.mark.env("k8s")`.
-Прогоны — только на k8s после 14:00 14.10.2026 (решение владельца), сейчас только
-`pytest --collect-only`."""
+SSO в OpenLRS работает на k8s и ревью-стендах (develop: OAuth-клиент не зарегистрирован,
+docs/plans/2026-10-14_lrs_mission.md) — тест помечен `@pytest.mark.env("k8s", "stand")`.
+Эталон — стенд vshgu2-2420-filters, 27.10.2026: statements `launched`/`passed` появляются
+в хранилище в течение секунд после прохождения."""
 import allure
 import pytest
 from playwright.sync_api import expect
@@ -42,7 +42,7 @@ class TestLrsStatementFlow:
     @pytest.mark.ui
     @pytest.mark.lrs
     @pytest.mark.e2e
-    @pytest.mark.env("k8s")
+    @pytest.mark.env("k8s", "stand")
     def test_passed_test_creates_statements(self, browser, env, api_client, prepared_user, created_test):
         tests_ep = TestsEndpoint(api_client)
         email, password = get_credentials(env.name, role="admin")
@@ -102,7 +102,7 @@ class TestLrsStatementFlow:
                             statements_page.filter_by_agent(student["id"])
                         except Exception:
                             return False
-                        return statements_page.table.locator("tbody tr").count() > 0
+                        return statements_page.data_rows.count() > 0
 
                     found = wait_until(_agent_has_statements, timeout=60, interval=5)
                     assert found, (
@@ -110,7 +110,7 @@ class TestLrsStatementFlow:
                         "LRS периодически теряет postgres/redis (Sentry), см. docs/lrs/lrs_recon.md"
                     )
 
-                    rows = statements_page.table.locator("tbody tr")
+                    rows = statements_page.data_rows
                     verbs = {
                         rows.nth(i).locator("td").nth(1).inner_text().strip().lower()
                         for i in range(rows.count())

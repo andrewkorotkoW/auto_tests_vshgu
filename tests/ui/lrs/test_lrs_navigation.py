@@ -6,7 +6,7 @@ page object — ui/pages/lrs_admin_page.py.
 SSO (`LrsAdminPage.login_via_sso`, `open_lrs_from_logs`) штатно работает только на k8s —
 на develop OAuth-клиент OpenLRS не зарегистрирован в Passport портала (`invalid_client`,
 docs/plans/2026-10-14_lrs_mission.md), и кнопки «Перейти в LRS» там нет вовсе. Тесты,
-которым нужен реальный вход в OpenLRS (001/002/004/005), помечены `@pytest.mark.env("k8s")`;
+которым нужен реальный вход в OpenLRS (001/002/004/005), помечены `@pytest.mark.env("k8s", "stand")`;
 003 (чистый контекст без сессии) и 015 (форма входа OpenLRS) не зависят от работоспособности
 SSO и не ограничены стендом.
 
@@ -33,7 +33,7 @@ class TestLrsNavigation:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s")
+    @pytest.mark.env("k8s", "stand")
     def test_admin_opens_lrs_from_logs(self, page, env):
         email, password = get_credentials(env.name, role="admin")
         if not (email and password):
@@ -57,7 +57,7 @@ class TestLrsNavigation:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s")
+    @pytest.mark.env("k8s", "stand")
     def test_callback_logs_in_authorized_user(self, page, env):
         email, password = get_credentials(env.name, role="admin")
         if not (email and password):
@@ -91,7 +91,7 @@ class TestLrsNavigation:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s")
+    @pytest.mark.env("k8s", "stand")
     def test_user_without_admin_rights_cannot_enter_lrs(self, page, env, prepared_user):
         user = prepared_user()
 
@@ -115,7 +115,7 @@ class TestLrsNavigation:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s")
+    @pytest.mark.env("k8s", "stand")
     def test_back_to_lms_button(self, page, env):
         email, password = get_credentials(env.name, role="admin")
         if not (email and password):
