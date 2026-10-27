@@ -2,7 +2,7 @@
 
 | Параметр | Значение |
 |---|---|
-| Область | tests/ui/courses/tincan/individual, tests/ui/courses/tincan/knowledge_base, tests/ui/courses/tincan/stream |
+| Область | tests/ui/courses/tincan/individual, tests/ui/courses/tincan/knowledge_base, tests/ui/courses/tincan/stream, tests/ui/courses/scorm/individual, tests/ui/courses/scorm/stream |
 | Стенд | develop (см. README §13) |
 | Роли | см. кейсы ниже |
 
@@ -57,3 +57,26 @@
 | 8 | 8. Открыть курс и проверить данные | — |
 | 9 | 9. Пройти курс | — |
 | 10 | 10. Очистка | — |
+
+### TC-COURSES-004 Слушатель проходит курс SCORM 2004 через инд. обучение
+- Автотест: tests/ui/courses/scorm/individual/test_user_scorm_individual_flow.py::TestUserScormIndividualFlow::test_user_scorm_individual
+- Приоритет: high   Тип: ui   Роли: user
+- Предусловия: через API созданы слушатель (онбординг закрыт) и курс SCORM 2004 из `test_data/test_lms_scorm_2004.zip` (Storyline: слайд с текстом → вопрос «Сколько углов у треугольника?», ответы «3»/«шланг»), курс назначен слушателю (`/users/content/distant/assign-activities`). Любое окружение — OpenLRS не нужен
+| Шаг | Действие | Ожидаемый результат |
+|---|---|---|
+| 1 | Логин слушателя → «Индивидуальное обучение» → вкладка «Курсы и тесты» → карточка курса | В карточке название курса с суффиксом клиента (`…_внешка`), срок, кнопка «Начать» |
+| 2 | Нажать «Начать» | Новая вкладка `<portal>/xapi/drivers/scorm?xAPILaunchKey=<jwt>`, пакет в `iframe#iframe` (`/static/content/<uuid>/…/index_lms.html`), заголовок `tst_lms`, кнопки PREV/NEXT; драйвер шлёт `POST /xAPI/statements` initialized + launched |
+| 3 | NEXT → выбрать «3» → SUBMIT → Continue | Слайд Results «Your Score: 100%»; в `POST /xAPI/statements` ушли responded (`result.response` = «3»), затем passed + completed |
+| 4 | Прочитать SCORM API драйвера (`window.API_1484_11`) | `cmi.completion_status` = completed, `cmi.success_status` = passed, `cmi.score.raw` = 100, `cmi.score.scaled` = 1 |
+| 5 | Закрыть вкладку плеера, обновить карточку | Кнопка «Повторить» (у начатого, но не завершённого курса была бы «Продолжить») |
+| 6 | Очистка | Курс удалён (`mass-delete`), слушатель — фикстурой |
+
+### TC-COURSES-005 Слушатель проходит курс SCORM 2004 в модуле программы
+- Автотест: tests/ui/courses/scorm/stream/test_user_scorm_stream_flow.py::TestUserScormStreamFlow::test_user_scorm_stream
+- Приоритет: high   Тип: ui   Роли: user
+- Предусловия: через API созданы программа → поток → модуль, слушатель назначен в поток, курс SCORM 2004 (как в TC-COURSES-004) назначен в модуль (`assign_to_module`). Любое окружение
+| Шаг | Действие | Ожидаемый результат |
+|---|---|---|
+| 1 | Логин слушателя → «Моё обучение» → карточка программы → «Перейти к программе» | Страница модуля `/education/program/<uuid>/module/<id>/activities`: шапка программы, строка модуля раскрыта, вкладка «Курсы и тесты» активна, карточка курса выбрана, справа название `…_внешка`, срок и «Начать» (2420, 27.10.2026). Если вкладки неактивны до раскрытия модуля — это дефект навигации из TC-COURSES-003 |
+| 2–5 | Как в TC-COURSES-004, шаги 2–5 | Те же результаты: 100 %, SCORM completed/passed/100, statements, «Повторить» |
+| 6 | Очистка | Курс удалён; программа/поток/модуль/слушатель — фикстурами |
