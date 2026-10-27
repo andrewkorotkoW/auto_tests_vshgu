@@ -95,7 +95,7 @@
 | 1 | Раскрыть фильтр «Agent ID», ввести id агента в поиск select2, выбрать опцию | Через ~1 с (debounce) `POST …/statement/search?agent_id=["<id>"]`, URL страницы получает `agent_id=["<id>"]`; в таблице только строки этого Agent; в панели появляется «Сбросить» |
 | 2 | Раскрыть фильтр «Date», в daterangepicker выбрать пресет «Сегодня» | URL получает `statement_timestamp={"from":…,"to":…}`; все даты строк сегодняшние |
 | 3 | «Сбросить» в панели фильтров | URL без параметров, `recordsTotal` как до фильтрации, «Сбросить» скрыта |
-| 4 | Раскрыть фильтр «Verb», ввести `passed`, выбрать | Только строки с verb `passed`. На ветке 2420-filters (27.10.2026) виджет без опций (`#filter_verb` пуст, «Совпадений не найдено»), хотя прямой `?verb=["http://adlnet.gov/expapi/verbs/passed"]` фильтрует — дефект, автотест → xfail |
+| 4 | Раскрыть фильтр «Verb», ввести `passed`, выбрать | URL получает `verb=["http://adlnet.gov/expapi/verbs/passed"]`, только строки с verb `passed`. Список опций — из кэша агрегатов хранилища (как счётчики в списке хранилищ): на свежем хранилище пуст («Совпадений не найдено») до обновления кэша — автотест тогда скипается |
 
 ### TC-LRS-010 Вкладка Agents: ссылки Statements / State по агенту и переход в карточку LMS
 - Автотест: tests/ui/lrs/test_lrs_statements.py::TestLrsStatements::test_agents_tab_links

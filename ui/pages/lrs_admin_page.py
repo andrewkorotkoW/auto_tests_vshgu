@@ -221,18 +221,13 @@ class LrsStoreSectionPage(LrsAdminPage):
         self.wait_loaded()
         self.page.keyboard.press("Escape")
 
-    def select2_options(self, name: str) -> list[str]:
-        """Опции, которые select2-виджет фильтра предлагает без ввода текста (для `verb`
-        на 2420 — пусто, см. отчёт 27.10)."""
-        li = self.open_filter(name)
-        li.locator(".select2-search__field").first.click()
-        self.page.wait_for_timeout(1000)
-        options = [
-            t.strip() for t in self.page.locator(".select2-results__option").all_inner_texts()
-            if t.strip() and "не найдено" not in t
-        ]
-        self.page.keyboard.press("Escape")
-        return options
+    def select_options(self, name: str) -> list[str]:
+        """Тексты `<option>` фильтра-select2 без ajax (`verb`, `state_key`). Список строится из
+        кэша агрегатов хранилища (тот же, что даёт «Количество states/statements» в списке
+        хранилищ): на свежем хранилище он пуст, пока кэш не обновится (2420, 27.10.2026),
+        и select2 показывает «Совпадений не найдено»."""
+        li = self._filter(name)
+        return [t.strip() for t in li.locator("select option").all_inner_texts() if t.strip() and t.strip() != "-"]
 
     def filter_by_text(self, name: str, value: str) -> None:
         """Текстовые фильтры (`#text-filter-<key>`): раскрыть, ввести, Enter."""

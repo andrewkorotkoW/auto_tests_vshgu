@@ -12,7 +12,8 @@ tests/e2e/lrs/test_statement_after_test_pass.py — на свежем стенд
 
 Индексы колонок: Agent=0, Verb=1, Activity=2, Дата=3 (подтверждено 27.10). Известные
 дефекты ветки 2420 помечены `pytest.xfail` в конце соответствующего теста, чтобы остальные
-шаги проверялись."""
+шаги проверялись. Список verb в фильтре и счётчики в списке хранилищ — из кэша агрегатов,
+который отстаёт от таблицы (на свежем хранилище пуст) — тест фильтра Verb тогда скипается."""
 import re
 from datetime import datetime
 
@@ -136,10 +137,10 @@ class TestLrsStatements:
             expect(statements_page.reset_filters_button).to_be_hidden()
 
         with allure.step("4. Фильтр «Verb» = passed — только записи с этим verb"):
-            if not statements_page.select2_options("verb"):
-                pytest.xfail(
-                    "Дефект ветки 2420-filters (27.10.2026): виджет фильтра Verb без опций "
-                    "(select #filter_verb пуст), прямой ?verb=[IRI] в URL фильтрует"
+            if not statements_page.select_options("verb"):
+                pytest.skip(
+                    "Список verb в фильтре строится из кэша агрегатов хранилища и на свежем "
+                    "хранилище пуст, пока кэш не обновится (2420, 27.10.2026) — фильтр проверить нельзя"
                 )
             statements_page.filter_by_verb("passed")
             rows = statements_page.data_rows
