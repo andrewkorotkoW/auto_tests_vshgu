@@ -39,7 +39,8 @@ from api.helpers.data_generator import (
     generate_aos_payload,
     generate_tincan_payload,
     generate_test_payload,
-    generate_test_update_payload
+    generate_test_update_payload,
+    mts_link_safe_schedule_item_kwargs,
 
 )
 from config.settings import settings
@@ -498,10 +499,22 @@ def created_module(api_client, modules_endpoint, created_program, created_stream
 
 @pytest.fixture
 def created_schedule_item(api_client, schedule_items_endpoint, created_program, created_stream, created_module):
-    """Создаёт программу → поток → модуль → элемент расписания. Удаляет после."""
+    """Создаёт программу → поток → модуль → элемент расписания. Удаляет после.
+
+    item_type="mts_link" — особый случай: на стенде mts-link-release-main (isMtsLinkLive()
+    всегда true) это реально создаёт мероприятие на единственном прод-аккаунте МТС Линк
+    (tests/{ui,api}/mts_link/*), а не мок. Дефолты generate_schedule_item_payload
+    (teacher_ids=[4], дата "сегодня 10:05") для этого небезопасны — лектор без согласия на
+    реальные email-приглашения, а дата в прошлом после 10:05 роняет cleanup в 403 "stop it
+    before deleting" (вебинар уже внутри окна автостарта МТС Линк). Поэтому здесь
+    подмешиваются mts_link_safe_schedule_item_kwargs (Вера, дата — завтра) — kwargs теста
+    (например явный teacher_ids в test_lecturers.py/test_retry.py) по-прежнему их
+    переопределяют, см. mts_link_safe_schedule_item_kwargs."""
     schedule_ids = []
 
     def _create(**kwargs):
+        if kwargs.get("item_type") == "mts_link":
+            kwargs = mts_link_safe_schedule_item_kwargs(**kwargs)
         program = created_program()
         stream = created_stream(program_id=program["id"])
         module = created_module(program_id=program["id"], stream_id=stream["id"])

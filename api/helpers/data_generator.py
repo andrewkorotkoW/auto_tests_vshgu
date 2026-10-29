@@ -303,6 +303,43 @@ def generate_schedule_item_payload(
             }
         }
     }
+
+
+# Вера — user_id 2 на всех стендах VSHGU (zinoveva-vs@ranepa.ru, подтверждено GET
+# /api/v1/users/2), единственный лектор, чьё согласие на реальные email-приглашения
+# МТС Линк получено (docs/test_cases/mts_link/16_prod_safe_run.md). Дефолт
+# generate_schedule_item_payload (teacher_ids=[4]) рассылал бы приглашения постороннему
+# тестовому admin-аккаунту без согласия — не использовать его для item_type="mts_link".
+MTS_LINK_SAFE_TEACHER_ID = 2
+
+
+def mts_link_safe_schedule_item_kwargs(**overrides) -> dict:
+    """Безопасные kwargs для created_schedule_item(item_type="mts_link", ...) на боевом
+    прод-аккаунте МТС Линк (стенд mts-link-release-main, isMtsLinkLive() всегда true —
+    item_type="mts_link" там бьёт в реальный МТС Линк, не в мок):
+    - teacher_ids=[MTS_LINK_SAFE_TEACHER_ID] — Вера, не случайный admin-аккаунт;
+    - date_time_from/to — завтра, не "сегодня 10:05" (дефолт generate_schedule_item_payload):
+      если прогон идёт после 10:05 по стенду, дефолтная дата уже в прошлом, и вебинар на
+      момент создания уже прошёл окно автостарта (date_from − 10 мин у МТС Линк) — тогда
+      удаление в тесте падает 403 "stop it before deleting", подтверждено разведкой
+      29.10.2026 (TC-MTS-108, docs/test_cases/mts_link/16_prod_safe_run.md).
+    Тесты, которым нужен конкретный/«сломанный» лектор (test_lecturers.py, test_retry.py,
+    test_delete.py/test_logging.py с teacher_ids=[teacher["id"]]) переопределяют teacher_ids
+    через overrides как обычно — это не трогает дату."""
+    from datetime import datetime, timedelta
+
+    tomorrow = datetime.now() + timedelta(days=1)
+    kwargs = {
+        "item_type": "mts_link",
+        "url": "",
+        "teacher_ids": [MTS_LINK_SAFE_TEACHER_ID],
+        "date_time_from": tomorrow.strftime("%Y-%m-%dT11:00"),
+        "date_time_to": tomorrow.strftime("%Y-%m-%dT11:10"),
+    }
+    kwargs.update(overrides)
+    return kwargs
+
+
 def generate_aos_payload(
     name: str = None,
     name_client: str = None,

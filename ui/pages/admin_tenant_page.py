@@ -1,15 +1,18 @@
-"""Карточка тенанта в админке — блок интеграции с МТС Линк (часть 0.1).
+"""Карточка тенанта в админке — вкладка интеграции с МТС Линк.
 
-Разведка на --env develop (только чтение, через код существующих тестов/page objects —
-живого браузера в этой среде нет) подтвердила путь карточки тенанта и набор вкладок:
-`/admin/organization/{id}` с вкладками «Управление» (пользователи), «Настройки»
-(брендинг), «Связь ОМТ КАС» (оргструктура) — см. docstring `api/endpoints/mts_link.py`.
-Блока интеграции МТС Линк там сейчас нет ни на одной вкладке — функциональности ещё
-нет ни на одной ветке. Селекторы ниже — по аналогии со стилем существующих вкладок
-карточки тенанта (`a.v-tab`/`div.v-list-item-title`, см. `ui/pages/admin_page.py`,
-`ui/pages/admin_programs_page.py`) и текстовым меткам из требований части 0.1
-(`docs/requirements/tz2026/mts_link/11_часть_0.1_настройка_интеграции_в_карточке_тенанта.md`).
-TODO: уточнить после появления ветки — каждый локатор.
+Подтверждено живой разведкой на стенде mts-link-release-main 29.10.2026:
+`/admin/organization/{id}` — вкладки «Управление», «Настройки», «Связь ОМТ КАС»,
+«МТС Линк» (4-я, `?tab=3` в query, но открывать лучше кликом по вкладке — порядковый
+номер в query не гарантирован стабильным). На develop/других ветках блока интеграции
+может не быть (см. is_feature_ready("MTS_LINK_READY") в tests/ui/mts_link/conftest.py)
+— этот файл разведан только на mts-link-release-main.
+
+Вкладка: переключатель «Интеграция МТС Линк» (включена/выключена), статус
+«Интеграция проверена» и поле «Токен» (замаскировано плейсхолдером вида `***c4de7`,
+реальное значение никогда не приходит в DOM) с кнопкой «Сохранить». Токен — рабочий,
+единственный на организацию (см. docs/test_cases/mts_link/16_prod_safe_run.md, раздел
+«Правила безопасного тестирования») — автотесты должны только читать это состояние,
+не менять и не сохранять валидный токен.
 """
 from playwright.sync_api import Page, expect
 from ui.pages.base_page import BasePage
@@ -25,18 +28,49 @@ class AdminTenantPage(BasePage):
     def open(self, ui_base_url: str, tenant_id: int) -> None:
         self.page.goto(f"{ui_base_url}{self.PATH}/{tenant_id}")
         self.wait_loaded()
+        # Карточка тенанта грузит содержимое вкладок отдельным запросом ПОСЛЕ того, как
+        # wait_loaded() уже не видит общих индикаторов загрузки — на медленном стенде
+        # это видимый разрыв (голый спиннер без .v-progress-circular--indeterminate
+        # поверх уже отрисованного сайдбара), подтверждено разведкой 29.10.2026. Ждём
+        # появления самих вкладок явно, а не полагаемся на один общий wait_loaded().
+        expect(self.page.locator("xpath=//div[contains(@class,'v-tab')]").first).to_be_visible(
+            timeout=settings.UI_TIMEOUT * 3
+        )
 
-    def open_integrations_tab(self) -> None:
-        """Вкладка с настройками интеграций тенанта. TODO: уточнить после ветки —
-        сейчас в карточке тенанта такой вкладки нет вовсе (см. модуль docstring)."""
-        tab = self.page.locator("a.v-tab", has_text="Интеграции")
+    def mts_link_tab(self):
+        return self.page.locator("xpath=//div[contains(@class,'v-tab') and normalize-space()='МТС Линк']")
+
+    def is_mts_link_tab_visible(self) -> bool:
+        """Вкладка видна только тем, у кого есть право на неё — проверка для роли admin.
+        is_visible() сам по себе не повторяет попытку (в отличие от expect(...).
+        to_be_visible()), поэтому ждём явно и гасим таймаут в False."""
+        try:
+            expect(self.mts_link_tab()).to_be_visible(timeout=settings.UI_TIMEOUT)
+            return True
+        except AssertionError:
+            return False
+
+    def open_mts_link_tab(self) -> None:
+        tab = self.mts_link_tab()
         expect(tab).to_be_visible(timeout=settings.UI_TIMEOUT)
         tab.click(timeout=settings.UI_TIMEOUT)
+        expect(self.integration_toggle()).to_be_visible(timeout=settings.UI_TIMEOUT)
 
     # ── блок МТС Линк ────────────────────────────────────────────────────
 
+    def integration_toggle(self):
+        """Переключатель «Интеграция МТС Линк» (включена/выключена)."""
+        return self.page.locator(
+            "xpath=//label[normalize-space()='Интеграция МТС Линк']/preceding::input[@role='switch'][1]"
+        )
+
+    def is_integration_enabled(self) -> bool:
+        toggle = self.integration_toggle()
+        expect(toggle).to_be_visible(timeout=settings.UI_TIMEOUT)
+        return toggle.get_attribute("aria-checked") == "true"
+
     def token_field(self):
-        return self.page.locator("[data-qa='mts-link-token-input']")
+        return self.page.locator("xpath=//label[normalize-space()='Токен']/following::input[1]")
 
     def fill_token(self, token: str) -> None:
         field = self.token_field()
@@ -44,25 +78,29 @@ class AdminTenantPage(BasePage):
         field.fill(token, timeout=settings.UI_TIMEOUT)
 
     def save_button(self):
-        return self.page.locator("[data-qa='mts-link-save-button']")
+        return self.page.locator("xpath=//button[.//span[normalize-space()='Сохранить']]")
 
     def save(self) -> None:
         button = self.save_button()
         expect(button).to_be_enabled(timeout=settings.UI_TIMEOUT)
         button.click(timeout=settings.UI_TIMEOUT)
 
-    def masked_token_text(self) -> str:
-        """Текст замаскированного токена (часть 0.1, раздел «Отображение токена») —
-        первые символы + звёздочки, без полного значения."""
-        locator = self.page.locator("[data-qa='mts-link-token-masked']")
+    def masked_token_placeholder(self) -> str:
+        """Плейсхолдер поля токена (вид `***c4de7` — последние символы реального
+        токена организации) — само поле всегда пустое, полное значение в DOM не
+        приходит."""
+        field = self.token_field()
+        expect(field).to_be_visible(timeout=settings.UI_TIMEOUT)
+        return field.get_attribute("placeholder") or ""
+
+    def integration_status_text(self) -> str:
+        """Текст статуса интеграции — например, «Интеграция проверена». Блок несёт
+        BEM-класс organization-mts-link__status (модификатор _verified при успешной
+        проверке) — единственное место в этой вкладке с осмысленным классом, не
+        угаданным по аналогии."""
+        locator = self.page.locator(".organization-mts-link__status")
         expect(locator).to_be_visible(timeout=settings.UI_TIMEOUT)
         return locator.text_content() or ""
 
-    def error_message(self) -> str:
-        locator = self.page.locator("[data-qa='mts-link-settings-error']")
-        expect(locator).to_be_visible(timeout=settings.UI_TIMEOUT)
-        return locator.text_content() or ""
-
-    def integration_configured_badge_visible(self) -> bool:
-        """Признак «интеграция настроена и проверена» в карточке тенанта."""
-        return self.page.locator("[data-qa='mts-link-integration-configured']").is_visible(timeout=5000)
+    def is_integration_verified(self) -> bool:
+        return "проверена" in self.integration_status_text().lower()

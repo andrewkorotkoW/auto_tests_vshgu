@@ -147,40 +147,9 @@ class AdminProgramsPage(BasePage):
         button = self.page.locator("xpath=(//span[contains(text(),'Добавить менеджера')]/ancestor::button)[2]")
         self._add_user_via_modal(button)
 
-    def _select_first_dropdown_item(self, select_locator: Locator) -> None:
-        expect(select_locator).to_be_visible(timeout=15000)
-        # Без force=True: клик должен реально попасть в комбобокс, иначе (как было с
-        # get_by_role("textbox", name=...) — он матчил элемент, но клик по нему не открывал
-        # именно этот v-select) дропдаун для другого поля молча остаётся незаполненным.
-        select_locator.click(timeout=15000)
-        # Дропдаун ищем по id из aria-owns этого конкретного комбобокса, а не первый
-        # попавшийся "активный" v-menu на странице — после модалок «Добавить менеджера»
-        # их собственный v-menu иногда остаётся в DOM с классом ...active, и общий
-        # локатор без привязки к id стабильно попадал именно в этот фантомный список.
-        list_id = select_locator.get_attribute("aria-owns")
-        if list_id:
-            dropdown_items = self.page.locator(f"#{list_id} >> xpath=.//div[contains(@class,'v-list-item__content')]")
-        else:
-            dropdown_items = self.page.locator(
-                "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
-                "//div[contains(@class,'v-list-item__content')]"
-            )
-        expect(dropdown_items.first).to_be_visible(timeout=15000)
-        # Список опций у части селектов (Стоимостная группа/Вид программы) подгружается
-        # асинхронно после открытия: первым в DOM оказывается плейсхолдер «Загрузка
-        # списка», который не является реальным пунктом и клик по нему не устанавливает
-        # v-model — форма потом падает валидацией «обязательно для заполнения», хотя
-        # выбранный текст в поле визуально не появляется вовсе. Ждём реальный пункт.
-        expect(dropdown_items.first).not_to_have_text("Загрузка списка", timeout=15000)
-        dropdown_items.first.click(timeout=5000)
-
-    def _select_by_label(self, label_text: str) -> None:
-        self._select_first_dropdown_item(
-            self.page.locator(
-                f"xpath=//label[contains(normalize-space(),'{label_text}')]"
-                "/ancestor::div[contains(@class,'v-input')][1]"
-            )
-        )
+    # _select_first_dropdown_item/_select_by_label/_select_exact_value_by_label живут в
+    # BasePage — используются и здесь, и в ui/pages/admin_event_mts_page.py (форма
+    # «Создать Активити» модуля устроена теми же Vuetify v-select/v-autocomplete).
 
     def select_project(self) -> None:
         self._select_by_label("Проект")
@@ -206,32 +175,26 @@ class AdminProgramsPage(BasePage):
         пункт — селект «Вид программы» фильтрует список по вводу (не combobox: набор
         текста без совпадения даёт «Нет данных», см. docs/plans/2026-09-25_dictionaries_mission.md),
         поэтому можно допечатать точное имя элемента и выбрать именно его."""
-        select_locator = self.page.locator(
-            "xpath=//label[contains(normalize-space(),'Вид программы')]"
-            "/ancestor::div[contains(@class,'v-input')][1]"
-        )
-        expect(select_locator).to_be_visible(timeout=15000)
-        select_locator.click(timeout=15000)
-        select_locator.locator("input").first.fill(value, timeout=5000)
-
-        list_id = select_locator.get_attribute("aria-owns")
-        if list_id:
-            option = self.page.locator(
-                f"#{list_id} >> xpath=.//div[contains(@class,'v-list-item__content')][normalize-space()='{value}']"
-            )
-        else:
-            option = self.page.locator(
-                "xpath=//div[contains(@class,'v-menu__content') and contains(@class,'menuable__content__active')]"
-                f"//div[contains(@class,'v-list-item__content') and normalize-space()='{value}']"
-            )
-        expect(option.first).to_be_visible(timeout=15000)
-        option.first.click(timeout=5000)
+        self._select_exact_value_by_label("Вид программы", value)
 
     def fill_total_load(self, value: str = "100") -> None:
         field = self.page.locator("xpath=//label[contains(text(),'Общий объем')]/following::input[@type='text'][1]")
         expect(field).to_be_visible(timeout=15000)
         field.fill(value, timeout=5000)
         self.page.keyboard.press("Escape")
+
+    def fill_mts_webinar_threshold(self, value: str) -> None:
+        """«Порог посещаемости вебинара МТС Линк», % — новое поле потока на ветке
+        mts-link-release-main (не на всех окружениях; каталог/сервер шлёт поле как
+        mts_required_passed_percent, подтверждено разведкой 29.10.2026 по реальному
+        POST /api/v1/programs/{id}/streams). Если не задано, посещение засчитывается
+        при любом присутствии на вебинаре — поле необязательное, можно не вызывать."""
+        field = self.page.locator(
+            "xpath=//label[contains(normalize-space(),'Порог посещаемости вебинара МТС Линк')]"
+            "/following::input[1]"
+        )
+        expect(field).to_be_visible(timeout=15000)
+        field.fill(value, timeout=5000)
 
     def save_stream(self) -> int:
         save_button = self.page.locator("xpath=//button[.//span[normalize-space()='Сохранить']]")
@@ -249,10 +212,14 @@ class AdminProgramsPage(BasePage):
         date_from: str,
         date_to: str,
         total_load: str = "100",
+        mts_webinar_threshold: str = None,
     ) -> int:
         """Полный сценарий создания потока со всеми обязательными селектами.
         Возвращает stream_id. Форма создания потока должна быть уже открыта
-        (см. open_create_stream_form())."""
+        (см. open_create_stream_form()). mts_webinar_threshold — необязательный, поле
+        есть только на ветке mts-link-release-main (см. fill_mts_webinar_threshold);
+        на окружениях без него поля в форме нет, поэтому метод вызывается, только
+        если значение явно передано."""
         self.fill_stream_basic_fields(name, place, date_from, date_to)
         self.add_manager()
         self.add_external_manager()
@@ -263,6 +230,8 @@ class AdminProgramsPage(BasePage):
         self.select_program_type()
         self.select_program_form()
         self.fill_total_load(total_load)
+        if mts_webinar_threshold is not None:
+            self.fill_mts_webinar_threshold(mts_webinar_threshold)
         return self.save_stream()
 
     # ── Модуль ───────────────────────────────────────────────────────────
@@ -273,7 +242,7 @@ class AdminProgramsPage(BasePage):
         # force=True: после прямого goto() на URL потока иногда остаётся затемнение онбординг-тура
         tab.click(timeout=5000, force=True)
 
-    def create_module(self, name: str, place: str, start_date: str, finish_date: str) -> None:
+    def create_module(self, name: str, place: str, start_date: str, finish_date: str) -> int:
         add_button = self.page.locator("xpath=//button[contains(@class,'v-btn--is-elevated')]")
         expect(add_button).to_be_visible(timeout=15000)
         add_button.click(timeout=5000)
@@ -310,9 +279,39 @@ class AdminProgramsPage(BasePage):
         save_button = self.page.locator("xpath=//*[@id='app']//button[.//span[normalize-space()='Применить']]")
         expect(save_button).to_be_visible(timeout=15000)
         expect(save_button).to_be_enabled(timeout=15000)
-        save_button.click(timeout=5000)
+        with self.page.expect_response(
+            lambda r: r.url.rstrip("/").endswith("/modules") and r.request.method == "POST"
+        ) as response_info:
+            save_button.click(timeout=5000)
 
         expect(self.page.locator("xpath=//div[text()='Модуль создан.']")).to_be_visible(timeout=15000)
+        return int(response_info.value.json()["data"]["id"])
+
+    # ── Модуль: регион реализации (нужен для очных мероприятий, см. ниже) ──
+
+    def set_module_region_and_save(self, region_name: str) -> None:
+        """На странице модуля (вкладка «Расписание», модуль уже открыт/выбран) задаёт
+        «Регион реализации» и сохраняет форму модуля. Без региона переключатель «О»
+        (очно) у модуля недоступен для создания очных мероприятий, в т.ч. МТС Линк —
+        подтверждено разведкой 29.10.2026 (см. ui/pages/admin_event_mts_page.py).
+        Регион — тот же v-autocomplete-паттерн, что остальные поля потока: фильтрует
+        список по вводу, поэтому набираем точное имя и ждём role=option (как
+        ui/pages/region_page.py:select_region)."""
+        region_input = self.page.locator(
+            "xpath=//label[contains(normalize-space(),'Регион реализации')]"
+            "/ancestor::div[contains(@class,'v-input')][1]//input[@type='text']"
+        )
+        expect(region_input).to_be_visible(timeout=15000)
+        region_input.click(click_count=3, force=True)
+        self.page.keyboard.press("Backspace")
+        self.page.keyboard.type(region_name, delay=100)
+        option = self.wait_visible(f"[role='option']:has-text('{region_name}')")
+        option.click(force=True)
+
+        save_button = self.page.locator("xpath=//button[.//span[normalize-space()='Сохранить']]")
+        expect(save_button).to_be_visible(timeout=15000)
+        expect(save_button).to_be_enabled(timeout=15000)
+        save_button.click(timeout=15000)
 
     # ── Расписание модуля: добавление активити ──────────────────────────
 
