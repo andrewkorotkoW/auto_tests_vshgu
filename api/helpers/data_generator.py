@@ -281,11 +281,21 @@ def generate_schedule_item_payload(
     if not date_time_to:
         date_time_to = (today + timedelta(hours=1)).strftime("%Y-%m-%dT11:05")
 
+    # "mts_link" — короткий алиас, которым весь пакет tests/{ui,api}/mts_link и
+    # mts_link_safe_schedule_item_kwargs() вызывают created_schedule_item(item_type=
+    # "mts_link", ...). Реальное значение enum App\Enums\ScheduleItemType на бэкенде —
+    # "mts_link_webinar" (подтверждено телом запроса настоящей формы редактирования
+    # 30.10.2026: PUT .../schedule-items/{id} с "type":"mts_link_webinar"). Без этой
+    # подмены литеральное "mts_link" ловит 500 ValueError — enum такого case не знает
+    # (воспроизведено 02.11.2026 при обычном create_mts_webinar(..., item_type="mts_link")).
+    # Алиас "mts_link" в вызовах не трогаем — только то, что реально уходит в API.
+    real_type = "mts_link_webinar" if item_type == "mts_link" else item_type
+
     return {
         "data": {
             "attributes": {
                 "name": name,
-                "type": item_type,
+                "type": real_type,
                 "performance_direction_id": performance_direction_id,
                 "broad_topic_id": broad_topic_id,
                 "content_type": content_type,
