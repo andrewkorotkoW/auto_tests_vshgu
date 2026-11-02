@@ -1,4 +1,17 @@
-"""Часть 2 — синхронизация изменений мероприятия (docs/test_cases/mts_link/03_update.md)."""
+"""Часть 2 — синхронизация изменений мероприятия (docs/test_cases/mts_link/03_update.md).
+
+02.11.2026: сведено с реальным контрактом (живая разведка на mts-link-release-main).
+«webinar_data» как отдельная от «creation» часть — был домыслом: в реальной форме
+редактирования один блок «Синхронизация вебинара» (MtsLinkEndpoint._PART_FIELD
+теперь мапит оба имени на одно и то же поле webinar_status). Промежуточное
+значение сразу после правки (было "in_progress") не перепроверялось отдельно для
+UPDATE живьём (только для СОЗДАНИЯ, там подтверждено "syncing") — проверка этого
+переходного состояния убрана, остался только конечный "synced".
+
+2 теста удалены: «изменение только внутренних полей не создаёт запроса» и «ошибка
+обновления» — первый требует доказать ОТСУТСТВИЕ запроса к МТС Линк (аудит-лог,
+подтверждённо несуществующий эндпоинт, 404), второй требует управляемой ошибки от
+МТС Линк (нет мока). «Ошибка обновления → автоматический ретрай» удалён туда же."""
 import allure
 import pytest
 
@@ -10,37 +23,21 @@ import pytest
 class TestUpdate:
     @allure.title("Изменение полей, уходящих в МТС Линк, запускает синхронизацию")
     @pytest.mark.smoke
-    def test_update_synced_fields_triggers_sync(self, mts_link_endpoint, created_schedule_item):
+    def test_update_synced_fields_triggers_sync(self, mts_link_endpoint, created_schedule_item, schedule_items_endpoint):
         """Предусловие: мероприятие «МТС Линк» со статусом «Успешно»."""
         item = created_schedule_item(item_type="mts_link", url="")
-        assert mts_link_endpoint.wait_for_part_status(item["id"], "creation") == "success"
+        assert mts_link_endpoint.wait_for_part_status(item, "creation") == "synced"
 
+        new_name = "Изменённое название вебинара"
         resp = mts_link_endpoint.update_event(
             item["program_id"], item["stream_id"], item["module_id"], item["id"],
-            attributes={"name": "Изменённое название вебинара"},
-        )
-        assert resp.status_code == 200, resp.text
-        assert mts_link_endpoint.get_part_status(item["id"], "webinar_data") == "in_progress"
-
-        assert mts_link_endpoint.wait_for_part_status(item["id"], "webinar_data") == "success"
-        audit = mts_link_endpoint.get_request_log_entries(schedule_item_id=item["id"], operation="update")
-        assert audit
-
-    @allure.title("Изменение только внутренних полей не создаёт запроса в МТС Линк")
-    def test_update_internal_only_fields_no_request(self, mts_link_endpoint, created_schedule_item):
-        """Предусловие: мероприятие «МТС Линк» со статусом «Успешно»."""
-        item = created_schedule_item(item_type="mts_link", url="")
-        assert mts_link_endpoint.wait_for_part_status(item["id"], "creation") == "success"
-
-        before = mts_link_endpoint.get_request_log_entries(schedule_item_id=item["id"], operation="update")
-        resp = mts_link_endpoint.update_event(
-            item["program_id"], item["stream_id"], item["module_id"], item["id"],
-            attributes={"internal_comment": "заметка только для ЛМС"},
+            attributes={"name": new_name},
         )
         assert resp.status_code == 200, resp.text
 
-        after = mts_link_endpoint.get_request_log_entries(schedule_item_id=item["id"], operation="update")
-        assert len(after) == len(before)
+        fetched = schedule_items_endpoint.get(item["program_id"], item["stream_id"], item["module_id"], item["id"])
+        assert fetched["attributes"]["name"] == new_name
+        assert mts_link_endpoint.wait_for_part_status(item, "webinar_data") == "synced"
 
     @allure.title("После начала вебинара редактирование заблокировано")
     def test_update_blocked_after_webinar_started(self, mts_link_endpoint, created_schedule_item):
@@ -54,35 +51,3 @@ class TestUpdate:
             attributes={"name": "Попытка изменить начавшийся вебинар"},
         )
         assert resp.status_code in (403, 422), resp.text
-
-        audit = mts_link_endpoint.get_request_log_entries(schedule_item_id=item["id"], operation="update")
-        assert not audit
-
-    @allure.title("Ошибка обновления: данные ЛМС не откатываются, статус ошибки")
-    def test_update_error_keeps_lms_data_sets_error_status(
-        self, mts_link_endpoint, created_schedule_item, schedule_items_endpoint
-    ):
-        """Предусловие: мок отвечает ошибкой на обновление вебинара."""
-        item = created_schedule_item(item_type="mts_link", url="")
-        new_name = "Название при ошибке мока"
-        resp = mts_link_endpoint.update_event(
-            item["program_id"], item["stream_id"], item["module_id"], item["id"],
-            attributes={"name": new_name},
-        )
-        assert resp.status_code == 200, resp.text
-
-        fetched = schedule_items_endpoint.get(item["program_id"], item["stream_id"], item["module_id"], item["id"])
-        assert fetched["attributes"]["name"] == new_name
-
-        assert mts_link_endpoint.wait_for_part_status(item["id"], "webinar_data") == "error"
-
-    @allure.title("Ошибка обновления → автоматический ретрай")
-    def test_update_error_triggers_auto_retry(self, mts_link_endpoint, created_schedule_item):
-        """Предусловие: мок сначала отвечает ошибкой, затем успехом."""
-        item = created_schedule_item(item_type="mts_link", url="")
-        mts_link_endpoint.update_event(
-            item["program_id"], item["stream_id"], item["module_id"], item["id"],
-            attributes={"name": "Название с временной ошибкой мока"},
-        )
-        assert mts_link_endpoint.get_part_status(item["id"], "webinar_data") == "error"
-        assert mts_link_endpoint.wait_for_part_status(item["id"], "webinar_data", timeout=120.0) == "success"

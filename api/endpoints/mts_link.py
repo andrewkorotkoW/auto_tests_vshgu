@@ -1,27 +1,61 @@
-"""Предполагаемый клиент API интеграции с МТС Линк — ветки/контракта ещё нет
-(миссия `docs/missions/2026-09-30_tz2026_mts_link.md`, части 0–14 в
-`docs/requirements/tz2026/mts_link/10_…`–`25_…`).
+"""Клиент API интеграции с МТС Линк поверх обычных очных мероприятий (элементов
+расписания, см. api/endpoints/schedule_items.py).
 
-Методы построены по аналогии с уже существующими эндпоинтами очных мероприятий:
-`api/endpoints/schedule_items.py` (create/get/delete элемента расписания — мероприятие
-«МТС Линк» создаётся тем же способом, с `type="mts_link"` вместо `"webinar"`, см.
-`api/helpers/data_generator.py:generate_schedule_item_payload` — контракт полей
-create/content_type/url/teacher_ids/listeners/files/region подтверждён разведкой на
-`--env develop`, только значение типа "mts_link" — предположение) и
-`api/endpoints/external_buk.py` (асинхронная интеграция с фоновым статусом — оттуда
-взят паттерн поллинга `wait_for_*`).
+Статус/обновление/вложения (часть этого файла, что реально используется
+tests/{api,ui}/mts_link/*) сведены с реальным контрактом живой разведкой 02.11.2026
+(создание+редактирование настоящих вебинаров на стенде mts-link-release-main):
 
-Разведка на develop (только чтение, без создания данных) также подтвердила структуру
-карточки тенанта: `/admin/organization/{id}`, вкладки «Управление» (пользователи),
-«Настройки» (брендинг), «Связь ОМТ КАС» (оргструктура) — блока интеграции МТС Линк там
-сейчас нет ни на одной вкладке, и в репозитории нет ни одного SQL-хелпера к БД стенда
-(`external_requests_audit`, упомянутый в требованиях к логированию, не реализован даже
-для БУК) — поэтому `get_request_log_entries_via_sql` ниже поднимает понятную ошибку, а
-не притворяется рабочим.
+- Статус интеграции — НЕ отдельный эндпоинт. Все варианты вида
+  `/schedule-item/{id}/mts-link...` (…/status, …/participants, …/lecturers, …/files,
+  …/attendance/{uid}, …/retry, а также голый …/mts-link) и `/admin/mts-link/
+  request-log-audit`, `/admin/logs` — подтверждённо 404 (прямыми вызовами, несколько
+  раз). Реальный статус лежит полем `attributes.mts_link` в обычном ответе
+  `GET .../schedule-items/{id}` (ScheduleItemsEndpoint.get, уже рабочий путь):
+      {
+        "mts_webinar_id": int,
+        "webinar_status": "syncing" | "synced" | вероятно "error" (не подтверждено),
+        "record_status": "pending" | ...,
+        "record_link": str | None,
+        "participants_sync_status": "pending" | "success" | вероятно "error",
+        "lecturers_sync_status": тот же набор значений,
+        "files_sync_status": тот же набор значений,
+        "stats_sync_status": тот же набор значений,
+      }
+  Значения "syncing"/"synced" у webinar_status и "pending"/"success" у остальных
+  подтверждены живьём (несколько снэпшотов); "error" — по аналогии и по наличию
+  кнопки «Повторить синхронизацию» в форме редактирования, НЕ пойман живьём (не
+  вышло стабильно спровоцировать ошибку синхронизации на реальном проде).//
+- НЕТ детализации по отдельным участникам/лекторам (ни личной ссылки, ни роли,
+  ни признака синка) — только агрегированные *_sync_status выше. listeners в
+  attributes самого элемента расписания остаётся пустым массивом даже после
+  успешной сверки участников (проверено живьём) — это не список синхронизированных
+  участников МТС Линк.
+- Обновление элемента (часть 2) — `PUT .../schedule-items/{id}` требует ПОЛНЫЙ
+  payload (как при создании), частичный `{"data":{"attributes": {...только
+  изменённое...}}}` падает 500/422 (не хватает обязательных полей вроде `type`).
+  update_event() ниже сам подтягивает текущие атрибуты и мёрджит их перед PUT —
+  вызывающий код как раньше передаёт только то, что хочет изменить.
+- Файлы презентаций (часть 5) — НЕТ эндпоинта `.../schedule-items/{id}/files`.
+  Реальный путь — `POST /upload/schedule_item_files` (multipart, поле `files[]`,
+  можно сразу несколько файлов), возвращает `[{"material_id"/"id", "uuid", ...}]`;
+  чтобы реально привязать файл к мероприятию, этот material нужно ещё добавить в
+  `attributes.files` элемента расписания через ПОЛНЫЙ PUT (см. update_event) —
+  каждый элемент files там по факту `{"id": material_id, "uuid": ...,
+  "can_download": true}`. attach_file() ниже делает оба шага. У привязанных файлов
+  в ответе НЕТ индивидуального статуса синхронизации/привязки — только
+  метаданные материала (имя/размер/url) плюс агрегированный files_sync_status
+  выше.
 
-Каждый метод явно помечен docstring «контракт не подтверждён, часть N». Когда появится
-реализация, метод нужно свести с реальным контрактом (путь/payload/статусы) — сигнатуру
-можно менять.
+Асинхронный джоб синхронизации может идти заметно дольше, чем казалось изначально:
+живьём на одном и том же стенде наблюдались и ~1 минута, и ~6 минут до terminal-
+статуса без видимой внешней причины — дефолтные таймауты ниже подняты
+соответственно. Не дождались за отведённое время — не обязательно ошибка
+интеграции, возможно просто не повезло с очередью.
+
+Методы ниже этой части (настройки тенанта, запись вебинара, посещаемость,
+индивидуальная траектория, журнал действий/аудит запросов) НЕ пересмотрены в этом
+заходе — живой разведкой 02.11.2026 не покрыты, остаются как были написаны до
+появления ветки, с тем же предупреждением «контракт не подтверждён».
 """
 import os
 import time
@@ -33,14 +67,46 @@ from utils.logger import logger
 
 MTS_LINK_EVENT_TYPE = "mts_link"
 
-INTEGRATION_PARTS = ("creation", "webinar_data", "participants", "lecturers", "files")
+# Ключи — то, что передают тесты (часть этого набора — исторические алиасы на тот же
+# реальный field, см. _PART_FIELD). Значения множества ниже — то, что реально
+# наблюдалось в attributes.mts_link живьём 02.11.2026.
+INTEGRATION_PARTS = ("creation", "participants", "lecturers", "files", "stats")
 
-SYNC_TERMINAL_STATUSES = {"success", "error"}
+# "webinar_data" — алиас на тот же webinar_status, что и "creation": в реальной форме
+# редактирования только ОДИН блок «Синхронизация вебинара», не два отдельных (для
+# создания и для последующих правок) — старое разделение на "creation"/"webinar_data"
+# было домыслом до разведки.
+_PART_FIELD = {
+    "creation": "webinar_status",
+    "webinar_data": "webinar_status",
+    "participants": "participants_sync_status",
+    "lecturers": "lecturers_sync_status",
+    "files": "files_sync_status",
+    "stats": "stats_sync_status",
+}
 
-# Ограничения на файлы презентаций для вебинара (часть 5, раздел «Ограничения по файлам») —
-# точные значения нигде не зафиксированы (МТС Линк API их не документирует в открытом
-# доступе, в требованиях части 5 указано только «до отправки», без чисел) — используются
-# как разумные дефолты для теста ошибочного сценария, подлежат уточнению у разработки.
+# Терминальные значения по частям — у webinar_status подтверждённое успешное
+# значение "synced" (НЕ "success", как у остальных *_sync_status полей). "error"
+# по каждой части — предположение (см. докстринг модуля).
+_TERMINAL_BY_PART = {
+    "creation": {"synced", "error"},
+    "webinar_data": {"synced", "error"},
+    "participants": {"success", "error"},
+    "lecturers": {"success", "error"},
+    "files": {"success", "error"},
+    "stats": {"success", "error"},
+}
+
+# Наблюдалась живьём синхронизация до ~6 минут на одном и том же стенде без видимой
+# причины (см. докстринг модуля) — дефолт намеренно большой, старые 60-90 c были
+# занижены.
+DEFAULT_POLL_TIMEOUT = 300.0
+DEFAULT_POLL_INTERVAL = 5.0
+
+# Ограничения на файлы презентаций для вебинара — точные значения нигде не
+# зафиксированы (МТС Линк API их не документирует в открытом доступе), используются
+# как разумные дефолты для клиентской проверки перед отправкой, подлежат уточнению
+# у разработки.
 MAX_PRESENTATION_FILE_SIZE_MB = 100
 ALLOWED_PRESENTATION_EXTENSIONS = (".pdf", ".ppt", ".pptx")
 
@@ -52,27 +118,18 @@ class MtsLinkEndpoint:
     def __init__(self, client: ApiClient):
         self.client = client
 
-    # ── часть 0.1: настройки интеграции тенанта ──────────────────────────
+    # ── настройки интеграции тенанта (НЕ пересмотрено 02.11.2026) ────────
 
     def get_tenant_settings(self, tenant_id: int) -> Dict:
-        """Настройки интеграции МТС Линк в карточке тенанта. Токен в ответе должен
-        быть замаскирован (11_часть_0.1…, раздел «Отображение токена»).
-
-        Контракт не подтверждён, часть 0.1.
-        """
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
         resp = self.client.get(f"/admin/organizations/{tenant_id}/mts-link-settings")
         expect_status(resp, 200)
         return resp.json().get("data", {})
 
     def save_tenant_settings(self, tenant_id: int, token: Optional[str] = None, **other_fields):
-        """Сохранить настройки интеграции тенанта. token=None — поле токена не
-        передаётся в payload вовсе (правило «не тронули — остаётся прежним»,
-        11_часть_0.1…, раздел «Правило редактирования»), а не передаётся пустой
-        строкой. Статус ответа не проверяется здесь: у кейсов есть и позитивные
-        (200), и негативные (400/401/403/422/503) ожидания — проверка в тесте.
-
-        Контракт не подтверждён, часть 0.1.
-        """
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
         attributes = dict(other_fields)
         if token is not None:
             attributes["token"] = token
@@ -84,186 +141,135 @@ class MtsLinkEndpoint:
         return resp
 
     def get_tenant_integration_enabled(self, tenant_id: int) -> bool:
-        """Признак «интеграция настроена и проверена» из карточки тенанта.
-
-        Контракт не подтверждён, часть 0.1.
-        """
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
         data = self.get_tenant_settings(tenant_id)
         return bool(data.get("attributes", {}).get("integration_configured"))
 
-    # ── часть 0/1: создание мероприятия «МТС Линк» ───────────────────────
+    # ── создание мероприятия «МТС Линк» ───────────────────────────────────
 
     def build_event_payload(self, **overrides) -> dict:
-        """Payload очного мероприятия типа «МТС Линк» — тот же контракт, что у обычного
-        элемента расписания (см. generate_schedule_item_payload, подтверждено
-        разведкой), но type="mts_link" вместо "webinar", и url всегда пустой при
-        создании (поле недоступно для заполнения, часть 0, раздел «Форма создания»).
-
-        Контракт не подтверждён: значение type="mts_link" и его обработка бэкендом —
-        часть 0/1.
-        """
+        """Payload очного мероприятия типа «МТС Линк» — тот же контракт, что у
+        обычного элемента расписания (generate_schedule_item_payload)."""
         from api.helpers.data_generator import generate_schedule_item_payload
         overrides.setdefault("item_type", MTS_LINK_EVENT_TYPE)
         overrides["url"] = ""
         return generate_schedule_item_payload(**overrides)
 
-    def get_event_integration_data(self, schedule_item_id: int) -> Dict:
-        """Сохранённые id вебинара/сессии и ссылка на мероприятие — часть 1, раздел
-        «Результат».
+    # ── статус интеграции: поле attributes.mts_link, см. докстринг модуля ─
 
-        Контракт не подтверждён, часть 1.
-        """
-        resp = self.client.get(f"/schedule-item/{schedule_item_id}/mts-link")
+    def get_integration_status(self, item: Dict) -> Dict:
+        """Статус интеграции мероприятия — поле attributes.mts_link на обычном GET
+        элемента расписания (нет отдельного эндпоинта, см. докстринг модуля). `item`
+        — объект, который возвращает фикстура created_schedule_item (нужны
+        program_id/stream_id/module_id/id)."""
+        resp = self.client.get(
+            f"/programs/{item['program_id']}/streams/{item['stream_id']}"
+            f"/modules/{item['module_id']}/schedule-items/{item['id']}"
+        )
         expect_status(resp, 200)
-        return resp.json().get("data", {})
+        return resp.json()["data"]["attributes"].get("mts_link") or {}
 
-    # ── часть 7: статусы интеграции (сводный + по 5 частям) ──────────────
+    def get_part_status(self, item: Dict, part: str) -> Optional[str]:
+        """Статус одной части синхронизации (см. INTEGRATION_PARTS/_PART_FIELD)."""
+        field = _PART_FIELD[part]
+        return self.get_integration_status(item).get(field)
 
-    def get_integration_status(self, schedule_item_id: int) -> Dict:
-        """Статусы интеграции мероприятия: сводный + по 5 частям (создание вебинара,
-        данные вебинара, участники, лекторы, файлы презентаций) — часть 7, раздел
-        «Карточка мероприятия». Ожидаемая форма: {"summary_status": ..., "parts":
-        {"creation": ..., "webinar_data": ..., "participants": ..., "lecturers": ...,
-        "files": ...}}.
-
-        Контракт не подтверждён, часть 7.
-        """
-        resp = self.client.get(f"/schedule-item/{schedule_item_id}/mts-link/status")
-        expect_status(resp, 200)
-        return resp.json().get("data", {})
-
-    def get_part_status(self, schedule_item_id: int, part: str) -> Optional[str]:
-        """Статус одной части синхронизации (см. INTEGRATION_PARTS).
-
-        Контракт не подтверждён, часть 7.
-        """
-        return self.get_integration_status(schedule_item_id).get("parts", {}).get(part)
-
-    def get_summary_status(self, schedule_item_id: int) -> Optional[str]:
-        """Сводный статус мероприятия — «Ошибка», если хотя бы одна часть с ошибкой;
-        «В процессе», пока хоть одна часть выполняется; «Успешно», когда все части
-        успешны (часть 7, раздел «Состояния»).
-
-        Контракт не подтверждён, часть 7.
-        """
-        return self.get_integration_status(schedule_item_id).get("summary_status")
+    def get_summary_status(self, item: Dict) -> Optional[str]:
+        """Сводный статус, ВЫЧИСЛЕННЫЙ из частей ниже — отдельного summary-поля в
+        API нет (не подтверждено и само наличие «сводного статуса» как видимого
+        пользователю понятия — см. докстринг модуля). "error", если хотя бы одна
+        часть в ошибке; "success", когда части все терминальны и успешны; иначе
+        None (ещё идёт)."""
+        status = self.get_integration_status(item)
+        parts = {"creation": status.get("webinar_status")}
+        for part in ("participants", "lecturers", "files", "stats"):
+            parts[part] = status.get(_PART_FIELD[part])
+        values = list(parts.values())
+        if "error" in values:
+            return "error"
+        success_values = {"synced", "success"}
+        if all(v in success_values for v in values):
+            return "success"
+        return None
 
     def wait_for_part_status(
         self,
-        schedule_item_id: int,
+        item: Dict,
         part: str,
-        timeout: float = 60.0,
-        poll_interval: float = 3.0,
+        timeout: float = DEFAULT_POLL_TIMEOUT,
+        poll_interval: float = DEFAULT_POLL_INTERVAL,
     ) -> Optional[str]:
-        """Поллинг статуса одной части синхронизации до терминального состояния
-        («success»/«error», см. SYNC_TERMINAL_STATUSES) — общий помощник для всех
-        асинхронных частей 1–6, 14. Таймаут/интервал — предположение (план, п.4,
-        вопрос 5: точные интервалы автоматических ретраев не подтверждены разработкой).
-
-        Контракт не подтверждён.
-        """
+        """Поллинг статуса одной части синхронизации до терминального состояния (см.
+        _TERMINAL_BY_PART)."""
+        terminal = _TERMINAL_BY_PART[part]
         deadline = time.monotonic() + timeout
         last_status = None
         while time.monotonic() < deadline:
-            last_status = self.get_part_status(schedule_item_id, part)
-            logger.info(f"MTS Link event {schedule_item_id}: part={part} status={last_status}")
-            if last_status in SYNC_TERMINAL_STATUSES:
+            last_status = self.get_part_status(item, part)
+            logger.info(f"MTS Link item {item['id']}: part={part} status={last_status}")
+            if last_status in terminal:
                 return last_status
             time.sleep(poll_interval)
         return last_status
 
     def wait_for_summary_status(
-        self, schedule_item_id: int, timeout: float = 60.0, poll_interval: float = 3.0
+        self, item: Dict, timeout: float = DEFAULT_POLL_TIMEOUT, poll_interval: float = DEFAULT_POLL_INTERVAL
     ) -> Optional[str]:
-        """Поллинг сводного статуса мероприятия до терминального состояния.
-
-        Контракт не подтверждён, часть 7.
-        """
+        """Поллинг вычисленного сводного статуса (см. get_summary_status) до
+        "success"/"error"."""
         deadline = time.monotonic() + timeout
         last_status = None
         while time.monotonic() < deadline:
-            last_status = self.get_summary_status(schedule_item_id)
-            if last_status in SYNC_TERMINAL_STATUSES:
+            last_status = self.get_summary_status(item)
+            if last_status in ("success", "error"):
                 return last_status
             time.sleep(poll_interval)
         return last_status
 
-    # ── часть 2: обновление данных вебинара ───────────────────────────────
+    # ── обновление мероприятия ─────────────────────────────────────────────
 
     def update_event(self, program_id: int, stream_id: int, module_id: int, item_id: int, attributes: dict):
-        """Обновление полей мероприятия. В api/endpoints/schedule_items.py метода
-        обновления нет — PUT на тот же путь, что create, предполагается по REST-
-        конвенции остальных сущностей потока (streams/modules).
-
-        Контракт не подтверждён, часть 2.
-        """
+        """Обновление полей мероприятия. Реальный контракт PUT требует ПОЛНЫЙ
+        payload (см. докстринг модуля) — метод сам подтягивает текущие
+        attributes и мёрджит переданные `attributes` поверх них, вызывающий код
+        передаёт только то, что хочет изменить (как раньше)."""
+        resp = self.client.get(
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}/schedule-items/{item_id}"
+        )
+        expect_status(resp, 200)
+        current = resp.json()["data"]["attributes"]
+        merged = {
+            "name": current["name"],
+            "type": current["type"],
+            "performance_direction_id": current["performance_direction_id"],
+            "broad_topic_id": current["broad_topic_id"],
+            "content_type": "offline",
+            "location": current["location"],
+            "url": current.get("url") or "",
+            "teacher_ids": [t["id"] for t in current.get("teachers", [])],
+            "listeners": current.get("listeners", []),
+            "date_time_from": current["date_from"].replace(" ", "T")[:16],
+            "date_time_to": current["date_to"].replace(" ", "T")[:16],
+            "files": current.get("files", []),
+            "region": current.get("region") or [],
+            "show_activity_results": current.get("show_activity_results", True),
+        }
+        merged.update(attributes)
         resp = self.client.put(
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}/schedule-items/{item_id}",
-            json={"data": {"attributes": attributes}},
+            json={"data": {"attributes": merged}},
         )
         logger.info(f"Schedule item {item_id}: update -> {resp.status_code}")
         return resp
 
-    # ── часть 3/4: участники и лекторы ────────────────────────────────────
-
-    def list_participants_sync_state(self, schedule_item_id: int) -> List[Dict]:
-        """Состояние сверки состава слушателей: id участия, персональная ссылка,
-        признак софт-делита — часть 3.
-
-        Контракт не подтверждён, часть 3.
-        """
-        resp = self.client.get(f"/schedule-item/{schedule_item_id}/mts-link/participants")
-        expect_status(resp, 200)
-        return resp.json().get("data", [])
-
-    def get_participant_sync_state(self, schedule_item_id: int, user_id: int) -> Optional[Dict]:
-        """Состояние сверки одного слушателя.
-
-        Контракт не подтверждён, часть 3.
-        """
-        for participant in self.list_participants_sync_state(schedule_item_id):
-            if participant.get("user_id") == user_id:
-                return participant
-        return None
-
-    def list_lecturers_sync_state(self, schedule_item_id: int) -> List[Dict]:
-        """Состояние сверки состава лекторов (ведущих вебинара) — часть 4.
-
-        Контракт не подтверждён, часть 4.
-        """
-        resp = self.client.get(f"/schedule-item/{schedule_item_id}/mts-link/lecturers")
-        expect_status(resp, 200)
-        return resp.json().get("data", [])
-
-    def get_lecturer_sync_state(self, schedule_item_id: int, user_id: int) -> Optional[Dict]:
-        """Состояние сверки одного лектора.
-
-        Контракт не подтверждён, часть 4.
-        """
-        for lecturer in self.list_lecturers_sync_state(schedule_item_id):
-            if lecturer.get("user_id") == user_id:
-                return lecturer
-        return None
-
-    # ── часть 5: файлы презентаций ─────────────────────────────────────────
-
-    def list_files_sync_state(self, schedule_item_id: int) -> List[Dict]:
-        """Состояние сверки файлов презентаций, привязанных к вебинару — часть 5.
-
-        Контракт не подтверждён, часть 5.
-        """
-        resp = self.client.get(f"/schedule-item/{schedule_item_id}/mts-link/files")
-        expect_status(resp, 200)
-        return resp.json().get("data", [])
+    # ── файлы презентаций ───────────────────────────────────────────────────
 
     def validate_file_before_upload(self, file_path: str) -> Optional[str]:
-        """Проверка формата/размера файла презентации до отправки в МТС Линк (часть 5,
-        раздел «Ограничения по файлам») — возвращает текст ошибки с указанием файла, либо
-        None, если файл проходит. Пороги — MAX_PRESENTATION_FILE_SIZE_MB/
-        ALLOWED_PRESENTATION_EXTENSIONS, оба предположительны.
-
-        Контракт не подтверждён, часть 5.
-        """
+        """Проверка формата/размера файла презентации до отправки в МТС Линк —
+        возвращает текст ошибки с указанием файла, либо None, если файл проходит.
+        Пороги — MAX_PRESENTATION_FILE_SIZE_MB/ALLOWED_PRESENTATION_EXTENSIONS, оба
+        предположительны (см. докстринг константы)."""
         name = os.path.basename(file_path)
         ext = os.path.splitext(name)[1].lower()
         if ext not in ALLOWED_PRESENTATION_EXTENSIONS:
@@ -277,83 +283,62 @@ class MtsLinkEndpoint:
         return None
 
     def attach_file(self, program_id: int, stream_id: int, module_id: int, item_id: int, file_path: str):
-        """Прикрепить презентацию к мероприятию — по аналогии с ApiClient.upload
-        (multipart, см. api/client.py). Путь эндпоинта на существующих элементах
-        расписания не подтверждён.
-
-        Контракт не подтверждён, часть 5.
-        """
+        """Прикрепить презентацию к мероприятию — два реальных шага (см. докстринг
+        модуля): 1) POST /upload/schedule_item_files (multipart, поле files[]) —
+        загружает файл как материал, возвращает material_id/uuid; 2) добавить этот
+        материал в attributes.files элемента расписания через ПОЛНЫЙ PUT
+        (update_event). Возвращает ответ второго шага (PUT) — как и раньше, у него
+        есть .status_code."""
         with open(file_path, "rb") as fh:
-            resp = self.client.upload(
-                f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}/schedule-items/{item_id}/files",
-                files={"file": fh},
+            upload_resp = self.client.upload(
+                "/upload/schedule_item_files",
+                files={"files[]": fh},
             )
-        logger.info(f"Schedule item {item_id}: attach file {file_path} -> {resp.status_code}")
-        return resp
+        expect_status(upload_resp, 200)
+        material = upload_resp.json()["data"][0]
 
-    # ── часть 6: удаление ──────────────────────────────────────────────────
+        resp = self.client.get(
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}/schedule-items/{item_id}"
+        )
+        expect_status(resp, 200)
+        current_files = resp.json()["data"]["attributes"].get("files", [])
+        new_file_ref = {"id": material["material_id"], "uuid": material["uuid"], "can_download": True}
 
-    def get_deletion_audit(self, schedule_item_id: int) -> List[Dict]:
-        """Записи request_log_audit по удалению вебинара/сессии — часть 6, раздел
-        «Результат».
+        put_resp = self.update_event(
+            program_id, stream_id, module_id, item_id,
+            attributes={"files": current_files + [new_file_ref]},
+        )
+        logger.info(f"Schedule item {item_id}: attach file {file_path} -> {put_resp.status_code}")
+        return put_resp
 
-        Контракт не подтверждён, часть 6/10.
-        """
-        return self.get_request_log_entries(schedule_item_id=schedule_item_id, operation="delete")
+    # ── запись вебинара (НЕ пересмотрено 02.11.2026) ──────────────────────
 
-    def wait_for_deletion(
-        self, schedule_item_id: int, timeout: float = 60.0, poll_interval: float = 3.0
-    ) -> List[Dict]:
-        """Поллинг request_log_audit до появления успешной записи об удалении (вебинар +
-        сессия) — часть 6, раздел «Результат»/«Поведение при ошибке» (ждём авторетрай).
+    def get_recording_info(self, schedule_item_id: int) -> Dict:
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
+        resp = self.client.get(f"/schedule-item/{schedule_item_id}/mts-link/recording")
+        expect_status(resp, 200)
+        return resp.json().get("data", {})
 
-        Контракт не подтверждён, часть 6.
-        """
-        deadline = time.monotonic() + timeout
-        entries: List[Dict] = []
-        while time.monotonic() < deadline:
-            entries = self.get_deletion_audit(schedule_item_id)
-            if any(e.get("success") for e in entries):
-                return entries
-            logger.info(f"Schedule item {schedule_item_id}: deletion not confirmed yet, retrying")
-            time.sleep(poll_interval)
-        return entries
-
-    # ── часть 8: ручной перезапуск синхронизации ────────────────────────
-
-    def retry_part(self, schedule_item_id: int, part: str) -> Dict:
-        """Ручной перезапуск конкретной части синхронизации — кнопка «Повторить»
-        доступна только у части в статусе «Ошибка» (часть 8, раздел «Флоу»).
-
-        Контракт не подтверждён, часть 8.
-        """
-        resp = self.client.post(f"/schedule-item/{schedule_item_id}/mts-link/retry", json={"part": part})
-        expect_status(resp, (200, 202))
-        logger.info(f"MTS Link event {schedule_item_id}: retry part={part}")
-        return resp.json()
-
-    # ── часть 9: процент посещения ───────────────────────────────────────
+    # ── посещаемость (НЕ пересмотрено 02.11.2026) ─────────────────────────
 
     def get_listener_attendance(self, schedule_item_id: int, user_id: int) -> Dict:
-        """Процент посещения слушателя по мероприятию «МТС Линк» — ячейка посещения
-        в таблице слушателей потока (часть 9). Источник «фактической длительности
-        вебинара» не назван в требованиях (план, п.6, вопрос 5) — форма ответа ниже
-        предположительна: {"percent": int|None, "credited": bool}.
-
-        Контракт не подтверждён, часть 9.
-        """
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
         resp = self.client.get(f"/schedule-item/{schedule_item_id}/mts-link/attendance/{user_id}")
         expect_status(resp, 200)
         return resp.json().get("data", {})
 
-    # ── часть 10: логирование ────────────────────────────────────────────
+    # ── логирование / аудит (НЕ пересмотрено 02.11.2026) ──────────────────
+    # get_request_log_entries бьёт в /admin/mts-link/request-log-audit — этот путь
+    # подтверждённо 404 (проверено 02.11.2026 вместе с остальными). Оставлен как
+    # есть (не удалён), потому что используется за пределами сегодняшнего захода
+    # (tests/api/mts_link/test_logging.py целиком об этом) — выводы и фикс того
+    # файла в это изменение не входят.
 
     def get_action_log(self, entity_type: str, entity_id: int) -> List[Dict]:
-        """Журнал действий пользователей (кто/когда изменил настройки тенанта или
-        создал/изменил/удалил мероприятие) — часть 10, раздел «Что логируем», п.1–2.
-
-        Контракт не подтверждён, часть 10.
-        """
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
         resp = self.client.get(f"/admin/logs?entity_type={entity_type}&entity_id={entity_id}")
         expect_status(resp, 200)
         return resp.json().get("data", [])
@@ -364,13 +349,9 @@ class MtsLinkEndpoint:
         operation: Optional[str] = None,
         limit: int = 50,
     ) -> List[Dict]:
-        """Записи request_log_audit (запрос/ответ/признак успеха по операции обмена с
-        МТС Линк) — часть 10, раздел «Что логируем», п.3. Первая попытка — через API;
-        если отдельного API не появится, см. get_request_log_entries_via_sql (план,
-        п.4, вопрос 4).
-
-        Контракт не подтверждён, часть 10.
-        """
+        """Контракт не подтверждён; путь ниже подтверждённо 404 (проверено
+        02.11.2026, см. докстринг модуля) — метод оставлен для test_logging.py, не
+        пересматривался в этом заходе."""
         params = [f"limit={limit}"]
         if schedule_item_id is not None:
             params.append(f"filters[schedule_item_id]={schedule_item_id}")
@@ -386,23 +367,14 @@ class MtsLinkEndpoint:
         operation: Optional[str] = None,
         limit: int = 50,
     ) -> List[Dict]:
-        """SQL-фоллбэк к таблице request_log_audit, если отдельного API не появится
-        (план, п.4, вопрос 4). В требованиях к логированию упоминается идея такого
-        хелпера «по аналогии с external_requests_audit в tests/api/buk», но в этом
-        репозитории такого хелпера нет ни для одной интеграции (проверено — во всём
-        tests/api/buk нет ни одного обращения к БД, только HTTP). Требует
-        MTS_LINK_DB_DSN (.env.example) и установленный DB-драйвер — ни то, ни другое
-        пока не настроено в проекте, поэтому метод сразу поднимает понятную ошибку
-        вместо тихого падения где-то внутри SQL-запроса.
-
-        Контракт не подтверждён, часть 10.
-        """
+        """SQL-фоллбэк к таблице request_log_audit — не настроен в проекте (см.
+        исходный докстринг ниже), не пересматривалось в заходе 02.11.2026."""
         dsn = os.getenv("MTS_LINK_DB_DSN")
         if not dsn:
             raise NotImplementedError(
                 "get_request_log_entries_via_sql: не задан MTS_LINK_DB_DSN (.env.example) — "
                 "SQL-фоллбэк к request_log_audit ещё не настроен. Используйте "
-                "get_request_log_entries (API), когда появится контракт (план, п.4, вопрос 4)."
+                "get_request_log_entries (API), когда появится контракт."
             )
         try:
             import psycopg2  # локальный импорт: зависимость нужна только этому фоллбэку
@@ -428,27 +400,41 @@ class MtsLinkEndpoint:
             columns = [desc[0] for desc in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-    # ── часть 11: запись вебинара ────────────────────────────────────────
+    def get_deletion_audit(self, schedule_item_id: int) -> List[Dict]:
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
+        return self.get_request_log_entries(schedule_item_id=schedule_item_id, operation="delete")
 
-    def get_recording_info(self, schedule_item_id: int) -> Dict:
-        """Статус конвертации и ссылка на запись вебинара в «Результатах активности» —
-        часть 0 (статус конвертации) и часть 11 (плеер, зачёт посещения по просмотру).
+    def wait_for_deletion(
+        self, schedule_item_id: int, timeout: float = 60.0, poll_interval: float = 3.0
+    ) -> List[Dict]:
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
+        deadline = time.monotonic() + timeout
+        entries: List[Dict] = []
+        while time.monotonic() < deadline:
+            entries = self.get_deletion_audit(schedule_item_id)
+            if any(e.get("success") for e in entries):
+                return entries
+            logger.info(f"Schedule item {schedule_item_id}: deletion not confirmed yet, retrying")
+            time.sleep(poll_interval)
+        return entries
 
-        Контракт не подтверждён, часть 0/11.
-        """
-        resp = self.client.get(f"/schedule-item/{schedule_item_id}/mts-link/recording")
-        expect_status(resp, 200)
-        return resp.json().get("data", {})
+    def retry_part(self, schedule_item_id: int, part: str) -> Dict:
+        """Контракт не подтверждён; живой осмотр формы редактирования 02.11.2026
+        показал ОДНУ общую кнопку «Повторить синхронизацию», не по кнопке на
+        каждую часть, как предполагает сигнатура ниже — не пересматривалось
+        подробнее в этом заходе, путь ниже не проверен."""
+        resp = self.client.post(f"/schedule-item/{schedule_item_id}/mts-link/retry", json={"part": part})
+        expect_status(resp, (200, 202))
+        logger.info(f"MTS Link event {schedule_item_id}: retry part={part}")
+        return resp.json()
 
-    # ── часть 14: индивидуальная траектория ───────────────────────────────
+    # ── индивидуальная траектория (НЕ пересмотрено 02.11.2026) ────────────
 
     def get_it_webinar(self, assignment_id: int) -> Dict:
-        """Вебинар, созданный фоном под конкретное назначение в индивидуальной
-        траектории (один вебинар на назначение, один зарегистрированный слушатель) —
-        часть 14.
-
-        Контракт не подтверждён, часть 14.
-        """
+        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
+        докстринг модуля)."""
         resp = self.client.get(f"/individual-trajectory/assignments/{assignment_id}/mts-link")
         expect_status(resp, 200)
         return resp.json().get("data", {})

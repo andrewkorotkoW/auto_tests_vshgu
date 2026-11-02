@@ -10,7 +10,14 @@ is_mts_link_type_option_visible (гипотетический UI-флоу «об
 правый клик по календарю, см. докстринг admin_event_mts_page.py). Не починка, а по сути
 написание заново — нужна отдельная живая разведка по каждому сценарию (иконка типа
 скрывается без интеграции? поле URL недоступно? тип нельзя сменить после создания?),
-владелец подтвердил удаление, не перенос в TODO."""
+владелец подтвердил удаление, не перенос в TODO.
+
+02.11.2026: статус-проверка внутри оставшегося теста сведена с реальным контрактом
+(get_part_status(item, "creation") теперь читает attributes.mts_link.webinar_status
+через ScheduleItemsEndpoint.get, а не несуществующий отдельный эндпоинт; реальное
+промежуточное значение — "syncing", не "in_progress") — остальная часть теста
+(ActivityPage/recording_player) не пересматривалась, её собственный TODO выше
+актуален как был."""
 import allure
 import pytest
 
@@ -32,8 +39,8 @@ class TestEventType:
         from ui.pages.activity_page import ActivityPage
 
         item = created_schedule_item(item_type="mts_link", url="")
-        status = mts_link_endpoint.get_part_status(item["id"], "creation")
-        assert status == "in_progress", status
+        status = mts_link_endpoint.get_part_status(item, "creation")
+        assert status == "syncing", status
 
         activity_page = ActivityPage(user_page)
         assert activity_page.is_recording_player_visible() is False, (
