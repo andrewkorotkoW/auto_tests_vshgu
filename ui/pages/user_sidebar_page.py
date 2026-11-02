@@ -185,49 +185,65 @@ class UserSidebarPage(BasePage):
         (.v-overlay--active без текста), а не когда просто не видна кнопка.
 
         Если за grace_ms не появилось ни вводное окно, ни кнопка шага — тура нет (истории
-        закрыты через API, см. prepared_user), выходим сразу, а не через 12 + 4 с."""
+        закрыты через API, см. prepared_user), выходим сразу, а не через 12 + 4 с.
+
+        02.11.2026: было обнаружено, что метод мог «успешно» вернуться (не бросив исключение),
+        оставив тур фактически не пройденным — вкладки страницы программы (Расписание/Курсы и
+        тесты/Игровая сессия) оставались неактивными (тот самый дефект, из-за которого
+        tests/ui/courses/tincan/stream/test_user_tincan_flow.py был xfail). Причина — клик
+        `nxt.click(force=True)` пропускает проверку, что кнопка реально кликабельна (а не
+        временно перекрыта анимацией перехода к следующему шагу), из-за чего шаги могли
+        щёлкаться быстрее, чем тур успевал обработать предыдущий — финальный `wait_hidden`
+        после цикла ловил эту недопройденность, но был внутри общего `except`, который её
+        тихо глотал. Теперь: обычный клик без force (ждёт реальной кликабельности, естественно
+        не даёт обогнать анимацию) и падение, если тур в итоге не закрылся — вызывающий код
+        узнаёт об этом сразу, а не через непонятную ошибку десятком шагов позже."""
         page = self.page
         deadline = time.monotonic() + timeout_s
+        start = page.locator(TOUR_START_SELECTOR).first
+        nxt = page.locator(TOUR_NEXT_SELECTOR).first
         try:
-            start = page.locator(TOUR_START_SELECTOR).first
-            nxt = page.locator(TOUR_NEXT_SELECTOR).first
-            try:
-                page.locator(f"{TOUR_START_SELECTOR}:visible, {TOUR_NEXT_SELECTOR}:visible").first.wait_for(
-                    state="visible", timeout=grace_ms
-                )
-            except PlaywrightTimeoutError:
-                if self._onboarding_dim_present():
-                    page.keyboard.press("Escape")
-                    page.wait_for_timeout(500)
-                return
-            if start.is_visible():
-                # клик по ещё анимирующемуся окну теряется — нажимаем, проверяем, что окно ушло, иначе повторяем
-                for attempt in range(3):
-                    start.click()
-                    try:
-                        start.wait_for(state="hidden", timeout=3000)
-                        break
-                    except Exception:  # noqa: BLE001
-                        logger.info(f"Онбординг: «Пройти обучение» не сработало, попытка {attempt + 1}")
-                logger.info("Онбординг: «Пройти обучение»")
-            while time.monotonic() < deadline:
-                try:
-                    nxt.wait_for(state="visible", timeout=4000)
-                    label = (nxt.inner_text() or "").strip()
-                    nxt.click(force=True)
-                    if label.startswith("Заверш"):
-                        break
-                    continue
-                except Exception:  # noqa: BLE001 — кнопки нет: тур либо закончился, либо между шагами
-                    pass
-                if not self._onboarding_dim_present():
-                    break
-            self.wait_hidden(page.locator(".v-overlay--active:has-text('Интерактивное руководство')").first, timeout=5000)
+            page.locator(f"{TOUR_START_SELECTOR}:visible, {TOUR_NEXT_SELECTOR}:visible").first.wait_for(
+                state="visible", timeout=grace_ms
+            )
+        except PlaywrightTimeoutError:
             if self._onboarding_dim_present():
                 page.keyboard.press("Escape")
                 page.wait_for_timeout(500)
-        except Exception as exc:  # noqa: BLE001
-            logger.info(f"Онбординг не появился или уже пройден: {exc}")
+            return
+        if start.is_visible():
+            # клик по ещё анимирующемуся окну теряется — нажимаем, проверяем, что окно ушло, иначе повторяем
+            for attempt in range(3):
+                start.click()
+                try:
+                    start.wait_for(state="hidden", timeout=3000)
+                    break
+                except Exception:  # noqa: BLE001
+                    logger.info(f"Онбординг: «Пройти обучение» не сработало, попытка {attempt + 1}")
+            logger.info("Онбординг: «Пройти обучение»")
+        while time.monotonic() < deadline:
+            try:
+                nxt.wait_for(state="visible", timeout=4000)
+                label = (nxt.inner_text() or "").strip()
+                # Без force: естественная проверка кликабельности не даёт щёлкнуть раньше,
+                # чем тур обработает предыдущий шаг (см. докстринг — раньше здесь был force=True).
+                nxt.click(timeout=4000)
+                if label.startswith("Заверш"):
+                    break
+                continue
+            except Exception:  # noqa: BLE001 — кнопки нет: тур либо закончился, либо между шагами
+                pass
+            if not self._onboarding_dim_present():
+                break
+        self.wait_hidden(page.locator(".v-overlay--active:has-text('Интерактивное руководство')").first, timeout=8000)
+        if self._onboarding_dim_present():
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(500)
+        if self._onboarding_dim_present():
+            raise AssertionError(
+                "pass_onboarding: тур не закрылся (затемнение осталось после цикла шагов + Escape) — "
+                "страница программы, скорее всего, останется с неактивными вкладками"
+            )
 
     def _onboarding_dim_present(self) -> bool:
         """Есть ли затемнение тура (активный overlay без содержательного текста)."""

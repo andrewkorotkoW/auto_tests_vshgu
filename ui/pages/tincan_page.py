@@ -38,17 +38,29 @@ class TincanPage(BasePage):
         logger.info("Доп. файлы отображаются")
         # ============================
 
-        with self.page.context.expect_page() as new_page_info:
-            self.page.locator("span:has-text('Начать')").first.click(force=True)
-        course_page = new_page_info.value
+        # «Начать» может открыть плеер в новой вкладке — ждём её до 5 с, иначе считаем, что
+        # плеер открылся в текущей (02.11.2026: безусловный expect_page() здесь падал по
+        # таймауту 30 с — новая вкладка открывается не всегда; тот же приём уже был в
+        # start_tincan_individual() ниже, сюда перенесён 02.11.2026).
+        start_btn = self.page.locator("span:has-text('Начать')").first
+        try:
+            with self.page.context.expect_page(timeout=5000) as new_page_info:
+                start_btn.click(force=True)
+            course_page = new_page_info.value
+        except Exception:  # noqa: BLE001
+            course_page = self.page
         # Плеер грузит пакет курса из /static/content/… — ждём DOM вкладки, а готовность
         # самого плеера проверяют wait_visible по кнопкам внутри #iframe ниже.
         course_page.wait_for_load_state("domcontentloaded", timeout=settings.UI_TIMEOUT)
 
         self.frame = course_page.frame_locator("#iframe")
         learn_btn = self.wait_visible(self.frame.locator("button:has-text('Перейти к изучению')").first)
-        learn_btn.click(force=True)
-        start_test_btn = self.wait_visible(self.frame.locator("button:has-text('Начать тест')").first)
+        # Без force: клик до того, как плеер реально навесил обработчик (ещё
+        # инициализирует xAPI-сессию), не запускает переход — тогда «Начать тест» ищется
+        # не на том экране и падает по таймауту (02.11.2026). «Начать тест» — следующий
+        # экран плеера, грузится отдельно — даём больше времени, чем общий UI_TIMEOUT.
+        learn_btn.click()
+        start_test_btn = self.wait_visible(self.frame.locator("button:has-text('Начать тест')").first, timeout=20000)
         start_test_btn.click(force=True)
 
         self.page = course_page
@@ -136,8 +148,12 @@ class TincanPage(BasePage):
         start_test_btn.click(force=True)
 
     def answer_by_text(self, text: str):
-        """Выбрать ответ по тексту."""
-        self.frame.locator(f"div.choice-answer__text:has-text('{text}')").first.click(force=True)
+        """Выбрать ответ по тексту. Раньше здесь был селектор div.choice-answer__text —
+        в реальной разметке вопроса такого класса нет, варианты лежат в label.c-radio
+        (тот же, что уже использует answer_first_radio/answer_nth_option и сам тест
+        test_user_tincan_flow.py для проверки «виден ли вопрос») — не матчился никогда,
+        падал таймаутом (02.11.2026, живая разведка на стенде vshgu2-2420-filters)."""
+        self.frame.locator(f"label.c-radio:has-text('{text}')").first.click(force=True)
 
 
 
