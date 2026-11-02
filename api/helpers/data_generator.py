@@ -291,28 +291,46 @@ def generate_schedule_item_payload(
     # Алиас "mts_link" в вызовах не трогаем — только то, что реально уходит в API.
     real_type = "mts_link_webinar" if item_type == "mts_link" else item_type
 
-    return {
-        "data": {
-            "attributes": {
-                "name": name,
-                "type": real_type,
-                "performance_direction_id": performance_direction_id,
-                "broad_topic_id": broad_topic_id,
-                "content_type": content_type,
-                "location": location,
-                "url": url,
-                "teacher_ids": teacher_ids,
-                "listeners": [],
-                "date_time_from": date_time_from,
-                "date_time_to": date_time_to,
-                "files": [],
-                "region": {
-                    "region_id": region_id,
-                    "region_name": region_name
-                }
-            }
+    attributes = {
+        "name": name,
+        "type": real_type,
+        "performance_direction_id": performance_direction_id,
+        "broad_topic_id": broad_topic_id,
+        "content_type": content_type,
+        "location": location,
+        "url": url,
+        "teacher_ids": teacher_ids,
+        "listeners": [],
+        "date_time_from": date_time_from,
+        "date_time_to": date_time_to,
+        "files": [],
+        "region": {
+            "region_id": region_id,
+            "region_name": region_name
         }
     }
+    if item_type == "mts_link":
+        # show_activity_results обязателен для mts_link — в форме это чекбокс
+        # «Показывать результаты деятельности», по умолчанию включён в реальном
+        # UI (admin_event_mts_page.py, create_mts_webinar не трогает его —
+        # значит дефолт самой формы True).
+        attributes["show_activity_results"] = True
+        # region НЕ трогаем здесь (используется тот же {region_id, region_name}, что и
+        # для любого другого item_type, см. attributes выше) — created_module
+        # (conftest.py) всегда создаёт СВЕЖИЙ модуль (region: null,
+        # must_use_module_region: true по умолчанию), которому нужен непустой
+        # region.region_id. Подтверждено 02.11.2026 на свежем модуле стенда
+        # mts-link-release-main: region=[] -> 422 "region_id обязательно для
+        # заполнения", region={"region_id":1,"region_name":"Москва"} -> 201.
+        # (Раньше здесь стояло region=[] — это предположение проверялось только на
+        # module 46, у которого регион был задан вручную через реальный UI; для
+        # очного мероприятия на МОДУЛЕ С УЖЕ ЗАДАННЫМ регионом нужен обратный кейс
+        # — region элемента должен быть пустым массивом, иначе 422 "Поле Регион
+        # должно быть пустым, если регион указан в модуле" — но такого пути в
+        # тестах/фикстурах сейчас нет, created_schedule_item всегда идёт через
+        # свежий created_module.)
+
+    return {"data": {"attributes": attributes}}
 
 
 # Вера — user_id 2 на всех стендах VSHGU (zinoveva-vs@ranepa.ru, подтверждено GET
@@ -332,10 +350,17 @@ def mts_link_safe_schedule_item_kwargs(**overrides) -> dict:
       если прогон идёт после 10:05 по стенду, дефолтная дата уже в прошлом, и вебинар на
       момент создания уже прошёл окно автостарта (date_from − 10 мин у МТС Линк) — тогда
       удаление в тесте падает 403 "stop it before deleting", подтверждено разведкой
-      29.10.2026 (TC-MTS-108, docs/test_cases/mts_link/16_prod_safe_run.md).
+      29.10.2026 (TC-MTS-108, docs/test_cases/mts_link/16_prod_safe_run.md);
+    - region_id=1/region_name="Москва" — дефолт generate_schedule_item_payload
+      (region_id=33) верен для develop (подтверждено владельцем), но на
+      mts-link-release-main region_id Москвы — 1 (подтверждено GET
+      /programs/44/streams/44/modules 02.11.2026, module 46). Без этого свежий
+      модуль (created_module всегда создаёт такой, region: null) получает 422
+      "region_id обязательно для заполнения" — регион с id=33 на этом стенде либо
+      не существует, либо не Москва.
     Тесты, которым нужен конкретный/«сломанный» лектор (test_lecturers.py, test_retry.py,
     test_delete.py/test_logging.py с teacher_ids=[teacher["id"]]) переопределяют teacher_ids
-    через overrides как обычно — это не трогает дату."""
+    через overrides как обычно — это не трогает дату/регион."""
     from datetime import datetime, timedelta
 
     tomorrow = datetime.now() + timedelta(days=1)
@@ -345,6 +370,8 @@ def mts_link_safe_schedule_item_kwargs(**overrides) -> dict:
         "teacher_ids": [MTS_LINK_SAFE_TEACHER_ID],
         "date_time_from": tomorrow.strftime("%Y-%m-%dT11:00"),
         "date_time_to": tomorrow.strftime("%Y-%m-%dT11:10"),
+        "region_id": 1,
+        "region_name": "Москва",
     }
     kwargs.update(overrides)
     return kwargs
