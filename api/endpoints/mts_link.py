@@ -13,7 +13,8 @@ tests/{api,ui}/mts_link/*) сведены с реальным контракто
   `GET .../schedule-items/{id}` (ScheduleItemsEndpoint.get, уже рабочий путь):
       {
         "mts_webinar_id": int,
-        "webinar_status": "syncing" | "synced" | вероятно "error" (не подтверждено),
+        "webinar_status": "syncing" | "synced" | "finished" (после «Завершить мероприятие»
+                           в МТС Линк, 03.11.2026) | вероятно "error" (не подтверждено),
         "record_status": "pending" | ...,
         "record_link": str | None,
         "participants_sync_status": "pending" | "success" | вероятно "error",
@@ -21,7 +22,8 @@ tests/{api,ui}/mts_link/*) сведены с реальным контракто
         "files_sync_status": тот же набор значений,
         "stats_sync_status": тот же набор значений,
       }
-  Значения "syncing"/"synced" у webinar_status и "pending"/"success" у остальных
+  Значения "syncing"/"synced"/"finished" у webinar_status, "pending"/"in_progress" у
+  record_status (конвертация записи после recordFile.ready) и "pending"/"success" у остальных
   подтверждены живьём (несколько снэпшотов); "error" — по аналогии и по наличию
   кнопки «Повторить синхронизацию» в форме редактирования, НЕ пойман живьём (не
   вышло стабильно спровоцировать ошибку синхронизации на реальном проде).//
@@ -86,11 +88,12 @@ _PART_FIELD = {
 }
 
 # Терминальные значения по частям — у webinar_status подтверждённое успешное
-# значение "synced" (НЕ "success", как у остальных *_sync_status полей). "error"
-# по каждой части — предположение (см. докстринг модуля).
+# значение "synced" (НЕ "success", как у остальных *_sync_status полей); "finished" —
+# после завершения мероприятия ведущим (живой эфир 03.11.2026), для ожидания создания
+# тоже терминален. "error" по каждой части — предположение (см. докстринг модуля).
 _TERMINAL_BY_PART = {
-    "creation": {"synced", "error"},
-    "webinar_data": {"synced", "error"},
+    "creation": {"synced", "finished", "error"},
+    "webinar_data": {"synced", "finished", "error"},
     "participants": {"success", "error"},
     "lecturers": {"success", "error"},
     "files": {"success", "error"},
@@ -188,7 +191,7 @@ class MtsLinkEndpoint:
         values = list(parts.values())
         if "error" in values:
             return "error"
-        success_values = {"synced", "success"}
+        success_values = {"synced", "finished", "success"}
         if all(v in success_values for v in values):
             return "success"
         return None
