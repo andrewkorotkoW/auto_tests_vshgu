@@ -57,6 +57,17 @@
 |---|---|---|
 | 1 | Создать мероприятие item_type=webinar, получить GET schedule-items/{id} | attributes.mts_link отсутствует/пусто — появление интеграции не задевает обычные мероприятия на уровне ответа API |
 
+### TC-MTS-112 Невалидный/отсутствующий type в schedule-items → 422, не 500
+- Автотест: tests/api/mts_link/test_regression.py::TestRegression::test_invalid_or_missing_type_returns_422_not_500
+- Приоритет: high   Тип: api   Роли: -
+- Предусловия: Программа → поток → модуль (для PUT — уже созданное мероприятие item_type=webinar)
+- Требование: регресс бага №6 (16_prod_safe_run.md, «Новое в 02.11» + ретест 03.11): ScheduleItemType::from() без защиты от ValueError ронял 500 со стектрейсом и путём /srv/app в ответе; 03.11.2026 на mts-link-release-main исправлено
+| Шаг | Действие | Ожидаемый результат |
+|---|---|---|
+| 1 | POST schedule-items с type не из enum (`definitely_not_a_type`) | 422, ошибка по полю data.attributes.type, в теле нет стектрейса/«/srv/app»/ValueError |
+| 2 | POST schedule-items без поля type | 422, «Поле Тип обязательно для заполнения», без стектрейса |
+| 3 | PUT schedule-items/{id} с частичным телом без type (`{"name": ...}`) | 422 (Тип и остальные обязательные поля), без стектрейса — не 500 |
+
 ### TC-MTS-096 Тенант без интеграции: тип «МТС Линк» недоступен, остальное не меняется
 - Приоритет: high   Тип: ui   Роли: admin, manager
 - Предусловия: Сид части 12 — тенант без интеграции с МТС Линк
