@@ -15,15 +15,18 @@ tests/{api,ui}/mts_link/*) сведены с реальным контракто
         "mts_webinar_id": int,
         "webinar_status": "syncing" | "synced" | "finished" (после «Завершить мероприятие»
                            в МТС Линк, 03.11.2026) | вероятно "error" (не подтверждено),
-        "record_status": "pending" | ...,
-        "record_link": str | None,
+        "record_status": "pending" | "in_progress" | "success" (04.11.2026, ~3 ч после
+                          recordFile.ready),
+        "record_link": str | None — ссылка на mp4 в хранилище МТС Линк
+                       (events-storage.webinar.ru), НЕ в ЛМС; копия записи в ЛМС лежит
+                       в attributes.results_activities[].material.file.url (/static/…),
         "participants_sync_status": "pending" | "success" | вероятно "error",
         "lecturers_sync_status": тот же набор значений,
         "files_sync_status": тот же набор значений,
         "stats_sync_status": тот же набор значений,
       }
-  Значения "syncing"/"synced"/"finished" у webinar_status, "pending"/"in_progress" у
-  record_status (конвертация записи после recordFile.ready) и "pending"/"success" у остальных
+  Значения "syncing"/"synced"/"finished" у webinar_status, "pending"/"in_progress"/"success"
+  у record_status (конвертация записи после recordFile.ready) и "pending"/"success" у остальных
   подтверждены живьём (несколько снэпшотов); "error" — по аналогии и по наличию
   кнопки «Повторить синхронизацию» в форме редактирования, НЕ пойман живьём (не
   вышло стабильно спровоцировать ошибку синхронизации на реальном проде).//
