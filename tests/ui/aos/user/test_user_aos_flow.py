@@ -1,3 +1,13 @@
+"""Слушатель проходит АОС (анкету обратной связи) целиком.
+
+Сценарий переписан 10.11.2026 под реальную структуру плеера: АОС из generate_aos_payload
+(без своих вопросов) — это не визард «один вопрос — один экран» с кнопкой «Вперед», а
+группы вопросов по одной на экран («Вебинар …»: три шкалы 1–10 + комментарий + чекбоксы
+компетенций; «Организация учебного дня»: шкалы + комментарий), см. AosPage. Старый
+сценарий ждал «Вперед», которого в плеере нет, и с 24.09 висел под xfail.
+"""
+import re
+
 import allure
 import pytest
 from playwright.sync_api import expect
@@ -17,25 +27,9 @@ class TestUserAosFlow:
     @pytest.mark.ui
     @pytest.mark.smoke
     @pytest.mark.e2e
-    @pytest.mark.xfail(
-        reason=(
-            "Дефект «контент не виден у слушателя» НЕ подтвердился и исправлен: карточка "
-            "программы и вкладка «Анкета обратной связи» открываются штатно через "
-            "a[data-onboarding-step='education-tabs-feedback'] (см. AosPage.start_aos), "
-            "prepared_user снимает блокирующую модалку «данные о себе». Обнаружен другой, "
-            "не связанный дефект теста: сгенерированный `created_aos` — одностраничная "
-            "анкета (3 группы шкал «оцените от 1 до 10» + чекбоксы компетенций + текстовый "
-            "комментарий, всё на одной странице), а не пошаговый визард «один вопрос — один "
-            "экран» с кнопкой «Вперед», который предполагают шаги 7-15. Кнопка «Ответить» "
-            "остаётся disabled, пока не отвечены ВСЕ обязательные шкалы на странице, поэтому "
-            "«Вперед» не появляется никогда (timeout). Нужно переписать сценарий под реальную "
-            "структуру анкеты (или сгенерировать AOS с явно постраничными вопросами), это "
-            "отдельная задача, не про видимость контента."
-        ),
-        strict=False,
-    )
     def test_user_complete_aos(self, page, api_client, prepared_user, created_aos, assignments_endpoint):
-        """API: создать → назначить → UI: логин → пройти АОС."""
+        """API: создать → назначить → UI: логин → пройти все группы анкеты → «Спасибо» →
+        повторный вход: вкладки «Анкета обратной связи» больше нет."""
 
         # ========== API: ПОДГОТОВКА ==========
         with allure.step("1. Создать пользователя"):
@@ -72,69 +66,26 @@ class TestUserAosFlow:
             UserSidebarPage(page).dismiss_popups()
             aos_page.start_aos(aos["program_name"])
 
-        with allure.step("7. Вопрос 1"):
-            aos_page.wait_loaded()
-            aos_page.answer_first_option()
-            aos_page.click_answer()
-            aos_page.click_next()
+        with allure.step("7. Пройти все группы вопросов: шкалы, комментарии, компетенции → «Завершить»"):
+            groups = aos_page.complete_questionnaire()
+            # две группы: «Вебинар …» (по мероприятию расписания) и «Организация учебного дня»
+            assert groups >= 2, f"ожидали минимум 2 группы вопросов, прошли {groups}"
+            logger.info(f"✅ АОС пройден: {groups} групп(ы)")
 
-        with allure.step("8. Вопрос 2"):
-            aos_page.answer_first_option()
-            aos_page.click_answer()
-            aos_page.click_next()
-
-        with allure.step("9. Вопрос 3"):
-            aos_page.answer_first_option()
-            aos_page.click_answer()
-            aos_page.click_next()
-
-        with allure.step("10. Вопрос 4 (текст)"):
-            aos_page.answer_textarea("Автотест")
-            aos_page.click_answer()
-            aos_page.click_next()
-
-        with allure.step("11. Вопрос 5 (чекбоксы)"):
-            aos_page.answer_first_checkboxes(3)
-            aos_page.click_answer()
-            aos_page.click_next()
-
-        with allure.step("12. Вопрос 6"):
-            aos_page.answer_first_option()
-            aos_page.click_answer()
-            aos_page.click_next()
-
-        with allure.step("13. Вопрос 7"):
-            aos_page.answer_first_option()
-            aos_page.click_answer()
-            aos_page.click_next()
-
-        with allure.step("14. Вопрос 8 (текст)"):
-            aos_page.answer_textarea("Автотест_8_вопрос")
-            aos_page.click_answer()
-            aos_page.click_next()
-
-        with allure.step("15. Вопрос 9"):
-            aos_page.page.locator("input[type='radio']").first.check(force=True)
-            aos_page.click_answer()
-
-        with allure.step("16. Завершить АОС"):
-            aos_page.click_finish()
-
-        with allure.step("17. Скриншот результата"):
+        with allure.step("8. После «Спасибо за прохождение опроса!» плеер возвращает в «Моё обучение»"):
+            expect(page).to_have_url(re.compile(r"/education(?:[/?#]|$)"), timeout=settings.UI_TIMEOUT)
             page.screenshot(path="allure-results/03_aos_completed.png")
             allure.attach.file("allure-results/03_aos_completed.png", "АОС пройден", allure.attachment_type.PNG)
 
-        logger.info("✅ АОС пройден!")
-
-        with allure.step("18. Повторный вход — вкладка не отображается после прохождения АОС"):
+        with allure.step("9. Повторный вход — вкладка не отображается после прохождения АОС"):
             page.context.clear_cookies()
             login_page.login(user["email"], user["password"])
             UserSidebarPage(page).dismiss_popups()
 
-            # Снова открываем программу
-            program_card = page.locator(f"span:has-text('{aos['program_name']}')").first
-            expect(program_card).to_be_visible(timeout=settings.UI_TIMEOUT)
-            program_card.click()
+            # Снова открываем программу — тем же путём, что и в шаге 6 (карточка в «Моё
+            # обучение» открывается кнопкой «Перейти к программе», заголовок не кликабелен;
+            # старый локатор span:has-text(<имя>) карточку уже не находил)
+            aos_page.open_program(aos["program_name"])
             UserSidebarPage(page).dismiss_popups()
 
             # Скриншот после входа в программу

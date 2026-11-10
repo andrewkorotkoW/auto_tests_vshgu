@@ -99,7 +99,9 @@ def compute_area(rel_path: Path) -> str:
         return rest[0] if rest else "misc"
     if zone == "e2e":
         return "e2e"
-    return zone
+    # файл прямо в корне tests/ (tests/test_smoke.py): parts[0] — сам файл, область —
+    # его имя без расширения, а не «test_smoke.py» (xfail с 25.09.2026, снят 10.11)
+    return Path(zone).stem if len(parts) == 1 else zone
 
 
 # ------------------------------------------------------------------------- ast-разбор
