@@ -1,4 +1,5 @@
 import os
+import os
 import time
 from pathlib import Path
 
@@ -43,6 +44,10 @@ from api.helpers.data_generator import (
     mts_link_safe_schedule_item_kwargs,
 
 )
+
+# Пауза после удаления мероприятия «МТС Линк» до сноса его программы/потока/модуля/пользователя —
+# см. комментарий в created_schedule_item. Переопределяется через MTS_LINK_DELETE_GRACE_SECONDS.
+MTS_LINK_DELETE_GRACE_SECONDS = int(os.getenv("MTS_LINK_DELETE_GRACE_SECONDS", "60"))
 from config.settings import settings
 from config.environments import ENVIRONMENTS, ensure_prod_allowed, get_session, get_storage_state_path, set_active_env
 from utils.logger import logger
@@ -511,9 +516,11 @@ def created_schedule_item(api_client, schedule_items_endpoint, created_program, 
     (например явный teacher_ids в test_lecturers.py/test_retry.py) по-прежнему их
     переопределяют, см. mts_link_safe_schedule_item_kwargs."""
     schedule_ids = []
+    mts_link_item_ids = set()
 
     def _create(**kwargs):
-        if kwargs.get("item_type") == "mts_link":
+        is_mts_link = kwargs.get("item_type") == "mts_link"
+        if is_mts_link:
             kwargs = mts_link_safe_schedule_item_kwargs(**kwargs)
         program = created_program()
         stream = created_stream(program_id=program["id"])
@@ -521,6 +528,8 @@ def created_schedule_item(api_client, schedule_items_endpoint, created_program, 
         payload = generate_schedule_item_payload(**kwargs)
         item_data = schedule_items_endpoint.create(program["id"], stream["id"], module["id"], payload)
         schedule_ids.append((program["id"], stream["id"], module["id"], item_data["id"]))
+        if is_mts_link:
+            mts_link_item_ids.add(item_data["id"])
         return {
             "id": item_data["id"],
             "program_id": program["id"],
@@ -532,11 +541,25 @@ def created_schedule_item(api_client, schedule_items_endpoint, created_program, 
 
     yield _create
 
+    mts_link_created = False
     for program_id, stream_id, module_id, item_id in schedule_ids:
         try:
-            schedule_items_endpoint.delete(program_id, stream_id, module_id, item_id)
+            if schedule_items_endpoint.delete(program_id, stream_id, module_id, item_id):
+                mts_link_created = mts_link_created or item_id in mts_link_item_ids
         except Exception as e:
             logger.warning(f"Failed to delete schedule item {item_id}: {e}")
+    if mts_link_created:
+        # Вебинар в МТС Линк удаляет асинхронный DeleteMtsWebinarJob, и организацию он
+        # разрешает через item → модуль → поток → программу. Если сразу снести модуль/поток/
+        # программу (их фикстуры финализируются следом), джоба падает «Интеграция с МТС Линк не
+        # настроена для этой организации» и вебинар остаётся висеть на боевом аккаунте
+        # (Sentry VSHGU-DEV-LMS-242/243; 10.11.2026 — вебинары 319/324/329 из наших прогонов,
+        # у всех webinar_status=error; это и есть природа «недетерминированного бага №3» из
+        # 16_prod_safe_run.md). Задержка очереди на стенде доходила до ~30 с (item 206 при
+        # паузе 15 с всё равно не успел), поэтому ждём дольше; у ИТ-назначений путь через
+        # пользователя, там 15 с хватало. Наблюдать джобу через API нечем.
+        import time
+        time.sleep(MTS_LINK_DELETE_GRACE_SECONDS)
 
 
 @pytest.fixture

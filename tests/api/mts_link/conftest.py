@@ -13,6 +13,8 @@ import pytest
 from api.endpoints.mts_link import MtsLinkEndpoint
 from config.environments import is_feature_ready
 
+from conftest import MTS_LINK_DELETE_GRACE_SECONDS  # общая пауза с created_schedule_item (корневой conftest)
+
 
 @pytest.fixture(autouse=True)
 def skip_if_mts_link_not_ready():
@@ -63,3 +65,13 @@ def created_it_event(mts_link_endpoint, created_user):
         except Exception as exc:  # cleanup не должен ронять отчёт
             import logging
             logging.getLogger("autotests").warning(f"Failed to delete IT event {content_id}: {exc}")
+    if created:
+        # Снятие назначения в ЛМС мгновенное, а вебинар в МТС Линк удаляет асинхронный
+        # DeleteMtsWebinarJob. Если следом сразу удалить пользователя (teardown created_user),
+        # джоба не может разрешить организацию по уже удалённому владельцу назначения и падает
+        # «Интеграция с МТС Линк не настроена для этой организации» (Sentry VSHGU-DEV-LMS-242/243,
+        # 10.11.2026: вебинары 319/324/329 — ровно наши три прогона), а вебинар остаётся висеть
+        # на боевом аккаунте МТС Линк. Наблюдать состояние джобы через API нечем — даём ей
+        # время отработать до удаления зависимых сущностей.
+        import time
+        time.sleep(MTS_LINK_DELETE_GRACE_SECONDS)
