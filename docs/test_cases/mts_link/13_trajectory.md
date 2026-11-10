@@ -13,7 +13,7 @@
 `/individual-trajectory/assignments/{id}/mts-link`. 10.11.2026 восстановлены на реальном контракте (живая разведка
 на mts-link-release-main): мероприятие «МТС Линк» в ИТ — офлайн-контент пользователя, `POST /users/content/offline`
 (`data.user_ids` + `attributes` как у schedule-item), список и статус — `GET /users/content/offline/user-content/{user_id}`
-(`attributes.url`, `attributes.mts_link`, `attributes.is_registered`), снятие — `DELETE /users/content/offline/{id}`.
+(`attributes.url`, `attributes.mts_link`, `attributes.is_registered`), снятие — `DELETE /users/content/offline/detach-activities` с `data.attributes.user_ids` + `content_ids` (так делает админка; маршрут `DELETE /users/content/offline/{id}` фронт не использует, он отвечает 404).
 В админке: карточка пользователя → «Назначения» → «Индивидуальная траектория обучения» → вкладка «Очные».
 Стенд — реальный прод-аккаунт МТС Линк (лектор Вера, дата завтра, имена с «[ТЕСТ]»), см. 16_prod_safe_run.md.
 TC-MTS-079 требует проведённого эфира с ведущим — ручной шаг ПМИ, без автотеста.
@@ -47,17 +47,8 @@ TC-MTS-079 требует проведённого эфира с ведущим 
 - Требование: часть 14, 25_часть_14_вебинар_в_индивидуальной_траектории.md, раздел «Снятие назначения»
 | Шаг | Действие | Ожидаемый результат |
 |---|---|---|
-| 1 | Снять мероприятие с индивидуальной траектории слушателя | Мероприятие сразу пропало из ИТ слушателя. Известный дефект (10.11.2026): `DELETE /users/content/offline/{id}` отвечает 404 «No query results for model [Activity] {id}» при фактически успешном удалении — покрыт xfail-тестом `test_delete_it_event_responds_2xx` |
+| 1 | Снять мероприятие с индивидуальной траектории слушателя (админка → ИТ → Очные → удалить; `DELETE /users/content/offline/detach-activities`, `user_ids` + `content_ids`) | Ответ 200, мероприятие сразу пропало из ИТ слушателя |
 | 2 | Проверить МТС Линк (кабинет / `external_requests_audit`: `DELETE …/eventsessions/{id}`) | Вебинар и сессия удалены целиком; в `mts_webinars` у записи заполнен `deleted_at` (ручная сверка, в автотесте только шаг 1) |
-
-### TC-MTS-078a DELETE назначения в ИТ отвечает 2xx, а не 404
-- Автотест: tests/api/mts_link/test_trajectory.py::TestTrajectory::test_delete_it_event_responds_2xx
-- Приоритет: medium   Тип: api   Роли: manager
-- Предусловия: Назначение в ИТ с синхронизированным вебинаром
-- Требование: часть 14, раздел «Снятие назначения» (контракт ответа)
-| Шаг | Действие | Ожидаемый результат |
-|---|---|---|
-| 1 | `DELETE /users/content/offline/{id}` | 200/204. Факт 10.11.2026: 404 «No query results for model [App\DbLayer\Eloquent\Models\Activity] {id}», назначение при этом удалено — xfail(strict) до исправления |
 
 ### TC-MTS-079 Снятие назначения после вебинара не удаляет его
 - Автотест: — (ручной: нужен реально проведённый эфир с ведущим, см. ПМИ)

@@ -71,25 +71,8 @@ class TestTrajectory:
             it = created_it_event(name="[ТЕСТ] ИТ: снятие до вебинара")
             assert mts_link_endpoint.wait_for_it_part_status(it["user_id"], it["content_id"], "creation") == "synced"
 
-        with allure.step("2. Снять мероприятие с индивидуальной траектории"):
-            # Статус ответа здесь намеренно не проверяется: DELETE отвечает 404 «No query results
-            # for model [Activity] {id}», хотя назначение реально удаляется — известный дефект,
-            # зафиксирован отдельным xfail-тестом ниже (test_delete_it_event_responds_2xx).
-            mts_link_endpoint.delete_it_event(it["content_id"])
+        with allure.step("2. Снять мероприятие с индивидуальной траектории (как админка: detach-activities)"):
+            assert mts_link_endpoint.delete_it_event(it["user_id"], it["content_id"]) is True
 
         with allure.step("3. Мероприятие пропало из ИТ слушателя сразу, без ожидания МТС Линк"):
             assert mts_link_endpoint.wait_for_it_event_removed(it["user_id"], it["content_id"], timeout=30) is True
-
-    @allure.title("DELETE назначения в ИТ отвечает 2xx, а не 404 (известный дефект)")
-    @pytest.mark.xfail(
-        strict=True,
-        reason="DELETE /users/content/offline/{id} удаляет назначение, но отвечает 404 "
-        "«No query results for model [App\\DbLayer\\Eloquent\\Models\\Activity] {id}» "
-        "(живьём 10.11.2026 на mts-link-release-main, контенты 522/523). Фронт получает ошибку "
-        "при фактически успешном удалении.",
-    )
-    def test_delete_it_event_responds_2xx(self, mts_link_endpoint, created_it_event):
-        it = created_it_event(name="[ТЕСТ] ИТ: код ответа DELETE")
-        assert mts_link_endpoint.wait_for_it_part_status(it["user_id"], it["content_id"], "creation") == "synced"
-        resp = mts_link_endpoint.client.delete(f"{mts_link_endpoint.IT_OFFLINE_PATH}/{it['content_id']}")
-        assert resp.status_code in (200, 204), f"{resp.status_code}: {resp.text[:200]}"

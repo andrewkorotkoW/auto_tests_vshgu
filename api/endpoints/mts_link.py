@@ -445,7 +445,8 @@ class MtsLinkEndpoint:
     #   GET    /users/content/offline/user-content/{user}  — список по пользователю; у элемента
     #                                                        attributes.url и attributes.mts_link
     #                                                        в том же формате, что у schedule-item
-    #   PUT|DELETE /users/content/offline/{content_id}     — правка / снятие назначения
+    #   DELETE /users/content/offline/detach-activities   — снятие назначения (user_ids + content_ids),
+    #                                                        как в админке; PUT /users/content/offline/{id} — правка
     # В админке: карточка пользователя → «Назначения» → «Индивидуальная траектория обучения»
     # → вкладка «Очные» (недельный календарь). Старый путь
     # /individual-trajectory/assignments/{id}/mts-link не существует (404).
@@ -507,15 +508,22 @@ class MtsLinkEndpoint:
             time.sleep(poll_interval)
         return last_status
 
-    def delete_it_event(self, content_id: int) -> bool:
-        """Снять мероприятие с индивидуальной траектории (DELETE). По ТЗ части 14 —
-        вебинар в МТС Линк удаляется целиком, если ещё не прошёл."""
-        resp = self.client.delete(f"{self.IT_OFFLINE_PATH}/{content_id}")
+    def delete_it_event(self, user_id: int, content_id: int) -> bool:
+        """Снять мероприятие с индивидуальной траектории — так, как это делает админка
+        (подтверждено curl владельца 10.11.2026): DELETE /users/content/offline/detach-activities
+        с data.attributes.user_ids + content_ids, по аналогии с дистанционным
+        /users/content/distant/detach-activities. По ТЗ части 14 вебинар в МТС Линк при этом
+        удаляется целиком, если ещё не прошёл. Маршрут DELETE /users/content/offline/{id}
+        фронт не использует (он ищет Activity по id и отвечает 404) — не путать."""
+        resp = self.client.delete(
+            f"{self.IT_OFFLINE_PATH}/detach-activities",
+            json={"data": {"attributes": {"user_ids": [user_id], "content_ids": [content_id]}}},
+        )
         success = resp.status_code in (200, 204)
         if success:
-            logger.info(f"MTS Link IT event deleted: content_id={content_id}")
+            logger.info(f"MTS Link IT event detached: content_id={content_id} user_id={user_id}")
         else:
-            logger.warning(f"MTS Link IT event delete failed: content_id={content_id}, status={resp.status_code}")
+            logger.warning(f"MTS Link IT event detach failed: content_id={content_id}, status={resp.status_code} {resp.text[:200]}")
         return success
 
     def wait_for_it_event_removed(

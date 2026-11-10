@@ -59,7 +59,7 @@ def created_it_event(mts_link_endpoint, created_user):
     for user_id, content_id in created:
         try:
             if mts_link_endpoint.get_it_event(user_id, content_id) is not None:
-                mts_link_endpoint.delete_it_event(content_id)
+                mts_link_endpoint.delete_it_event(user_id, content_id)
         except Exception as exc:  # cleanup не должен ронять отчёт
             import logging
             logging.getLogger("autotests").warning(f"Failed to delete IT event {content_id}: {exc}")
