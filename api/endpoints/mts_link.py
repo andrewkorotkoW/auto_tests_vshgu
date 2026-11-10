@@ -58,7 +58,8 @@ tests/{api,ui}/mts_link/*) сведены с реальным контракто
 интеграции, возможно просто не повезло с очередью.
 
 Методы ниже этой части (настройки тенанта, запись вебинара, посещаемость,
-индивидуальная траектория, журнал действий/аудит запросов) НЕ пересмотрены в этом
+журнал действий/аудит запросов) НЕ пересмотрены; индивидуальная траектория —
+пересмотрена живьём 10.11.2026 (см. секцию в конце класса). Остальные НЕ пересмотрены в этом
 заходе — живой разведкой 02.11.2026 не покрыты, остаются как были написаны до
 появления ветки, с тем же предупреждением «контракт не подтверждён».
 """
@@ -436,11 +437,94 @@ class MtsLinkEndpoint:
         logger.info(f"MTS Link event {schedule_item_id}: retry part={part}")
         return resp.json()
 
-    # ── индивидуальная траектория (НЕ пересмотрено 02.11.2026) ────────────
+    # ── индивидуальная траектория (часть 14) — контракт подтверждён живьём 10.11.2026 ──
+    # Очное мероприятие в индивидуальной траектории — отдельная сущность «офлайн-контент
+    # пользователя» (content_type "offline"), не schedule-item модуля:
+    #   POST   /users/content/offline                      — создать (data.user_ids + attributes
+    #                                                        с тем же payload, что у schedule-item)
+    #   GET    /users/content/offline/user-content/{user}  — список по пользователю; у элемента
+    #                                                        attributes.url и attributes.mts_link
+    #                                                        в том же формате, что у schedule-item
+    #   PUT|DELETE /users/content/offline/{content_id}     — правка / снятие назначения
+    # В админке: карточка пользователя → «Назначения» → «Индивидуальная траектория обучения»
+    # → вкладка «Очные» (недельный календарь). Старый путь
+    # /individual-trajectory/assignments/{id}/mts-link не существует (404).
 
-    def get_it_webinar(self, assignment_id: int) -> Dict:
-        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
-        докстринг модуля)."""
-        resp = self.client.get(f"/individual-trajectory/assignments/{assignment_id}/mts-link")
+    IT_OFFLINE_PATH = "/users/content/offline"
+
+    def create_it_event(self, user_id: int, **overrides) -> Dict:
+        """Создать очное мероприятие «МТС Линк» в индивидуальной траектории одного
+        слушателя. Payload — как у schedule-item (generate_schedule_item_payload) с
+        безопасными для боевого аккаунта МТС Линк умолчаниями
+        (mts_link_safe_schedule_item_kwargs: Вера-лектор, дата завтра, регион 1).
+        Возвращает data созданного офлайн-контента (id, attributes)."""
+        from api.helpers.data_generator import (
+            generate_schedule_item_payload,
+            mts_link_safe_schedule_item_kwargs,
+        )
+        kwargs = mts_link_safe_schedule_item_kwargs(**overrides)
+        attributes = generate_schedule_item_payload(**kwargs)["data"]["attributes"]
+        resp = self.client.post(self.IT_OFFLINE_PATH, json={"data": {"user_ids": [user_id], "attributes": attributes}})
+        expect_status(resp, (200, 201))
+        data = resp.json()["data"]
+        logger.info(f"MTS Link IT event created: content_id={data['id']} user_id={user_id}")
+        return data
+
+    def list_it_offline_contents(self, user_id: int) -> List[Dict]:
+        """Все очные мероприятия индивидуальной траектории пользователя."""
+        resp = self.client.get(f"{self.IT_OFFLINE_PATH}/user-content/{user_id}?page=1&per-page=9999")
         expect_status(resp, 200)
-        return resp.json().get("data", {})
+        return resp.json().get("data", [])
+
+    def get_it_event(self, user_id: int, content_id: int) -> Optional[Dict]:
+        """Элемент списка ИТ по id контента или None, если его там (уже) нет."""
+        return next((c for c in self.list_it_offline_contents(user_id) if c.get("id") == content_id), None)
+
+    def get_it_integration_status(self, user_id: int, content_id: int) -> Dict:
+        """attributes.mts_link мероприятия ИТ — тот же формат, что у schedule-item."""
+        event = self.get_it_event(user_id, content_id)
+        return (event or {}).get("attributes", {}).get("mts_link") or {}
+
+    def wait_for_it_part_status(
+        self,
+        user_id: int,
+        content_id: int,
+        part: str,
+        timeout: float = DEFAULT_POLL_TIMEOUT,
+        poll_interval: float = DEFAULT_POLL_INTERVAL,
+    ) -> Optional[str]:
+        """Поллинг части синхронизации мероприятия ИТ до терминального состояния
+        (см. _TERMINAL_BY_PART) — аналог wait_for_part_status для schedule-item."""
+        terminal = _TERMINAL_BY_PART[part]
+        field = _PART_FIELD[part]
+        deadline = time.monotonic() + timeout
+        last_status = None
+        while time.monotonic() < deadline:
+            last_status = self.get_it_integration_status(user_id, content_id).get(field)
+            logger.info(f"MTS Link IT content {content_id}: part={part} status={last_status}")
+            if last_status in terminal:
+                return last_status
+            time.sleep(poll_interval)
+        return last_status
+
+    def delete_it_event(self, content_id: int) -> bool:
+        """Снять мероприятие с индивидуальной траектории (DELETE). По ТЗ части 14 —
+        вебинар в МТС Линк удаляется целиком, если ещё не прошёл."""
+        resp = self.client.delete(f"{self.IT_OFFLINE_PATH}/{content_id}")
+        success = resp.status_code in (200, 204)
+        if success:
+            logger.info(f"MTS Link IT event deleted: content_id={content_id}")
+        else:
+            logger.warning(f"MTS Link IT event delete failed: content_id={content_id}, status={resp.status_code}")
+        return success
+
+    def wait_for_it_event_removed(
+        self, user_id: int, content_id: int, timeout: float = 60.0, poll_interval: float = 3.0
+    ) -> bool:
+        """True, когда мероприятие пропало из списка ИТ пользователя."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.get_it_event(user_id, content_id) is None:
+                return True
+            time.sleep(poll_interval)
+        return self.get_it_event(user_id, content_id) is None

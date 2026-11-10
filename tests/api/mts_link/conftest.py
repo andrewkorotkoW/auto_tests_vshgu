@@ -36,3 +36,30 @@ def mts_link_tenant_id() -> int:
     if not tenant_id:
         pytest.skip("MTS_LINK_TENANT_ID не задан в .env — нет тенанта с интеграцией для теста")
     return int(tenant_id)
+
+
+@pytest.fixture
+def created_it_event(mts_link_endpoint, created_user):
+    """Фабрика мероприятий «МТС Линк» в индивидуальной траектории (часть 14): создаёт
+    слушателя (или берёт переданный user_id) и назначает ему очное мероприятие через
+    POST /users/content/offline с безопасными для боевого аккаунта МТС Линк умолчаниями
+    (см. MtsLinkEndpoint.create_it_event). После теста снимает назначение — если тест уже
+    удалил его сам (TC-MTS-078), повторное удаление молча пропускается."""
+    created = []
+
+    def _create(user_id=None, **overrides):
+        if user_id is None:
+            user_id = created_user()["id"]
+        data = mts_link_endpoint.create_it_event(user_id, **overrides)
+        created.append((user_id, data["id"]))
+        return {"content_id": data["id"], "user_id": user_id, "attributes": data["attributes"]}
+
+    yield _create
+
+    for user_id, content_id in created:
+        try:
+            if mts_link_endpoint.get_it_event(user_id, content_id) is not None:
+                mts_link_endpoint.delete_it_event(content_id)
+        except Exception as exc:  # cleanup не должен ронять отчёт
+            import logging
+            logging.getLogger("autotests").warning(f"Failed to delete IT event {content_id}: {exc}")
