@@ -9,32 +9,19 @@ HelpdeskDictEndpoint в api/endpoints/helpdesk.py: без него сервер 
 (helpdesk_existing_group_id, tests/api/helpdesk/conftest.py) — группа только читается,
 не создаётся/не редактируется/не удаляется.
 
-ОБНАРУЖЕННЫЙ ДЕФЕКТ (подтверждён живым прогоном на develop, не правим — api/endpoints/
-helpdesk.py защищён условиями задачи): POST /admin/blacklist (создание записи чёрного
-списка с единственным полем формы `email`) стабильно отвечает 500 ещё на этапе валидации
-уникальности адреса: `SQLSTATE[22P02]: Invalid text representation: invalid input syntax
-for type bigint: "deleted_at"` на запросе `select count(*) ... from "blacklist" ...` —
-бэкенд некорректно связывает параметры SQL-запроса проверки уникальности (воспроизведено
-и напрямую через requests с полным набором полей формы, включая скрытый `created_by`, и
-через тот же сценарий в UI — tests/ui/helpdesk/admin/test_dictionaries.py). Запись в БД не
-создаётся ни разу (find_by_value после 500 стабильно возвращает None)."""
+ИСТОРИЯ: до 11.11.2026 вариант blacklist был под xfail — POST /admin/blacklist отвечал 500
+на валидации уникальности адреса (`SQLSTATE[22P02]: invalid input syntax for type bigint:
+"deleted_at"`), запись не создавалась. Исправлено на k8s 13.10, на develop — к 11.11
+(7/7 passed), маркер снят здесь и в tests/ui/helpdesk/admin/test_dictionaries.py."""
 import allure
 import pytest
 
 from api.helpers.data_generator import unique_suffix
 from utils.logger import logger
 
-_BLACKLIST_500_DEFECT_REASON = (
-    "Дефект стенда (не правим — api/endpoints/helpdesk.py защищён условиями задачи): "
-    "POST /admin/blacklist стабильно отвечает 500 на этапе валидации уникальности email "
-    "('SQLSTATE[22P02]: invalid input syntax for type bigint: \"deleted_at\"' на SQL-запросе "
-    "'select count(*) ... from blacklist ...') — бэкенд некорректно связывает параметры "
-    "запроса проверки уникальности. Запись в БД не создаётся, воспроизведено и напрямую "
-    "через requests с полным набором полей формы (включая скрытый created_by), и через UI. "
-    "На релизной сборке k8s (13.10.2026) создание исправлено — там кейс проходит (XPASS); "
-    "на develop 500 воспроизводится, пометку снять после выкатки на develop."
-)
-
+# blacklist: до 11.11.2026 вариант был под xfail — POST /admin/blacklist отвечал 500 на
+# валидации уникальности email ('SQLSTATE[22P02]: invalid input syntax for type bigint:
+# "deleted_at"'). На k8s исправлено 13.10, на develop выкачено — passed 11.11, маркер снят.
 _DICT_CASES = [
     pytest.param("category", "Категории", "Значение", True, id="category"),
     pytest.param("tag", "Теги", "Значение", True, id="tag"),
@@ -42,14 +29,7 @@ _DICT_CASES = [
     pytest.param("request_source", "Типы контактов", "Значение", True, id="request_source"),
     pytest.param("request_type", "Типы обращений", "Значение", True, id="request_type"),
     pytest.param("processing_result", "Типы результата", "Значение", True, id="processing_result"),
-    pytest.param(
-        "blacklist",
-        "Черный список адресов",
-        "Почтовый адрес",
-        False,
-        id="blacklist",
-        marks=pytest.mark.xfail(strict=False, reason=_BLACKLIST_500_DEFECT_REASON),
-    ),
+    pytest.param("blacklist", "Черный список адресов", "Почтовый адрес", False, id="blacklist"),
 ]
 
 

@@ -1,8 +1,18 @@
+"""API: пользователи хелпдеска — назначение роли и поиск.
+
+Список «Пользователи» хелпдеска (/admin/user) — это НЕ все пользователи портала, а
+пользователи ЛМС с ролью «Администратор» (role_id=1; tenant-admin тоже попадает, manager —
+нет): проверено живыми запросами на develop 11.11.2026 — свежий пользователь без ролей в
+списке не появляется и после входа в хелпдеск (403), после PUT /access-roles [1] находится
+по email сразу. Поэтому тесты берут created_helpdesk_user (корневой conftest.py), а не
+created_user. До 11.11 оба теста были под xfail: сначала POST /admin/user/search отвечал
+500 ('Undefined array key "data"', docs/helpdesk_recon.md §5.1) — исправлено на стенде,
+затем «пользователь не найден» — оказалось неверным предусловием, а не дефектом.
+"""
 import allure
 import pytest
 
 from api.helpers.data_generator import generate_helpdesk_role_assignment_payload
-from tests.api.helpdesk._known_defects import USER_SEARCH_500_DEFECT_REASON
 
 
 @allure.feature("Хелпдеск: Пользователи")
@@ -13,14 +23,8 @@ class TestUsersApi:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(
-        strict=False,
-        reason=f"{USER_SEARCH_500_DEFECT_REASON} find_user_by_email (тот же поиск) падает первым, не "
-        "доходя до assign_role() — контракт форм (CSRF/Accept) здесь уже не блокирует: сам assign_role "
-        "работал бы, если бы поиск пользователя не 500-ил.",
-    )
-    def test_assign_role(self, helpdesk_endpoint, created_user):
-        user = created_user()
+    def test_assign_role(self, helpdesk_endpoint, created_helpdesk_user):
+        user = created_helpdesk_user()
 
         with allure.step("Найти созданного тестового пользователя в хелпдеске по email"):
             found = helpdesk_endpoint.find_user_by_email(user["email"])
@@ -48,9 +52,8 @@ class TestUsersApi:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=USER_SEARCH_500_DEFECT_REASON)
-    def test_search_user_by_email(self, helpdesk_endpoint, created_user):
-        user = created_user()
+    def test_search_user_by_email(self, helpdesk_endpoint, created_helpdesk_user):
+        user = created_helpdesk_user()
 
         with allure.step("Поиск по уникальной части email — список уже сужен"):
             # 20 символов локальной части (auto_test_<worker>_<ts>) — уникальный фрагмент,

@@ -2,18 +2,20 @@ import allure
 import pytest
 
 from api.helpers.data_generator import generate_helpdesk_group_payload
-from tests.api.helpdesk._known_defects import GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON
 
 
 @allure.feature("Хелпдеск: Группы")
 @allure.story("CRUD группы")
 class TestGroupsApi:
+    """До 11.11.2026 все четыре теста были под xfail: GroupCrudController::store()/update()
+    при Accept: application/json бросал TypeError «Return value must be of type
+    RedirectResponse, JsonResponse returned» (HTTP 500) на успешном создании/обновлении.
+    Дефект исправлен: XPASS на 2066 (#121), 4/4 passed на develop с --runxfail 11.11."""
 
     @allure.title("POST /admin/group — группа создаётся и находится в поиске списка")
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON)
     def test_create_group(self, helpdesk_endpoint, created_helpdesk_group):
         group = created_helpdesk_group()
 
@@ -25,7 +27,6 @@ class TestGroupsApi:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON)
     def test_view_group(self, helpdesk_endpoint, created_helpdesk_group):
         group = created_helpdesk_group()
 
@@ -38,7 +39,6 @@ class TestGroupsApi:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON)
     def test_update_group(self, helpdesk_endpoint, created_helpdesk_group):
         group = created_helpdesk_group()
         new_payload = dict(group["payload"])
@@ -57,7 +57,6 @@ class TestGroupsApi:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.api
     @pytest.mark.develop
-    @pytest.mark.xfail(strict=False, reason=GROUP_CREATE_JSON_RESPONSE_DEFECT_REASON)
     def test_delete_group(self, helpdesk_endpoint):
         payload = generate_helpdesk_group_payload()
         resp = helpdesk_endpoint.create_group(payload)

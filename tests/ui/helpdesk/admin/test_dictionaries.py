@@ -22,14 +22,9 @@ from ui.pages.helpdesk_dict_page import HelpdeskDictPage
 
 _SYSTEM_GROUP_NAME = "Личная группа"
 
-_BLACKLIST_500_DEFECT_REASON = (
-    "Дефект стенда (тот же, что в tests/api/helpdesk/test_dictionaries_api.py, не правим — "
-    "ui/pages/helpdesk_dict_page.py защищена условиями задачи): создание записи чёрного "
-    "списка падает на сервере 500 при валидации уникальности email, строка не появляется "
-    "в списке — page.create() падает по таймауту, ожидая строку после сохранения. На релизной "
-    "сборке k8s (13.10.2026) создание исправлено — кейс проходит (XPASS); снять после выкатки на develop."
-)
-
+# blacklist: до 11.11.2026 вариант был под xfail (500 при создании записи чёрного списка,
+# тот же дефект, что в tests/api/helpdesk/test_dictionaries_api.py). На develop исправлено —
+# passed 11.11 с --runxfail, маркер снят.
 _DICT_CASES = [
     pytest.param("category", "Категории", "/admin/dict/category", "value", True, id="category"),
     pytest.param("tag", "Теги", "/admin/tag", "name", True, id="tag"),
@@ -48,15 +43,7 @@ _DICT_CASES = [
         True,
         id="processing_result",
     ),
-    pytest.param(
-        "blacklist",
-        "Черный список адресов",
-        "/admin/blacklist",
-        "email",
-        False,
-        id="blacklist",
-        marks=pytest.mark.xfail(strict=False, reason=_BLACKLIST_500_DEFECT_REASON),
-    ),
+    pytest.param("blacklist", "Черный список адресов", "/admin/blacklist", "email", False, id="blacklist"),
 ]
 
 

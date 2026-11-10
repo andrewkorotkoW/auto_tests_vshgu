@@ -401,6 +401,38 @@ def created_user(api_client, users_endpoint):
             logger.warning(f"Failed to delete user {user_id}: {e}")
 
 
+LMS_ADMIN_ROLE_ID = 1  # роль «Администратор» ЛМС (PUT /access-roles), см. created_helpdesk_user
+
+
+@pytest.fixture
+def created_helpdesk_user(created_user, users_endpoint):
+    """Свежий пользователь ЛМС с ролью «Администратор» — такой, какого видит хелпдеск.
+
+    Список «Пользователи» хелпдеска (/admin/user) — это пользователи ЛМС с ролью admin
+    (role_id=1; tenant-admin 2 тоже попадает, manager 3 — нет): проверено живыми запросами
+    на develop 11.11.2026 — пользователь без ролей там не появляется ни сразу, ни после
+    входа в хелпдеск (403 на всё), а после PUT /access-roles [1] находится по email сразу.
+    Удаляется вместе с created_user; перед этим роли снимаются (PUT /access-roles []) —
+    чтобы при неудачном удалении на стенде не остался админ с дефолтным паролем
+    generate_user_payload."""
+    elevated_ids = []
+
+    def _create(**kwargs):
+        user = created_user(**kwargs)
+        users_endpoint.assign_roles(user["id"], [LMS_ADMIN_ROLE_ID])
+        elevated_ids.append(user["id"])
+        return user
+
+    yield _create
+
+    # teardown зависимой фикстуры идёт раньше teardown created_user — роли снимаем до удаления
+    for user_id in elevated_ids:
+        try:
+            users_endpoint.assign_roles(user_id, [])
+        except Exception as e:
+            logger.warning(f"Failed to clear roles of user {user_id}: {e}")
+
+
 @pytest.fixture
 def prepared_user(env, created_user):
     """Пользователь, готовый к UI-сценариям слушателя: created_user + согласие на ПД,

@@ -1,33 +1,18 @@
 """UI: назначение роли пользователю из списка (/admin/user,
 docs/test_cases/helpdesk/users.md TC-HELPDESK_USERS-006). Роль назначается только своему
-тестовому пользователю (`created_user` из корневого conftest.py), не существующим.
+тестовому пользователю, не существующим.
 
-ОБНАРУЖЕННЫЙ БЛОКЕР (подтверждён живыми запросами к develop, не чиним — выходит за рамки
-UI-трека и за рамки правок, разрешённых в этой задаче):
-1. Список `/admin/user` — это не все пользователи портала, а только уже «известные»
-   хелпдеску (recordsTotal не меняется: 49 до и 49 после создания нового пользователя
-   через POST /api/v1/users). Свежесозданный `created_user` в этом списке не появляется
-   вовсе, его не находит ни поиск, ни прямой проход по первой странице таблицы.
-2. Даже если бы строка появилась, `POST /admin/user/search` отвечает HTTP 500
-   (`Undefined array key "data"`, `UserCrudController.php:82`) на любой запрос,
-   не находящий совпадений в этом коротком списке, — тот же дефект шире, что в
-   tests/api/helpdesk/test_users_api.py::TestUsersApi::test_assign_role (тот же
-   контроллер, то же примечание в docs/helpdesk_recon.md §5.1).
-Тест написан по контракту page-объекта (ищет пользователя через HelpdeskUsersPage.search,
-затем open_assign_role_modal/assign_roles) — ожидаемо не проходит из-за блокера выше."""
+Список `/admin/user` — не все пользователи портала, а пользователи ЛМС с ролью
+«Администратор» (role_id=1): свежий пользователь без ролей в нём не появляется вовсе
+(проверено на develop 11.11.2026, см. docstring tests/api/helpdesk/test_users_api.py).
+Поэтому тест берёт `created_helpdesk_user` (корневой conftest.py) — created_user + роль
+admin в ЛМС. До 11.11 тест был под xfail «пользователь не в списке + поиск отвечает 500»:
+500 на стенде исправили, а «не в списке» оказалось неверным предусловием, не дефектом."""
 import allure
 import pytest
+from playwright.sync_api import expect
 
 from ui.pages.helpdesk_users_page import HelpdeskUsersPage
-
-_USER_NOT_LISTED_REASON = (
-    'Блокер подтверждён живыми запросами на develop: свежесозданный через API пользователь '
-    '(created_user) не появляется в списке /admin/user вообще (recordsTotal не меняется — '
-    '49 до и после создания), а POST /admin/user/search отвечает HTTP 500 '
-    '(\'Undefined array key "data"\', UserCrudController.php:82) на запрос без совпадений — '
-    'тот же дефект, что в tests/api/helpdesk/test_users_api.py::TestUsersApi::test_assign_role. '
-    'Назначить роль тестовому пользователю через UI невозможно до исправления бэкенда.'
-)
 
 
 @allure.feature("Хелпдеск: Пользователи")
@@ -36,16 +21,16 @@ _USER_NOT_LISTED_REASON = (
 @allure.severity(allure.severity_level.CRITICAL)
 @pytest.mark.ui
 @pytest.mark.develop
-@pytest.mark.xfail(strict=False, reason=_USER_NOT_LISTED_REASON)
-def test_assign_role(admin_page, helpdesk_ui_base_url, created_user):
-    user = created_user()
+def test_assign_role(admin_page, helpdesk_ui_base_url, created_helpdesk_user):
+    user = created_helpdesk_user()
     page = HelpdeskUsersPage(admin_page)
     page.open(helpdesk_ui_base_url)
 
     with allure.step("Найти тестового пользователя в таблице по email"):
         page.search(user["email"])
-        row = page.row(user["email"])
-        assert row.count() > 0, f"Тестовый пользователь {user['email']!r} не найден в списке /admin/user"
+        # результат поиска приходит AJAX-ом без индикатора загрузки — ждём строку, а не
+        # проверяем count() сразу после wait_loaded()
+        expect(page.row(user["email"])).to_be_visible(timeout=15000)
 
     with allure.step("Открыть модалку назначения ролей и отметить «Поддержка»"):
         page.open_assign_role_modal(user["id"])
@@ -64,8 +49,7 @@ def test_assign_role(admin_page, helpdesk_ui_base_url, created_user):
 @pytest.mark.develop
 def test_view_user_card(admin_page, helpdesk_ui_base_url, existing_helpdesk_user_id):
     """TC-HELPDESK_USERS-002. Карточка проверяется read-only, на уже существующем
-    пользователе (см. existing_helpdesk_user_id) — свежесозданный пользователь в списке
-    /admin/user не появляется (см. test_assign_role выше).
+    пользователе (см. existing_helpdesk_user_id) — создавать своего не нужно.
 
     НАХОДКА (противоречит примечанию о #9593 в docs/test_cases/helpdesk/users.md,
     подтверждено живым прогоном Playwright на develop на 6+ разных пользователях, не

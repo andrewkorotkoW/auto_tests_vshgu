@@ -1,6 +1,5 @@
 """Тестовый хелпер для tests/api/ai_chat — не трогает инфраструктуру
-(api/endpoints/llm_chat.py, tests/api/ai_chat/conftest.py), только тестовый код,
-по образцу tests/api/helpdesk/_known_defects.py.
+(api/endpoints/llm_chat.py, tests/api/ai_chat/conftest.py), только тестовый код.
 """
 import uuid
 from pathlib import Path
