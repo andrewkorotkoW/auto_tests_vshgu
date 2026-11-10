@@ -21,3 +21,12 @@ mts-link-release-main) — все зависели от `MtsLinkEndpoint.get_it_
 Если потребуется вернуться к этой области — нужна отдельная живая разведка с нуля: существует ли вообще
 путь создания ИТ-назначения с МТС Линк вебинаром на реальном стенде, какой у него реальный API/UI
 флоу. Детали находки по остальным частям — docs/test_cases/mts_link/16_prod_safe_run.md.
+
+10.11.2026 — живая разведка на mts-link-release-main: путь существует. Мероприятие МТС Линк в индивидуальной
+траектории создаётся `POST /api/v1/users/content/offline` с телом `{"data": {"user_ids": [user_id], "attributes":
+{...payload очного мероприятия: type "mts_link_webinar", date_time_from/to, teacher_ids, region, ...}}}` (ответ 200,
+`data.id` — id офлайн-контента, `content_type: offline`). Список и статус синхронизации — `GET /users/content/offline/
+user-content/{user_id}` (у элемента `url` и `mts_link` в том же формате, что у schedule-item), правка/удаление —
+`PUT|DELETE /users/content/offline/{id}`. В админке: карточка пользователя → «Назначения» → «Индивидуальная
+траектория обучения» → «Очные». Проверено живьём: контент 518 для user 142 за ~20 с получил `webinar_status: synced`,
+отдельный вебинар 318 в МТС Линк. Кейсы TC-MTS-076…079 можно восстанавливать на этом контракте.
