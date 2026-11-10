@@ -3,6 +3,7 @@ import pytest
 import json
 from utils.logger import logger
 from api.helpers.expectations import expect_status
+from utils.retry import retry_until_success
 
 
 @allure.feature("External Content API")
@@ -51,7 +52,15 @@ class TestExternalContentAPI:
             logger.info(f"Контент активирован: ID={content_id}")
 
         with allure.step("4. Активировать игровую сессию"):
-            resp = external_system_client.post(f"/external/activities/{content_id}")
+            # Запись внешнего контента дописывается фоновой задачей: активация сразу после
+            # создания (<1 с) на develop отвечает 500 «Attempt to read property "external_type"
+            # on null» (ExternalSystemController.php:92, Sentry VSHGU-DEV-LMS-240), через ~5 с —
+            # 200. Повторяем саму операцию до 10 с вместо слепой паузы; 500 остаётся багом бэка
+            # (гонка), ретрай — только чтобы тест проверял сценарий, а не скорость очереди.
+            resp = retry_until_success(
+                lambda: external_system_client.post(f"/external/activities/{content_id}"),
+                timeout=10, interval=1, success_codes=(200, 201),
+            )
             allure.attach(str(resp.status_code), "Status code", allure.attachment_type.TEXT)
             allure.attach(resp.text[:300], "Response", allure.attachment_type.TEXT)
             expect_status(resp, (200, 201))
