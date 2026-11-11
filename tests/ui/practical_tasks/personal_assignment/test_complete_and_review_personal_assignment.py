@@ -6,9 +6,11 @@ report.md разд. 2). Назначение поднято через API (assi
 без прогона test_assign_from_user_card.py — эта форма уже проверена отдельным тестом.
 
 Коллега пометил свой test_13 как skip с причиной "BUG: reviewer does not receive access
-to homework review queue for personal assignments" — проверяющий не видит очередь
-проверки индивидуально назначенных ПЗ. Если дефект стенда воспроизводится и у нас,
-шаг проверки помечен xfail с той же причиной.
+to homework review queue for personal assignments", и до 11.11.2026 тест был под xfail с
+той же формулировкой. Дефекта не было: проверяющему не выдавали роль «Преподаватель»
+(id 4), и он входил как обычный слушатель («У вас нет программ»); в потоковом
+test_review_practical_task роль выдаётся — он и был зелёным. С ролью сценарий проходит
+целиком (develop 11.11.2026).
 """
 from pathlib import Path
 
@@ -24,44 +26,18 @@ from utils.logger import logger
 
 TEST_DATA_DIR = Path(__file__).resolve().parents[4] / "test_data"
 
-REVIEWER_QUEUE_BUG_REASON = (
-    "Известный дефект стенда: проверяющий не видит очередь проверки индивидуально "
-    "назначенных ПЗ (см. report.md разд. 2: коллега пометил test_13 "
-    "'BUG: reviewer does not receive access to homework review queue for personal assignments')"
-)
-
 
 @allure.feature("Практические задания UI")
 @allure.story("Индивидуальное назначение: прохождение и проверка")
 class TestCompleteAndReviewPersonalAssignment:
 
     @allure.title("UI: Слушатель проходит индивидуальное ПЗ из «Индивидуальное обучение», проверяющий его проверяет")
-
-    @pytest.mark.xfail(
-
-        strict=False,
-
-        reason=(
-
-            "Дефект develop (совпадает с пометкой коллеги на test_13): проверяющий, назначенный на "
-
-            "индивидуальное ПЗ (teacher_ids/inspector_ids), не получает раздел «Практические задания» — "
-
-            "после входа видит обычный кабинет слушателя «У вас нет программ». Шаги 1–6 (слушатель "
-
-            "скачивает материалы, отвечает, отправляет на проверку) проходят; для потокового ПЗ тот же "
-
-            "проверяющий раздел получает (test_review_practical_task зелёный). Проверено 24.09.2026."
-
-        ),
-
-    )
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.practical_tasks
     @pytest.mark.e2e
     def test_complete_and_review_personal_assignment(
-        self, page, env, api_client, tincan_endpoint,
+        self, page, env, api_client, tincan_endpoint, users_endpoint,
         prepared_user, created_homework, register_practical_homework,
     ):
         homework_id = None
@@ -74,6 +50,11 @@ class TestCompleteAndReviewPersonalAssignment:
                 # а у проверяющего при логине всплывают анкета и тур.
                 user = prepared_user()
                 reviewer = prepared_user()
+                # Роль «Преподаватель» (id 4) — как в test_review_practical_task: без неё
+                # проверяющий после входа видит обычный кабинет слушателя «У вас нет программ»
+                # и раздела «Практические задания» у него нет. Именно это с 24.09 числилось
+                # «дефектом develop» и держало тест под xfail (проверено 11.11.2026).
+                users_endpoint.assign_roles(reviewer["id"], [4])
 
                 cover_uuid = tincan_endpoint.upload_cover(str(TEST_DATA_DIR / "practical_task_cover.png"))
                 # upload_archive() шлёт файл на /upload/course_archive (только zip/rar) —
@@ -131,12 +112,9 @@ class TestCompleteAndReviewPersonalAssignment:
             with allure.step("7. Перейти в раздел «Практические задания» и открыть индивидуальное ПЗ на проверку"):
                 reviewer_page = ReviewerPage(page)
                 reviewer_page.open_practical_tasks_section()
-                try:
-                    reviewer_page.open_personal_review(
-                        user_full_name, [homework["name_client"], homework["name"]]
-                    )
-                except AssertionError as exc:
-                    pytest.xfail(f"{REVIEWER_QUEUE_BUG_REASON}: {exc}")
+                reviewer_page.open_personal_review(
+                    user_full_name, [homework["name_client"], homework["name"]]
+                )
 
             with allure.step("8. Скачать ответ, оставить комментарий и файл, выставить оценку 4"):
                 reviewer_page.download_user_answer()
