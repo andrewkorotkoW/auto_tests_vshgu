@@ -44,6 +44,11 @@ class Settings:
     DEFAULT_MUNICIPALITY_ID = int(os.getenv("DEFAULT_MUNICIPALITY_ID", "2310"))
     REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
     UI_TIMEOUT = int(os.getenv("UI_TIMEOUT", "10000"))
+    # Ожидание ответа /api/v1/me/agreements после submit формы входа (LoginPage.login).
+    # Отдельно от UI_TIMEOUT: на k8s-release под нагрузкой (2 воркера UI) логин занимал >10 с —
+    # прогон #128 (11.11.2026) дал 13 broken «Timeout 10000ms … waiting for event "response"»
+    # в login_page.py при полностью рабочем стенде (вручную логин 2–3 с). Не меньше UI_TIMEOUT.
+    LOGIN_TIMEOUT = max(int(os.getenv("LOGIN_TIMEOUT", "30000")), UI_TIMEOUT)
 
     TEST_USER_EMAIL = os.getenv("TEST_USER_EMAIL")
     TEST_USER_PASSWORD = os.getenv("TEST_USER_PASSWORD")

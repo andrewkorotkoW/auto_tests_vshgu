@@ -33,13 +33,13 @@ class LoginPage(BasePage):
         # отрисованной или не ожившей (чекбокс не меняет состояние). Блок with охватывает и
         # выбор тенанта: у админа с несколькими организациями SPA стартует только после него.
         with self.page.expect_response(
-            lambda r: "/api/v1/me/agreements" in r.url, timeout=settings.UI_TIMEOUT
+            lambda r: "/api/v1/me/agreements" in r.url, timeout=settings.LOGIN_TIMEOUT
         ):
             self.click('button:has-text("Войти")')
             # Форма входа серверная: после submit портал уводит с /auth/main (на /education или
             # /auth/tenant/select). Неверный пароль оставляет нас на /auth/main — упадём здесь с
             # понятным сообщением, а не на следующем шаге.
-            expect(self.page).not_to_have_url(re.compile(r"/auth/main"), timeout=settings.UI_TIMEOUT)
+            expect(self.page).not_to_have_url(re.compile(r"/auth/main"), timeout=settings.LOGIN_TIMEOUT)
             self.select_tenant_if_required(base_url=base_url, tenant_name=tenant_name)
         # SPA поднял сессию (GET /api/v1/auth/me → 200) и отрисовал первый экран. Их три:
         # оболочка с меню пользователя в шапке (.user-menu, тега <header> на портале нет — см.
