@@ -4,7 +4,6 @@ from playwright.sync_api import expect
 from ui.pages.login_page import LoginPage
 from ui.pages.tincan_page import TincanPage
 from ui.pages.user_sidebar_page import UserSidebarPage
-from config.settings import settings
 from utils.logger import logger
 
 
@@ -17,19 +16,15 @@ class TestUserTincanFlow:
     @pytest.mark.ui
     @pytest.mark.smoke
     @pytest.mark.e2e
-    @pytest.mark.xfail(
-        reason=(
-            "Тот же класс дефекта, что в tests/ui/aos/user/test_user_aos_flow.py: страница "
-            "программы показывает вкладки «Расписание»/«Курсы и тесты»/«Игровая сессия» "
-            "неактивными, пока не развёрнута строка модуля (шеврон справа от даты) — курс "
-            "внутри модуля недостижим локатором title/details карточки. Точный элемент "
-            "разворачивания не подтверждён, нужна дополнительная UI-разведка."
-        ),
-        strict=False,
-    )
     def test_user_open_tincan(self, page, api_client, prepared_user, created_program,
                                created_stream, created_module, assignments_endpoint):
-        """API: создать → UI: логин → пройти курс."""
+        """API: создать → UI: логин → пройти курс.
+
+        До 11.11.2026 — xfail «вкладки программы неактивны, пока не развёрнут модуль»: на
+        develop карточка курса на «Курсы и тесты» открывается штатно (шаги 1–8 проходили и
+        до снятия), а реально падал шаг 9 — клик «Начать тест» с force уходил до
+        инициализации плеера и жёсткая последовательность ответов не совпадала с пакетом
+        (см. TincanPage._enter_test и универсальный проход ниже)."""
 
         from api.endpoints.tincan import TincanEndpoint
         tincan_ep = TincanEndpoint(api_client)
@@ -74,22 +69,16 @@ class TestUserTincanFlow:
             tincan_page.start_tincan(program["name"])
 
         with allure.step("9. Пройти курс"):
+            # Тот же универсальный проход, что в test_user_tincan_individual (зелёный на
+            # develop 11.11.2026): первый вариант → «Ответить» → «Далее», между
+            # тестированиями — «Продолжить обучение»/«Начать тест». Прежняя жёсткая
+            # последовательность («Ответ 1 верный» → «Ответ 3 верный» → «Ответ 1» …) была
+            # привязана к другой структуре пакета и падала на втором тестировании.
             for i in range(30):
                 if tincan_page.frame.locator("label.c-radio").first.is_visible(timeout=2000):
-                    tincan_page.answer_by_text("Ответ 1 верный")  # ← заменили
+                    tincan_page.frame.locator("label.c-radio").first.click(force=True)
                     tincan_page.frame.locator("button:has-text('Ответить')").first.click(force=True)
                     tincan_page.frame.locator("button:has-text('Далее')").first.click(force=True)
-                    tincan_page.answer_by_text("Ответ 3 верный")
-                    tincan_page.frame.locator("button:has-text('Ответить')").first.click(force=True)
-                    tincan_page.frame.locator("button:has-text('Далее')").first.click(force=True)
-                    tincan_page.frame.locator("button:has-text('Продолжить обучение')").first.wait_for(
-                        state="visible", timeout=settings.UI_TIMEOUT
-                    )
-                    tincan_page.frame.locator("button:has-text('Продолжить обучение')").first.click(force=True)
-                    tincan_page.frame.locator("button:has-text('Начать тест')").first.click(force=True)
-                    tincan_page.answer_by_text("Ответ 1")
-                    tincan_page.frame.locator("button:has-text('Ответить')").first.click(force=True)
-
                     if tincan_page.frame.locator(
                             "div.navigation-button-item__title:has-text('Тестирование')").is_visible(timeout=2000):
                         tincan_page.frame.locator(

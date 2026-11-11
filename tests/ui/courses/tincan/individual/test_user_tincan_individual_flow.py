@@ -16,17 +16,11 @@ class TestUserTincanIndividualFlow:
     @pytest.mark.ui
     @pytest.mark.smoke
     @pytest.mark.e2e
-    @pytest.mark.xfail(
-        strict=False,
-        reason=(
-            "Стенд develop (06.10.2026): плеер курса (/xapi/drivers/cmi5, новая вкладка) грузит пакет "
-            "из /static/content/<uuid>/… и получает 502 Bad Gateway от nginx — «Перейти к изучению» "
-            "не появляется. Прежняя причина xfail («курс не показывается в инд. обучении») была "
-            "ошибкой page-объекта (не переключалась вкладка «Курсы и тесты», тур подменял карточки "
-            "демо-данными) — исправлено, курс отображается и открывается."
-        ),
-    )
     def test_user_tincan_individual(self, page, api_client, prepared_user):
+        """До 11.11.2026 — xfail «плеер получает 502 от nginx на /static/content/…» (06.10):
+        на develop пакет отдаётся, «Перейти к изучению» появляется через 3–6 с; падал
+        вход в тест по таймингу (10 с на «Начать тест», клик с force до инициализации
+        плеера) — см. TincanPage._enter_test. Проходит целиком."""
         from api.endpoints.tincan import TincanEndpoint
         tincan_ep = TincanEndpoint(api_client)
 
@@ -89,12 +83,12 @@ class TestUserTincanIndividualFlow:
     @pytest.mark.xfail(
         strict=False,
         reason=(
-            "Кандидат в дефект (develop, 06.10.2026): у курса, назначенного через инд. обучение "
-            "(/users/content/distant/assign-activities), в карточке на вкладке «Курсы и тесты» нет "
-            "блока файлов (span.files-table__text) — отображаются только название, срок, описание "
-            "и «Начать». Page-объект потока ожидает файл в карточке (span.files-table__text), но "
-            "потоковый тест сейчас сам xfail по навигации — сравнить с потоком вживую не удалось; "
-            "уточнить у разработки, должны ли доп. файлы показываться в инд. обучении."
+            "Кандидат в дефект (develop, подтверждено 11.11.2026 сравнением с потоком): у курса, "
+            "назначенного через инд. обучение (/users/content/distant/assign-activities), в "
+            "карточке на «Курсы и тесты» нет блока «Дополнительные материалы по заданию» "
+            "(span.files-table__text) — только название, срок, описание и «Начать»; у того же "
+            "курса в потоке блок есть (sub_files.jpg со скачиванием). Уточнить у разработки, "
+            "должны ли доп. файлы показываться в инд. обучении."
         ),
     )
     def test_individual_course_shows_additional_file(self, page, api_client, prepared_user):

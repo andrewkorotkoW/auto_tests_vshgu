@@ -60,10 +60,26 @@ class TincanPage(BasePage):
         # не на том экране и падает по таймауту (02.11.2026). «Начать тест» — следующий
         # экран плеера, грузится отдельно — даём больше времени, чем общий UI_TIMEOUT.
         learn_btn.click()
-        start_test_btn = self.wait_visible(self.frame.locator("button:has-text('Начать тест')").first, timeout=20000)
-        start_test_btn.click(force=True)
-
         self.page = course_page
+        self._enter_test()
+
+    def _enter_test(self) -> None:
+        """Экран «Пройдите тест» → «Начать тест» → первый вопрос (label.c-radio).
+
+        Разведка плеера на develop 11.11.2026: «Начать тест» появляется через ~4 с после
+        «Перейти к изучению», вопрос — ещё через 2-4 с после клика. Клик с force до того,
+        как плеер навесил обработчик, «проглатывается» (как интро-слайд в AosPage), и тест
+        30 с ждал вариант ответа на экране «Пройдите тест» — поэтому клик обычный и
+        повторяется, пока не покажется первый вариант ответа."""
+        start_test_btn = self.wait_visible(self.frame.locator("button:has-text('Начать тест')").first, timeout=30000)
+        first_answer = self.frame.locator("label.c-radio").first
+        for _ in range(6):
+            if first_answer.count() > 0 and first_answer.is_visible():
+                return
+            if start_test_btn.count() > 0 and start_test_btn.is_visible():
+                start_test_btn.click()
+            self.page.wait_for_timeout(3000)
+        expect(first_answer).to_be_visible(timeout=10000)
 
     def complete_program_onboarding(self):
         """См. UserSidebarPage.pass_onboarding — учитывает затемнение, которое переживает
@@ -142,10 +158,11 @@ class TincanPage(BasePage):
         self.page = course_page
 
         self.frame = course_page.frame_locator("#iframe")
-        learn_btn = self.wait_visible(self.frame.locator("button:has-text('Перейти к изучению')").first)
-        learn_btn.click(force=True)
-        start_test_btn = self.wait_visible(self.frame.locator("button:has-text('Начать тест')").first)
-        start_test_btn.click(force=True)
+        # Плеер грузит пакет из /static/content/… — первая кнопка появляется через 3-6 с
+        # (до 02.11.2026 здесь был xfail на 502 от nginx, на develop 11.11 пакет отдаётся).
+        learn_btn = self.wait_visible(self.frame.locator("button:has-text('Перейти к изучению')").first, timeout=30000)
+        learn_btn.click()
+        self._enter_test()
 
     def answer_by_text(self, text: str):
         """Выбрать ответ по тексту. Раньше здесь был селектор div.choice-answer__text —
