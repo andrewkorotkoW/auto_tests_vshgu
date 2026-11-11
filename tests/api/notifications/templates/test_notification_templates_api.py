@@ -58,14 +58,14 @@ class TestNotificationTemplatesApi:
                     templates = notifications_endpoint.list_templates()
                     return not any(t["id"] == template_id for t in templates)
 
-                gone = wait_until(_is_absent, timeout=12, interval=3)
-                if not gone:
-                    pytest.xfail(
-                        "Кандидат в дефект: POST /notifications/templates/delete отвечает 200, "
-                        "но шаблон остаётся в GET /notifications/templates непредсказуемо долго — "
-                        "та же асинхронная задержка удаления, что и у POST /notifications/delete "
-                        "(см. README §13)."
-                    )
+                # До 11.11.2026 здесь был pytest.xfail «шаблон остаётся в списке непредсказуемо
+                # долго». Дефекта не было: клиент слал delete с JSON {"ids": [...]} вместо
+                # query template_ids[] (контракт админки), сервер отвечал success и ничего не
+                # удалял, а list_templates к тому же читал только первую страницу. С верным
+                # контрактом шаблон пропадает сразу и GET /templates/{id} даёт 404.
+                assert wait_until(_is_absent, timeout=12, interval=3), (
+                    f"Шаблон {template_id} остался в GET /notifications/templates через 12 с после delete"
+                )
         finally:
             try:
                 notifications_endpoint.delete_templates([template_id])

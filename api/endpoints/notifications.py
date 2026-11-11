@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+from urllib.parse import urlencode
 
 from api.client import ApiClient
 from api.helpers.expectations import expect_status
@@ -69,9 +70,15 @@ class NotificationsEndpoint:
         return resp.json()["data"]
 
     def delete(self, notification_ids: list) -> bool:
-        """Удаление уведомлений по списку ID (удаление отложенное — не мгновенное,
-        см. заметку в отчёте разведки)."""
-        resp = self.client.post("/notifications/delete", json={"ids": notification_ids})
+        """Удаление уведомлений по списку ID.
+
+        Контракт: `POST /notifications/delete?notification_ids[0]=<id>&…` — id в query
+        (проверено на develop 11.11.2026: GET /notifications/{id} → 404 через 3 с). До этого
+        клиент слал JSON {"ids": [...]}: сервер отвечал 200 и ничего не удалял — отсюда
+        «отложенное, непредсказуемо долгое удаление» в отчёте разведки и 1300+
+        накопившихся Автотест_* уведомлений в админке. Тот же приём, что у delete_templates."""
+        query = urlencode({f"notification_ids[{i}]": nid for i, nid in enumerate(notification_ids)})
+        resp = self.client.post(f"/notifications/delete?{query}")
         success = resp.status_code in (200, 202, 204)
         if success:
             logger.info(f"Notifications delete requested: {notification_ids}")
@@ -81,9 +88,13 @@ class NotificationsEndpoint:
 
     # ── Шаблоны уведомлений ─────────────────────────────────────────────
 
-    def list_templates(self) -> list:
-        """Список шаблонов уведомлений."""
-        resp = self.client.get("/notifications/templates")
+    def list_templates(self, per_page: int = 2000) -> list:
+        """Список шаблонов уведомлений. Пагинирован так же, как GET /notifications
+        (25 на страницу, по возрастанию id): на develop к 11.11.2026 шаблонов стало
+        больше 25, и свежесозданный уходил на вторую страницу — без per-page тест «список
+        содержит созданный» падал, а «шаблон не пропадает после удаления» ловил не лаг
+        удаления, а ту же пагинацию."""
+        resp = self.client.get(f"/notifications/templates?per-page={per_page}")
         expect_status(resp, 200)
         return resp.json()["data"]
 
@@ -108,8 +119,15 @@ class NotificationsEndpoint:
         return resp.json()["data"]
 
     def delete_templates(self, template_ids: list) -> bool:
-        """Удаление шаблонов уведомлений по списку ID."""
-        resp = self.client.post("/notifications/templates/delete", json={"ids": template_ids})
+        """Удаление шаблонов уведомлений по списку ID.
+
+        Контракт подсмотрен перехватом запроса админки (вкладка «Шаблоны», 11.11.2026):
+        `POST /notifications/templates/delete?template_ids[0]=<id>&template_ids[1]=…` — id в
+        query-параметрах, тело пустое. До этого клиент слал JSON {"ids": [...]}: сервер
+        отвечал 200 {"status":"success"}, но ничего не удалял — отсюда ложный «кандидат
+        в дефект: шаблон не пропадает из списка» и 40+ накопившихся Автотест_* шаблонов."""
+        query = urlencode({f"template_ids[{i}]": template_id for i, template_id in enumerate(template_ids)})
+        resp = self.client.post(f"/notifications/templates/delete?{query}")
         success = resp.status_code in (200, 202, 204)
         if success:
             logger.info(f"Notification templates deleted: {template_ids}")

@@ -80,15 +80,14 @@ class TestNotificationsCrudApi:
                 def _is_gone():
                     return api_client.get(f"/notifications/{notification_id}").status_code != 200
 
-                gone = wait_until(_is_gone, timeout=12, interval=3)
-                if not gone:
-                    pytest.xfail(
-                        "Кандидат в дефект: POST /notifications/delete отвечает 200, но "
-                        "уведомление остаётся доступным по GET /notifications/{id} непредсказуемо "
-                        "долго — разведкой подтверждено дважды на develop (один раз пропадало "
-                        "за ~2 c, другой раз оставалось видимым больше 100 c) — надёжного окна "
-                        "ожидания для теста нет."
-                    )
+                # До 11.11.2026 здесь был pytest.xfail «удаление отложенное, непредсказуемо
+                # долгое». Дефекта не было: клиент слал JSON {"ids": [...]} вместо query
+                # notification_ids[] — сервер отвечал 200 и ничего не удалял (а «пропадало за
+                # ~2 с» случалось, когда уведомление удалял кто-то другой). С верным
+                # контрактом GET /notifications/{id} → 404 через ~3 с.
+                assert wait_until(_is_gone, timeout=12, interval=3), (
+                    f"Уведомление {notification_id} доступно по GET /notifications/{{id}} через 12 с после delete"
+                )
         finally:
             try:
                 notifications_endpoint.delete([notification_id])
