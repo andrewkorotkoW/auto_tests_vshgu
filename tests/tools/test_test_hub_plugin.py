@@ -250,7 +250,7 @@ def test_logreport_end_for_each_test_on_xdist_controller(plugin_env, th_stdout):
         module.pytest_runtest_logreport(FakeReport(b, "call", "failed"))
         module.pytest_runtest_logreport(FakeReport(b, "teardown", "passed"))
 
-    assert _th_lines(th_stdout) == [f"[TH] end {a} passed", f"[TH] end {b} failed"]
+    assert _th_lines(th_stdout, "[TH] end") == [f"[TH] end {a} passed", f"[TH] end {b} failed"]
 
 
 def test_logreport_end_printed_again_after_rerun(plugin_env, th_stdout):
@@ -263,7 +263,7 @@ def test_logreport_end_printed_again_after_rerun(plugin_env, th_stdout):
         module.pytest_runtest_logstart(nodeid, None)
         module.pytest_runtest_logreport(FakeReport(nodeid, "call", "passed"))
 
-    assert _th_lines(th_stdout) == [f"[TH] end {nodeid} failed", f"[TH] end {nodeid} passed"]
+    assert _th_lines(th_stdout, "[TH] end") == [f"[TH] end {nodeid} failed", f"[TH] end {nodeid} passed"]
 
 
 # ---------- 3. шаги: нумерация, контекст-менеджер и декоратор ----------
