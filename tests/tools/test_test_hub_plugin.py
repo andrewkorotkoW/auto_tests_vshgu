@@ -235,6 +235,37 @@ def test_logreport_end_emitted_only_once(plugin_env, th_stdout):
     assert _th_lines(th_stdout) == [f"[TH] end {nodeid} passed"]
 
 
+def test_logreport_end_for_each_test_on_xdist_controller(plugin_env, th_stdout):
+    """pytest-xdist: контроллер получает только logstart/logreport (runtest_protocol и его
+    hookwrapper идут в воркерах), причём start/end разных воркеров чередуются. Для
+    каждого теста должен быть напечатан свой end — раньше флаг _state["end_emitted"]
+    после первого теста оставался True навсегда (прогоны #71/#127/#128, 11.11.2026:
+    59 start и 1 end)."""
+    a, b = "tests/test_x.py::test_a", "tests/test_x.py::test_b"
+    with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
+        module.pytest_runtest_logstart(a, None)
+        module.pytest_runtest_logstart(b, None)
+        module.pytest_runtest_logreport(FakeReport(a, "call", "passed"))
+        module.pytest_runtest_logreport(FakeReport(a, "teardown", "passed"))
+        module.pytest_runtest_logreport(FakeReport(b, "call", "failed"))
+        module.pytest_runtest_logreport(FakeReport(b, "teardown", "passed"))
+
+    assert _th_lines(th_stdout) == [f"[TH] end {a} passed", f"[TH] end {b} failed"]
+
+
+def test_logreport_end_printed_again_after_rerun(plugin_env, th_stdout):
+    """pytest-rerunfailures повторяет тот же nodeid: новый logstart должен снова
+    разрешить печать end для него."""
+    nodeid = "tests/test_x.py::test_a"
+    with plugin_env(url="http://x", run_id="1", run_token="tok") as module:
+        module.pytest_runtest_logstart(nodeid, None)
+        module.pytest_runtest_logreport(FakeReport(nodeid, "call", "failed"))
+        module.pytest_runtest_logstart(nodeid, None)
+        module.pytest_runtest_logreport(FakeReport(nodeid, "call", "passed"))
+
+    assert _th_lines(th_stdout) == [f"[TH] end {nodeid} failed", f"[TH] end {nodeid} passed"]
+
+
 # ---------- 3. шаги: нумерация, контекст-менеджер и декоратор ----------
 
 def test_steps_numbered_sequentially_as_context_manager(plugin_env, th_stdout):

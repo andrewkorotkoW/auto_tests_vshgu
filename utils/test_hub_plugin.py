@@ -71,7 +71,6 @@ _state = {
     "step_count": 0,
     "frame_count": 0,
     "frame_limit_logged": False,
-    "end_emitted": False,
     "live": None,
     "live_current_step": "",
     "live_error_count": 0,
@@ -493,7 +492,6 @@ def pytest_runtest_protocol(item, nextitem):
     _state["step_count"] = 0
     _state["frame_count"] = 0
     _state["frame_limit_logged"] = False
-    _state["end_emitted"] = False
     _state["live"] = None
     _state["live_current_step"] = ""
     _state["live_error_count"] = 0
@@ -506,19 +504,31 @@ def pytest_runtest_protocol(item, nextitem):
         _state["item"] = None
 
 
+# nodeid-ы, для которых "[TH] end" уже напечатан. Раньше это был флаг _state["end_emitted"],
+# который сбрасывал hookwrapper pytest_runtest_protocol — но под pytest-xdist этот хук
+# выполняется в воркерах, а logstart/logreport (и печать "[TH] start/end") — на
+# контроллере, где флаг после первого теста оставался True навсегда: test_hub получал
+# 59 "[TH] start" и ровно 1 "[TH] end" за прогон (прогоны #71/#127/#128, 11.11.2026),
+# счётчик «N / M тестов» и ETA стояли на месте. Множество по nodeid не зависит от
+# процесса и переживает чередование start/end разных воркеров; при повторе теста
+# (pytest-rerunfailures) logstart снимает nodeid, и end печатается снова.
+_ended_nodeids: set = set()
+
+
 def pytest_runtest_logstart(nodeid, location):
     if not ENABLED:
         return
+    _ended_nodeids.discard(nodeid)
     _th_print(f"[TH] start {nodeid}")
 
 
 def pytest_runtest_logreport(report):
     if not ENABLED:
         return
-    if _state["end_emitted"]:
+    if report.nodeid in _ended_nodeids:
         return
     outcome = _classify_report(report)
     if outcome is None:
         return
-    _state["end_emitted"] = True
+    _ended_nodeids.add(report.nodeid)
     _th_print(f"[TH] end {report.nodeid} {outcome}")
