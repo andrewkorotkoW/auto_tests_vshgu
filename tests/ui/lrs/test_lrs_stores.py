@@ -4,8 +4,8 @@
 ui/pages/lrs_admin_page.py.
 
 Оба теста входят в OpenLRS через SSO (`LrsAdminPage.login_via_sso`), который работает на
-k8s и ревью-стендах (develop: OAuth-клиент не зарегистрирован, docs/lrs/lrs_recon.md) —
-оба помечены `@pytest.mark.env("k8s", "stand")`. Эталон UI — стенд vshgu2-2420-filters,
+k8s и ревью-стендах (develop — SSO работает с 11.11.2026, OAuth-клиент зарегистрирован; до этого `invalid_client`, docs/lrs/lrs_recon.md) —
+оба помечены `@pytest.mark.env("develop", "k8s", "stand")`. Эталон UI — стенд vshgu2-2420-filters,
 прогон 27.10.2026.
 
 Порядок колонок «Клиенты хранилища»: Логин, Пароль, Дата создания, Launch (подтверждено
@@ -36,7 +36,7 @@ class TestLrsStores:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s", "stand")
+    @pytest.mark.env("develop", "k8s", "stand")
     def test_stores_list_and_open_default_store(self, page, env):
         email, password = get_credentials(env.name, role="admin")
         if not (email and password):
@@ -54,26 +54,29 @@ class TestLrsStores:
             clients = stores.open_store("default store")
             expect(page).to_have_url(re.compile(rf"/lrs-admin/store/{clients.store_id}/client"))
 
-        with allure.step("3. «Количество statements» из списка хранилищ не больше recordsFiltered вкладки Statements (счётчик кэшируется)"):
+        with allure.step("3. Вкладка Statements хранилища открывается и отдаёт записи; счётчик списка — число"):
             statements_page = LrsStoreStatementsPage(page, store_id=clients.store_id)
             with page.expect_response(statements_page._is_table_search, timeout=settings.UI_TIMEOUT) as resp_info:
                 statements_page.open(env)
             # recordsTotal в /search — размер страницы (k8s 14.10), число записей — recordsFiltered.
-            # Счётчики в списке хранилищ кэшируются и отстают от таблицы (2420, 27.10: «6» при 8
-            # statements, «-» при нуле), поэтому проверяем «не больше реального», а не равенство.
+            # Сравнивать счётчик списка хранилищ с recordsFiltered нельзя: счётчик — за всё
+            # время и кэшируется (2420, 27.10: «6» при 8 statements, «-» при нуле), а таблица
+            # открывается с фильтром по дате (daterangepicker, на develop 11.11.2026: 4105 в
+            # списке против 11 за сегодня в таблице). Проверяем согласованность по существу:
+            # у непустого хранилища счётчик — положительное число и таблица отдаёт записи.
             records = resp_info.value.json().get("recordsFiltered")
-            shown = statements_count or 0
-            allure.attach(f"список хранилищ: {statements_count!r}, recordsFiltered: {records}", "счётчик statements")
-            assert shown <= records, (
-                f"«Количество statements» в списке хранилищ ({statements_count}) больше "
-                f"recordsFiltered вкладки Statements ({records})"
-            )
+            allure.attach(f"список хранилищ: {statements_count!r}, recordsFiltered (с фильтром даты): {records}", "счётчик statements")
+            assert isinstance(records, int) and records >= 0, f"recordsFiltered вкладки Statements не число: {records!r}"
+            if records > 0:
+                assert statements_count is not None and statements_count > 0, (
+                    f"Вкладка Statements отдаёт {records} записей, а счётчик в списке хранилищ пуст ({statements_count!r})"
+                )
 
     @allure.title("UI: Launch-ссылка клиента хранилища содержит endpoint и Basic-авторизацию из таблицы")
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s", "stand")
+    @pytest.mark.env("develop", "k8s", "stand")
     def test_store_clients_launch_link(self, page, env):
         email, password = get_credentials(env.name, role="admin")
         if not (email and password):

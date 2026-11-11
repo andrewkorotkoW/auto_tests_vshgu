@@ -10,8 +10,8 @@ docs/lrs/lrs_recon.md («Откуда берутся statements») — на k8s 
 (`AssignmentsEndpoint.assign_to_individual` + «Индивидуальное обучение» → «Курсы и
 тесты»), но без прокторинга — обычный тест с одним вопросом конструктора.
 
-SSO в OpenLRS работает на k8s и ревью-стендах (develop: OAuth-клиент не зарегистрирован,
-docs/plans/2026-10-14_lrs_mission.md) — тест помечен `@pytest.mark.env("k8s", "stand")`.
+SSO в OpenLRS работает на k8s и ревью-стендах (develop — SSO работает с 11.11.2026, OAuth-клиент зарегистрирован; до этого `invalid_client`,
+docs/plans/2026-10-14_lrs_mission.md) — тест помечен `@pytest.mark.env("develop", "k8s", "stand")`.
 Эталон — стенд vshgu2-2420-filters, 27.10.2026: statements `launched`/`passed` появляются
 в хранилище в течение секунд после прохождения."""
 import allure
@@ -42,7 +42,7 @@ class TestLrsStatementFlow:
     @pytest.mark.ui
     @pytest.mark.lrs
     @pytest.mark.e2e
-    @pytest.mark.env("k8s", "stand")
+    @pytest.mark.env("develop", "k8s", "stand")
     def test_passed_test_creates_statements(self, browser, env, api_client, prepared_user, created_test):
         tests_ep = TestsEndpoint(api_client)
         email, password = get_credentials(env.name, role="admin")

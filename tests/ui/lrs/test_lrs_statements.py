@@ -4,8 +4,8 @@ TC-LRS-008…010, 014 (docs/test_cases/lrs.md), разведка docs/lrs/lrs_re
 object — ui/pages/lrs_admin_page.py.
 
 Все тесты входят в OpenLRS через SSO (`LrsAdminPage.login_via_sso`), который работает на
-k8s и ревью-стендах (develop: OAuth-клиент не зарегистрирован, docs/lrs/lrs_recon.md) —
-помечены `@pytest.mark.env("k8s", "stand")`. Эталон UI — стенд vshgu2-2420-filters, прогон
+k8s и ревью-стендах (develop — SSO работает с 11.11.2026, OAuth-клиент зарегистрирован; до этого `invalid_client`, docs/lrs/lrs_recon.md) —
+помечены `@pytest.mark.env("develop", "k8s", "stand")`. Эталон UI — стенд vshgu2-2420-filters, прогон
 27.10.2026 (k8s выведен). Statements на стенде появляются от e2e-теста
 tests/e2e/lrs/test_statement_after_test_pass.py — на свежем стенде таблица пуста, тесты
 ниже это учитывают (`pytest.skip`), а не падают на пустой таблице.
@@ -70,7 +70,7 @@ class TestLrsStatements:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s", "stand")
+    @pytest.mark.env("develop", "k8s", "stand")
     def test_statements_table_preview_and_agent_link(self, page, env):
         with allure.step("1. Открыть Statements — таблица с записями и кнопками"):
             statements_page, _ = _login_statements(page, env)
@@ -103,7 +103,7 @@ class TestLrsStatements:
     @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s", "stand")
+    @pytest.mark.env("develop", "k8s", "stand")
     def test_statements_filters(self, page, env):
         statements_page, _ = _login_statements(page, env)
 
@@ -152,7 +152,7 @@ class TestLrsStatements:
     @allure.severity(allure.severity_level.NORMAL)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s", "stand")
+    @pytest.mark.env("develop", "k8s", "stand")
     def test_agents_tab_links(self, page, env):
         email, password = get_credentials(env.name, role="admin")
         if not (email and password):
@@ -194,7 +194,7 @@ class TestLrsStatements:
     @allure.severity(allure.severity_level.MINOR)
     @pytest.mark.ui
     @pytest.mark.lrs
-    @pytest.mark.env("k8s", "stand")
+    @pytest.mark.env("develop", "k8s", "stand")
     def test_states_tab(self, page, env):
         email, password = get_credentials(env.name, role="admin")
         if not (email and password):

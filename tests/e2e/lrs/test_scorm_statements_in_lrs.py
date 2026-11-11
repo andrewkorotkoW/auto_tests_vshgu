@@ -2,7 +2,7 @@
 initialized/launched/responded/passed/completed и state активности для его Agent. Кейс TC-LRS-016
 (docs/test_cases/lrs.md). Прохождение — tests/ui/courses/scorm/scorm_flow.py, LRS — ui/pages/lrs_admin_page.py.
 
-Вход в OpenLRS через SSO работает на k8s и ревью-стендах (develop: `invalid_client`) — `env("k8s","stand")`.
+Вход в OpenLRS через SSO работает на k8s и ревью-стендах (develop — SSO работает с 11.11.2026; до этого `invalid_client`) — `env("develop","k8s","stand")`.
 Разведка 2420 (27.10.2026): драйвер SCORM шлёт в `POST /xAPI/statements` statement `passed` с
 `result.score.raw = 0`, хотя SCORM API отдаёт `cmi.score.raw = 100` и `cmi.score.scaled = 1` —
 кандидат в дефект конвертации SCORM → xAPI, проверяется последним шагом (xfail)."""
@@ -34,7 +34,7 @@ class TestLrsScormFlow:
     @pytest.mark.ui
     @pytest.mark.lrs
     @pytest.mark.e2e
-    @pytest.mark.env("k8s", "stand")
+    @pytest.mark.env("develop", "k8s", "stand")
     def test_scorm_pass_creates_statements_and_state(self, browser, env, api_client, prepared_user):
         email, password = get_credentials(env.name, role="admin")
         if not (email and password):

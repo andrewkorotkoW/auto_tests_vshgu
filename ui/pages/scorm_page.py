@@ -83,14 +83,24 @@ class ScormCoursePage(BasePage):
 
     def start(self) -> "StorylinePlayer":
         """Клик по «Начать»/«Продолжить»/«Повторить» → плеер в новой вкладке (если вкладка не
-        открылась за 5 с — считаем, что плеер в текущей)."""
-        try:
-            with self.page.context.expect_page(timeout=5000) as page_info:
-                self.action_button.click(force=True)
-            player_page = page_info.value
-        except Exception:  # noqa: BLE001 — плеер открылся в той же вкладке
-            player_page = self.page
-        player_page.wait_for_load_state("domcontentloaded", timeout=settings.UI_TIMEOUT)
+        открылась за 5 с — считаем, что плеер в текущей).
+
+        Клик повторяется до трёх раз: кнопка отрисована раньше, чем карточка навесила
+        обработчик, и первый клик иногда «проглатывается» — вкладка не открывается, URL
+        остаётся /education/personal/activities (e2e LRS SCORM на develop 11.11.2026; та же
+        картина у интро АОС и «Начать тест» Tincan)."""
+        player_page = self.page
+        for attempt in range(3):
+            try:
+                with self.page.context.expect_page(timeout=5000) as page_info:
+                    self.action_button.click()
+                player_page = page_info.value
+            except Exception:  # noqa: BLE001 — плеер открылся в той же вкладке или клик не сработал
+                player_page = self.page
+            player_page.wait_for_load_state("domcontentloaded", timeout=settings.UI_TIMEOUT)
+            if PLAYER_URL_RE.search(player_page.url):
+                break
+            self.page.wait_for_timeout(2000)
         expect(player_page).to_have_url(PLAYER_URL_RE, timeout=settings.UI_TIMEOUT)
         return StorylinePlayer(player_page)
 
