@@ -13,7 +13,11 @@ import pytest
 from api.endpoints.mts_link import MtsLinkEndpoint
 from config.environments import is_feature_ready
 
-from conftest import MTS_LINK_DELETE_GRACE_SECONDS  # общая пауза с created_schedule_item (корневой conftest)
+# Не "from conftest import ...": без __init__.py в tests/ pytest грузит этот файл под тем же
+# именем модуля "conftest", что и корневой — такой импорт на полном прогоне (без явного пути)
+# тянет сам себя, ещё не доисполненный ("partially initialized module", живьём 12.11.2026).
+# Тот же env/дефолт, что в корневом conftest.py (общая пауза с created_schedule_item).
+MTS_LINK_DELETE_GRACE_SECONDS = int(os.getenv("MTS_LINK_DELETE_GRACE_SECONDS", "60"))
 
 
 @pytest.fixture(autouse=True)
