@@ -13,6 +13,11 @@ from utils.logger import logger
 @allure.story("Часть 0.1: настройки интеграции тенанта")
 @pytest.mark.api
 @pytest.mark.mts_link
+@pytest.mark.skip(
+    reason="Контракт не подтверждён (эндпоинт /admin/organizations/{id}/mts-link-settings "
+    "не существует — 404, живьём 12.11.2026 на mts-link-release-main). До живой разведки "
+    "и подтверждения реального маршрута — не включать в прогоны по маркеру mts_link."
+)
 class TestTenantSettings:
     @allure.title("Сохранение с валидным токеном → интеграция настроена и проверена")
     @pytest.mark.smoke

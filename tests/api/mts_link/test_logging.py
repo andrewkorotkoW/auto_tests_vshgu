@@ -7,6 +7,11 @@ import pytest
 @allure.story("Часть 10: логирование")
 @pytest.mark.api
 @pytest.mark.mts_link
+@pytest.mark.skip(
+    reason="Контракт не подтверждён живой разведкой (api/endpoints/mts_link.py: "
+    "'логирование/аудит — НЕ пересмотрено 02.11.2026'); часть методов зовёт тот же "
+    "несуществующий /mts-link-settings. До разведки — не включать в прогоны mts_link."
+)
 class TestLogging:
     @allure.title("Изменение настроек тенанта логируется без значения токена")
     @pytest.mark.smoke

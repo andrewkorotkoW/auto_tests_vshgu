@@ -125,18 +125,23 @@ class MtsLinkEndpoint:
     def __init__(self, client: ApiClient):
         self.client = client
 
-    # ── настройки интеграции тенанта (НЕ пересмотрено 02.11.2026) ────────
+    # ── настройки интеграции тенанта ──────────────────────────────────────
+    # GET подтверждён живым curl владельца 12.11.2026 на mts-link-release-main:
+    # GET /api/v1/tenants/{tenant_id}/mts_link_config -> 200 {"data": {"masked_token": "***xxxxx",
+    # "is_enabled": true}}. Старый путь /admin/organizations/{id}/mts-link-settings — 404, не
+    # существует (на нём и падал test_tenant_settings.py). PUT (сохранение токена) НЕ подтверждён —
+    # не угадывать: это единственный рабочий токен организации, писать его вслепую нельзя
+    # (см. docs/test_cases/mts_link/16_prod_safe_run.md). save_tenant_settings ниже оставлен как
+    # был (контракт не подтверждён), TestTenantSettings/TestLogging — @pytest.mark.skip.
 
     def get_tenant_settings(self, tenant_id: int) -> Dict:
-        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
-        докстринг модуля)."""
-        resp = self.client.get(f"/admin/organizations/{tenant_id}/mts-link-settings")
+        resp = self.client.get(f"/tenants/{tenant_id}/mts_link_config")
         expect_status(resp, 200)
         return resp.json().get("data", {})
 
     def save_tenant_settings(self, tenant_id: int, token: Optional[str] = None, **other_fields):
-        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
-        докстринг модуля)."""
+        """Контракт НЕ подтверждён — путь/форма тела под вопросом, не использовать вслепую
+        на прод-аккаунте (см. комментарий выше)."""
         attributes = dict(other_fields)
         if token is not None:
             attributes["token"] = token
@@ -148,10 +153,10 @@ class MtsLinkEndpoint:
         return resp
 
     def get_tenant_integration_enabled(self, tenant_id: int) -> bool:
-        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
-        докстринг модуля)."""
+        """Подтверждено вместе с get_tenant_settings 12.11.2026: поле — is_enabled, не
+        attributes.integration_configured."""
         data = self.get_tenant_settings(tenant_id)
-        return bool(data.get("attributes", {}).get("integration_configured"))
+        return bool(data.get("is_enabled"))
 
     # ── создание мероприятия «МТС Линк» ───────────────────────────────────
 

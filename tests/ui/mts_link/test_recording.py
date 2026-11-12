@@ -15,6 +15,11 @@ from config.settings import settings
 @allure.story("Часть 11: запись вебинара")
 @pytest.mark.ui
 @pytest.mark.mts_link
+@pytest.mark.skip(
+    reason="Контракт не подтверждён живой разведкой (TODO в докстринге файла; "
+    "api/endpoints/mts_link.py: 'запись вебинара — НЕ пересмотрено 02.11.2026'). "
+    "До разведки — не включать в прогоны mts_link."
+)
 class TestRecording:
     @allure.title("Запись проигрывается прямо в «Результатах активности»")
     @pytest.mark.smoke

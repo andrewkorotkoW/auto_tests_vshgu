@@ -9,6 +9,11 @@ from config.settings import settings
 @allure.story("Часть 9: процент посещения")
 @pytest.mark.ui
 @pytest.mark.mts_link
+@pytest.mark.skip(
+    reason="Контракт не подтверждён живой разведкой (api/endpoints/mts_link.py: "
+    "'посещаемость — НЕ пересмотрено 02.11.2026'). Живьём 12.11.2026 — падает/RERUN "
+    "целиком. До разведки — не включать в прогоны mts_link."
+)
 class TestAttendance:
     def _open_listeners(self, stream_listeners_page, item):
         stream_listeners_page.page.goto(
