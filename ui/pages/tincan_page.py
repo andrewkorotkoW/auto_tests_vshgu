@@ -145,12 +145,21 @@ class TincanPage(BasePage):
             sub_file = self.page.locator("span.files-table__text:has-text('sub_files')")
             assert sub_file.is_visible(timeout=3000), "Доп. файл не отображается!"
 
-        # Открыть курс: «Начать» может открыть плеер в новой вкладке (как в потоке) —
-        # ждём её до 5 с, иначе считаем, что плеер открылся в текущей.
+        # Кнопка «Начать» какое-то время после назначения disabled — бэкенд фонового
+        # что-то готовит перед запуском (не archive.meta.status — он остаётся "new" и
+        # после готовности, не индикатор). На k8s-release (d9.darkarow.ru) разведка
+        # 12.11.2026: disabled ещё на 30-45 с, enabled к 59 с; на develop окно короче и
+        # обычно уже прошло к моменту клика. Раньше здесь был force=True — кнопка
+        # кликалась в disabled-состоянии, DOM-event доходил до Vue (window.open()
+        # реально вызывался, подтверждено инструментацией), но сам браузер такой клик
+        # не засчитывал за валидную user-activation и popup не открывался — тест висел
+        # 30 с на ожидании #iframe на СТАРОЙ странице. Ждём настоящего enabled вместо
+        # этого — тогда обычный клик открывает плеер штатно, как и в потоке.
         start_btn = self.page.locator("button.v-btn:has-text('Начать')").first
+        expect(start_btn).to_be_enabled(timeout=90000)
         try:
             with self.page.context.expect_page(timeout=5000) as new_page_info:
-                start_btn.click(force=True)
+                start_btn.click()
             course_page = new_page_info.value
         except Exception:
             course_page = self.page
