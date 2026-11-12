@@ -329,19 +329,27 @@ class MtsLinkEndpoint:
         expect_status(resp, 200)
         return resp.json().get("data", {})
 
-    # ── логирование / аудит (НЕ пересмотрено 02.11.2026) ──────────────────
-    # get_request_log_entries бьёт в /admin/mts-link/request-log-audit — этот путь
-    # подтверждённо 404 (проверено 02.11.2026 вместе с остальными). Оставлен как
-    # есть (не удалён), потому что используется за пределами сегодняшнего захода
-    # (tests/api/mts_link/test_logging.py целиком об этом) — выводы и фикс того
-    # файла в это изменение не входят.
+    # ── логирование / аудит ────────────────────────────────────────────────
+    # get_action_log подтверждён curl владельца 12.11.2026 (admin-UI, /admin/logs/changes):
+    # GET /entities-logs?per-page=N&page=1&filters[auditable_type]=StreamScheduleItem -> 200
+    # {"data": [{"attributes": {"event": "created"|"updated"|"deleted", "entity_id": "233",
+    # "entity_name": str, "old_values": {...}, "new_values": {...}, "user_id", "user_email",
+    # "ip_address", "created_at", "url"}}]}. Старый путь /admin/logs — 404, не существует.
+    # filters[auditable_id] на бэкенде ИГНОРИРУЕТСЯ (проверено прямым вызовом с ним и без —
+    # тот же общий список по типу) — фильтруем по конкретной сущности на своей стороне.
+    # get_request_log_entries (ниже) — другой, НЕ подтверждённый контракт (request/response
+    # тело конкретных запросов в МТС Линк, не просто diff значений сущности в БД);
+    # /admin/mts-link/request-log-audit подтверждённо 404 (02.11.2026).
+    _AUDITABLE_TYPE_BY_ENTITY = {"schedule_item": "StreamScheduleItem"}
 
     def get_action_log(self, entity_type: str, entity_id: int) -> List[Dict]:
-        """Контракт не подтверждён (не пересматривалось в заходе 02.11.2026, см.
-        докстринг модуля)."""
-        resp = self.client.get(f"/admin/logs?entity_type={entity_type}&entity_id={entity_id}")
+        auditable_type = self._AUDITABLE_TYPE_BY_ENTITY.get(entity_type, entity_type)
+        resp = self.client.get(
+            f"/entities-logs?per-page=100&page=1&filters%5Bauditable_type%5D={auditable_type}"
+        )
         expect_status(resp, 200)
-        return resp.json().get("data", [])
+        entries = [e["attributes"] for e in resp.json().get("data", [])]
+        return [e for e in entries if e.get("entity_id") == str(entity_id)]
 
     def get_request_log_entries(
         self,
