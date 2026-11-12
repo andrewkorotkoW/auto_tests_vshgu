@@ -1247,8 +1247,15 @@ def generate_homework_payload(
     cover_uuid: str = "",
     archive_uuid: str = "",
     sub_files_uuids: list = None,
+    peer_review_enabled: bool = None,
 ) -> dict:
-    """Генерация payload для создания практического задания (homework)."""
+    """Генерация payload для создания практического задания (homework).
+
+    peer_review_enabled — «Взаимопроверка» (p2p), подтверждено живьём 12.11.2026 на
+    p2p-prototype: это поле payload СОЗДАНИЯ, не отдельный эндпоинт/PATCH — и после
+    сохранения карточки ПЗ оно больше не редактируется (см.
+    docs/test_cases/p2p/00_pt_card_settings.md). None — не передавать ключ вовсе (не
+    трогать поведение обычных, не-p2p тестов)."""
     if not name:
         timestamp = unique_suffix()
         name = f"Автотест_практическое_задание_админка_{timestamp}"
@@ -1265,24 +1272,28 @@ def generate_homework_payload(
     if sub_files_uuids is None:
         sub_files_uuids = []
 
+    attributes = {
+        "inspectors": [],
+        "teachers": [],
+        "duration": duration,
+        "teacher_ids": teacher_ids,
+        "content_type": "homework",
+        "grade_type": grade_type,
+        "name": name,
+        "name_client": name_client,
+        "activity_category_id": activity_category_id,
+        "description": description,
+        "inspector_ids": inspector_ids,
+        "archive_uuid": archive_uuid,
+        "cover_uuid": cover_uuid,
+        "sub_files_uuids": sub_files_uuids
+    }
+    if peer_review_enabled is not None:
+        attributes["peer_review_enabled"] = peer_review_enabled
+
     return {
         "data": {
-            "attributes": {
-                "inspectors": [],
-                "teachers": [],
-                "duration": duration,
-                "teacher_ids": teacher_ids,
-                "content_type": "homework",
-                "grade_type": grade_type,
-                "name": name,
-                "name_client": name_client,
-                "activity_category_id": activity_category_id,
-                "description": description,
-                "inspector_ids": inspector_ids,
-                "archive_uuid": archive_uuid,
-                "cover_uuid": cover_uuid,
-                "sub_files_uuids": sub_files_uuids
-            },
+            "attributes": attributes,
             "includes": {
                 "archive": [],
                 "image": [],
