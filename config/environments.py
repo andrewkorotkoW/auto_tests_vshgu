@@ -125,7 +125,14 @@ ENVIRONMENTS = {
 # База — STAND_URL (его передаёт test_hub для стенда) или K8S_UI_URL; API и глобальная админка
 # выводятся из хоста портала (portal-… → global-…). Кука сессии у таких стендов называется
 # «develop» (снимок develop), учётки — те же, что на develop (см. get_credentials).
-_K8S_UI = (os.getenv("K8S_UI_URL") or os.getenv("STAND_URL") or "https://portal-k8s-release.v2.gosedu.ru").rstrip("/")
+# НЕ подставлять STAND_URL сюда как фоллбэк: STAND_URL — адрес стенда «stand» (сейчас это
+# реальный прод-аккаунт МТС Линк, mts-link-release-main, см. docs/test_cases/mts_link/
+# 16_prod_safe_run.md), а не k8s-релиза. 12.11.2026: --env k8s без явного K8S_UI_URL/STAND_URL
+# в окружении процесса унаследовал STAND_URL из .env (на тот момент — прод МТС Линк) и прогнал
+# UI-тесты tincan против боевого аккаунта вместо k8s-стенда (данные тест сам убрал за собой,
+# но риск реальный — см. memory vshgu_k8s_v2_stand.md). Без K8S_UI_URL используем только
+# захардкоженный дефолт, никогда STAND_URL.
+_K8S_UI = (os.getenv("K8S_UI_URL") or "https://portal-k8s-release.v2.gosedu.ru").rstrip("/")
 ENVIRONMENTS["k8s"] = _build_environment(
     "k8s",
     cookie_name=os.getenv("K8S_COOKIE_NAME", "develop"),
