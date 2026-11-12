@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 import allure
 import pytest
+import requests
 
 from utils.logger import logger
 from api.helpers.data_generator import MTS_LINK_SAFE_TEACHER_ID
@@ -96,4 +97,27 @@ class TestCreate:
         body = resp.text
         assert "/srv/app" not in body and '"trace"' not in body, (
             f"В ответе 422 не должно быть стектрейса/серверных путей: {body[:300]}"
+        )
+
+    @allure.title("Ссылка на вебинар реально ведёт в МТС Линк")
+    def test_join_link_leads_to_real_mts_link_system(
+        self, mts_link_endpoint, created_schedule_item, schedule_items_endpoint
+    ):
+        """Предусловие: мероприятие «МТС Линк» создано и досинхронизировалось. Проверяем, что
+        attributes.url — это не просто непустая строка (как в test_event_creation_success_
+        saves_ids_and_url), а реальная ссылка на домен МТС Линк (my.mts-link.ru, подтверждено
+        живьём 12.11.2026), по которой можно перейти (без нашей сессии ЛМС — обычный requests.get,
+        как сделал бы слушатель по ссылке)."""
+        item = created_schedule_item(item_type="mts_link", url="")
+        mts_link_endpoint.wait_for_part_status(item, "creation")
+
+        fetched = schedule_items_endpoint.get(item["program_id"], item["stream_id"], item["module_id"], item["id"])
+        url = fetched["attributes"].get("url")
+        assert url, "У мероприятия нет ссылки на вебинар"
+        assert "mts-link.ru" in url, f"Ссылка не похожа на домен МТС Линк: {url}"
+
+        resp = requests.get(url, allow_redirects=True, timeout=15)
+        assert resp.status_code == 200, f"Переход по ссылке {url} не удался: {resp.status_code}"
+        assert "mts-link.ru" in resp.url, (
+            f"Переход по ссылке увёл на другой домен, не МТС Линк: {resp.url}"
         )
