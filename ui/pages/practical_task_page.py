@@ -177,64 +177,69 @@ class PracticalTaskPage(BasePage):
         expect(row).to_be_visible(timeout=30000)
         row.get_by_text("Перейти к проверке").first.click(timeout=5000, force=True)
 
-    # ── Форма критериев (03 §7.4: шкала / ОиМ / МиМ / текст) ────────────
+    # ── Форма критериев ──────────────────────────────────────────────────
+    # 12.11.2026, полный цикл живьём подтверждён на p2p-prototype (реальные критерии
+    # заведены через /admin/activities/{id}, вкладка «Взаимопроверка» → «Критерии
+    # оценки» — см. docs/test_cases/p2p/01_criteria.md). Реальные типы — НЕ «Шкала/
+    # Одиночный выбор/Множественный выбор/Текстовое поле» из плана, а quantitative
+    # (числовое поле, подпись-хинт «Оценка от 0 до 100»), qualitative (обычный textarea,
+    # замена «Текстового поля»), single_choice (radio-группа без fieldset/legend — просто
+    # заголовок критерия + radio с подписями вариантов), multiple_choice (то же, checkbox).
+    # Баллы вариантов (score) заданы только у admin, в форме проверки не видны.
 
-    def select_scale_criterion_value(self, criterion_label: str, value: str) -> None:
-        # TODO: уточнить после ветки — вероятно v-select/radio-группа по значению шкалы
-        control = self.page.locator(
-            f"xpath=//label[contains(normalize-space(),'{criterion_label}')]/ancestor::div[contains(@class,'v-input')][1]"
-        )
-        expect(control).to_be_visible(timeout=15000)
-        control.click(timeout=5000)
-        option = self.page.locator(f"xpath=//div[contains(@class,'v-menu__content')]//*[normalize-space()='{value}']").first
-        expect(option).to_be_visible(timeout=10000)
-        option.click(timeout=5000)
+    def fill_quantitative_criterion(self, criterion_label: str, value: str) -> None:
+        """Числовой критерий (включая системную «Общая оценка», 0–100) — подтверждено
+        живьём: простой текстовый/числовой input сразу после заголовка критерия."""
+        field = self.page.locator(
+            f"xpath=//*[normalize-space()='{criterion_label}']/following::input[1]"
+        ).first
+        expect(field).to_be_visible(timeout=15000)
+        field.click(timeout=5000)
+        field.fill(value, timeout=5000)
 
     def select_single_choice_criterion(self, criterion_label: str, option_text: str) -> None:
-        # TODO: уточнить после ветки — критерий «Одиночный выбор» (ОиМ, 03 §7.6)
+        """Подтверждено живьём: заголовок критерия, затем radio-список подписей вариантов
+        (без fieldset/legend — обычные div/label)."""
         option = self.page.locator(
-            f"xpath=//fieldset[.//legend[contains(normalize-space(),'{criterion_label}')]]"
-            f"//label[normalize-space()='{option_text}']"
-        )
+            f"xpath=//*[normalize-space()='{criterion_label}']/following::*[normalize-space()='{option_text}'][1]"
+        ).first
         expect(option).to_be_visible(timeout=15000)
-        option.click(timeout=5000)
+        option.click(timeout=5000, force=True)
 
     def select_multiple_choice_criterion(self, criterion_label: str, option_texts: Iterable[str]) -> None:
-        # TODO: уточнить после ветки — критерий «Множественный выбор» (МиМ, 03 §7.7)
+        """Подтверждено живьём: та же структура, что у single_choice, но checkbox —
+        можно отметить несколько."""
         for option_text in option_texts:
             checkbox = self.page.locator(
-                f"xpath=//fieldset[.//legend[contains(normalize-space(),'{criterion_label}')]]"
-                f"//label[normalize-space()='{option_text}']"
-            )
+                f"xpath=//*[normalize-space()='{criterion_label}']/following::*[normalize-space()='{option_text}'][1]"
+            ).first
             expect(checkbox).to_be_visible(timeout=15000)
-            checkbox.click(timeout=5000)
+            checkbox.click(timeout=5000, force=True)
 
-    def fill_text_criterion(self, criterion_label: str, text: str) -> None:
-        # TODO: уточнить после ветки — критерий «Текстовое поле» (03 §7.8)
+    def fill_qualitative_criterion(self, criterion_label: str, text: str) -> None:
+        """Качественный критерий (текст/комментарий — замена плановой «Текстового поля»)
+        — подтверждено живьём: обычный textarea сразу после заголовка критерия."""
         field = self.page.locator(
-            f"xpath=//label[contains(normalize-space(),'{criterion_label}')]/following::textarea[1]"
-        )
+            f"xpath=//*[normalize-space()='{criterion_label}']/following::textarea[1]"
+        ).first
         expect(field).to_be_visible(timeout=15000)
         field.fill(text, timeout=5000)
 
     def save_peer_review_draft(self) -> None:
-        """Подтверждено живьём 12.11.2026: реальная кнопка — «Сохранить черновик»
-        (не «Сохранить»), сохраняет без финального подтверждения — значения можно менять
-        повторно (04 §8.1). На ПЗ без настроенных критериев кнопка задизейблена (нечего
-        сохранять) — реальный запрос сохранения черновика НЕ перехвачен, следующий шаг
-        разведки — завести критерии и повторить."""
+        """Кнопка «Сохранить черновик» — сохраняет без финального подтверждения,
+        значения можно менять повторно (04 §8.1). Подтверждено живьём 12.11.2026 полным
+        циклом (реальные критерии): реальный запрос — см.
+        api/endpoints/p2p.py::save_peer_review_draft."""
         button = self.page.get_by_text("Сохранить черновик").first
         expect(button).to_be_visible(timeout=15000)
+        expect(button).to_be_enabled(timeout=10000)
         button.click(timeout=5000, force=True)
 
     def confirm_peer_review(self) -> None:
-        """Подтверждено живьём 12.11.2026: реальная кнопка — «Завершить оценку» (не
-        «Подтвердить»), открывает диалог-предупреждение «Завершить оценку?» с текстом
-        «После завершения оценку нельзя будет изменить, пока автор не сдаст работу заново.» —
-        подтверждается кнопкой «Завершить» в диалоге. Запрос (POST .../peer-reviews/finalize)
-        подтверждён в api/endpoints/p2p.py::finalize_peer_review, но содержимое обязательного
-        поля `values` (критерий→значение) НЕ подтверждено до конца (проверялось только на ПЗ
-        без критериев, где любой payload даёт 422)."""
+        """Кнопка «Завершить оценку» → диалог-предупреждение «Завершить оценку?» с
+        текстом «После завершения оценку нельзя будет изменить, пока автор не сдаст
+        работу заново.» → кнопка «Завершить». Подтверждено живьём 12.11.2026 полным
+        циклом: реальный запрос — см. api/endpoints/p2p.py::finalize_peer_review."""
         button = self.page.get_by_text("Завершить оценку").first
         expect(button).to_be_visible(timeout=15000)
         button.click(timeout=5000, force=True)
@@ -243,14 +248,18 @@ class PracticalTaskPage(BasePage):
         confirm.click(timeout=5000, force=True)
 
     def expect_peer_review_locked(self) -> None:
-        """После «Завершить оценку» редактирование заблокировано — ПОДТВЕРЖДЁННОЕ УТОЧНЕНИЕ
-        12.11.2026: блокировка УСЛОВНАЯ (по тексту диалога-предупреждения) — снимается, когда
-        автор пересдаст работу заново, а не постоянна. Реальная разметка заблокированной формы
-        (какой элемент показывает недоступность) ещё не разведана — ПЗ в этом заходе не имело
-        критериев, поэтому самой формы для блокировки не было."""
-        # TODO: уточнить после разведки с непустыми критериями
-        form = self.page.locator("xpath=//form[.//legend]")  # форма критериев
-        expect(form).to_have_attribute("aria-disabled", "true", timeout=15000)
+        """После «Завершить оценку» редактирование заблокировано. Подтверждено живьём
+        12.11.2026 полным циклом (реальные критерии, реальная блокировка): зелёный баннер
+        с текстом «Оценка завершена. Изменить её можно будет после новой сдачи работы
+        автором.» — блокировка УСЛОВНАЯ (до пересдачи автором), не навсегда, как
+        предполагал TC-P2P-031. Все поля формы (числовое/текстовое/radio/checkbox) при
+        этом видны с сохранёнными значениями, но disabled; кнопки «Сохранить черновик»/
+        «Завершить оценку» пропадают."""
+        banner = self.page.locator(
+            "xpath=//*[contains(normalize-space(),'Оценка завершена. Изменить её можно будет "
+            "после новой сдачи работы автором')]"
+        )
+        expect(banner).to_be_visible(timeout=15000)
 
     # ── Результат по своей работе (автор видит итог и значения по критериям) ──
 
