@@ -25,8 +25,8 @@ class TestLogging:
     def test_event_creation_logged(self, mts_link_endpoint, created_schedule_item):
         """Предусловие: -."""
         item = created_schedule_item(item_type="mts_link", url="")
-        log = mts_link_endpoint.get_action_log("schedule_item", item["id"])
-        assert any(e.get("event") == "created" for e in log), log
+        entry = mts_link_endpoint.wait_for_action_logged("schedule_item", item["id"], "created")
+        assert entry is not None, "Запись о создании не найдена в журнале"
 
     @allure.title("Изменение мероприятия логируется с указанием, что менялось и запускалась ли синхронизация")
     @pytest.mark.skip(
@@ -60,8 +60,8 @@ class TestLogging:
         item = created_schedule_item(item_type="mts_link", url="")
         schedule_items_endpoint.delete(item["program_id"], item["stream_id"], item["module_id"], item["id"])
 
-        log = mts_link_endpoint.get_action_log("schedule_item", item["id"])
-        assert any(e.get("event") == "deleted" for e in log), log
+        entry = mts_link_endpoint.wait_for_action_logged("schedule_item", item["id"], "deleted")
+        assert entry is not None, "Запись об удалении не найдена в журнале"
 
     @allure.title("Все запросы/ответы по операциям сохраняются в request_log_audit")
     @pytest.mark.skip(

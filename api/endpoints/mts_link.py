@@ -337,6 +337,12 @@ class MtsLinkEndpoint:
     # "ip_address", "created_at", "url"}}]}. Старый путь /admin/logs — 404, не существует.
     # filters[auditable_id] на бэкенде ИГНОРИРУЕТСЯ (проверено прямым вызовом с ним и без —
     # тот же общий список по типу) — фильтруем по конкретной сущности на своей стороне.
+    # auditable_type=StreamScheduleItem — общий тип ЛЮБОГО мероприятия расписания во ВСЕЙ
+    # организации (не только МТС Линк, не только наше); страница 1 по 100 записей, свежие
+    # сверху (created_at desc) — но при параллельной активности (другие тесты/пользователи)
+    # нашу запись может вытолкнуть за page=1 ещё до того, как мы её прочитаем. Поэтому
+    # get_action_log сам не однократный — используйте wait_for_action_logged ниже, а не
+    # один вызов get_action_log, если результат важен для ассерта (а не просто дебага).
     # get_request_log_entries (ниже) — другой, НЕ подтверждённый контракт (request/response
     # тело конкретных запросов в МТС Линк, не просто diff значений сущности в БД);
     # /admin/mts-link/request-log-audit подтверждённо 404 (02.11.2026).
@@ -350,6 +356,28 @@ class MtsLinkEndpoint:
         expect_status(resp, 200)
         entries = [e["attributes"] for e in resp.json().get("data", [])]
         return [e for e in entries if e.get("entity_id") == str(entity_id)]
+
+    def wait_for_action_logged(
+        self,
+        entity_type: str,
+        entity_id: int,
+        event: str,
+        timeout: float = 30.0,
+        poll_interval: float = 2.0,
+    ) -> Optional[Dict]:
+        """Поллинг get_action_log до появления записи с нужным event ("created"/"updated"/
+        "deleted") — страница 1/100 общего лога может не захватить нашу запись сразу при
+        параллельной активности на стенде (см. комментарий выше)."""
+        deadline = time.monotonic() + timeout
+        last_log: List[Dict] = []
+        while time.monotonic() < deadline:
+            last_log = self.get_action_log(entity_type, entity_id)
+            entry = next((e for e in last_log if e.get("event") == event), None)
+            if entry is not None:
+                return entry
+            time.sleep(poll_interval)
+        logger.warning(f"wait_for_action_logged: {event} для {entity_type}={entity_id} не найден за {timeout}s, log={last_log}")
+        return None
 
     def get_request_log_entries(
         self,
