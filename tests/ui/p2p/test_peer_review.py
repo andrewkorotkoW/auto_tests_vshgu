@@ -8,10 +8,15 @@
 контракт api/endpoints/p2p.py не подтверждён. Тесты пропускаются без P2P_READY, см.
 tests/ui/p2p/conftest.py.
 
-ТРЕБУЕТ ПЕРЕПИСИ (12.11.2026, живая разведка p2p-prototype, см. 02_stream_settings.md):
-`set_stream_participants` удалён из api/endpoints/p2p.py — отдельного списка участников
-нет, все слушатели потока автоматически входят в пул взаимопроверки. Тесты ниже не
-исправлены — следующий шаг разведки части 02/03."""
+ТРЕБУЕТ ПЕРЕПИСИ (12.11.2026, живая разведка p2p-prototype, см. 02_stream_settings.md,
+04_peer_review.md): `set_stream_participants` удалён из api/endpoints/p2p.py — отдельного
+списка участников нет, все слушатели потока автоматически входят в пул взаимопроверки.
+Также опровергнута сама предпосылка `open_peer_review_works_tab()` (удалён из
+practical_task_page.py) — нет отдельной вкладки/раздела «Работы на проверку», это встроенный
+блок «Назначенные взаимопроверки» на той же панели деталей ПЗ, см.
+PracticalTaskPage.expect_no_peer_review_assignments (подтверждено только пустое состояние —
+«Назначено работ: 0»). Тесты ниже не исправлены — следующий шаг разведки части 04 (после
+подтверждения записи assign_work_manually/run_automatic_distribution)."""
 from pathlib import Path
 
 import allure
@@ -30,10 +35,14 @@ TEST_DATA_DIR = Path(__file__).resolve().parents[3] / "test_data"
 def _find_work_id(api_client, homework_id: int, user_id: int) -> int:
     """Находит id ответа (work_id) конкретного пользователя по ПЗ через
     GET /homework/answers?filters[homework_id] — тот же приём, что и в
-    tests/api/users/teacher/test_examine_by_teacher.py."""
+    tests/api/users/teacher/test_examine_by_teacher.py.
+
+    12.11.2026, живая разведка p2p-prototype: реальная структура ответа —
+    attributes.user.id (вложенный объект), а не attributes.user_id — было
+    исправлено здесь после того, как это подтвердилось на реальных данных."""
     answers = api_client.get(f"/homework/answers?filters[homework_id]={homework_id}").json().get("data", [])
     for answer in answers:
-        if answer.get("attributes", {}).get("user_id") == user_id:
+        if answer.get("attributes", {}).get("user", {}).get("id") == user_id:
             return answer["id"]
     pytest.fail(f"Не найден ответ пользователя {user_id} по ПЗ {homework_id}")
 
