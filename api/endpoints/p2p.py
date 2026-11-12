@@ -137,94 +137,140 @@ class P2PEndpoint:
         expect_status(resp, 200)
         return resp.json().get("data", [])
 
-    def save_peer_settings(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, **fields) -> Dict:
-        """Сохранить настройки взаимопроверки (кнопка «Сохранить настройки» —
-        min_reviews_per_work/peer_review_deadline_at/external_cert_reviews_threshold/
-        author_visibility.*/external_see_author_names/auto_final_grade_enabled, см.
-        get_stream_content). Контракт НЕ подтверждён — метод, PUT и форма payload
-        построены по аналогии с полями peer_settings, реальный запрос сохранения
-        ещё не перехвачен (следующий шаг разведки)."""
+    def save_peer_settings(
+        self, program_id: int, stream_id: int, module_id: int, stream_content_id: int,
+        min_reviews_per_work: int, reviews_per_reviewer: int, peer_review_deadline_at: str,
+        author_see_comments: bool = True, author_see_reviewer_names: bool = False,
+        author_see_peer_breakdown: bool = False, external_see_author_names: bool = False,
+        **extra_fields,
+    ) -> Dict:
+        """Сохранить настройки взаимопроверки (кнопка «Сохранить настройки»).
+
+        Подтверждено живьём 12.11.2026: тело запроса БЕЗ JSON:API-обёртки data/attributes —
+        плоский `{"peer_settings": {...}}`, и сервер требует ВСЕ поля разом (PUT как полная
+        замена, не точечный PATCH): min_reviews_per_work, reviews_per_reviewer,
+        peer_review_deadline_at, author_visibility.{author_see_comments,
+        author_see_reviewer_names, author_see_peer_breakdown}, external_see_author_names —
+        без них 422. external_cert_reviews_threshold/_max/auto_final_grade_enabled/frozen
+        необязательны (не было в списке обязательных) — extra_fields добавляет их при
+        необходимости."""
+        peer_settings = {
+            "min_reviews_per_work": min_reviews_per_work,
+            "reviews_per_reviewer": reviews_per_reviewer,
+            "peer_review_deadline_at": peer_review_deadline_at,
+            "author_visibility": {
+                "author_see_comments": author_see_comments,
+                "author_see_reviewer_names": author_see_reviewer_names,
+                "author_see_peer_breakdown": author_see_peer_breakdown,
+            },
+            "external_see_author_names": external_see_author_names,
+            **extra_fields,
+        }
         resp = self.client.put(
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
             f"/contents/{stream_content_id}/peer-settings",
-            json={"data": {"attributes": fields}},
+            json={"peer_settings": peer_settings},
         )
         expect_status(resp, (200, 201))
-        logger.info(f"Stream content {stream_content_id}: peer_settings saved {fields}")
+        logger.info(f"Stream content {stream_content_id}: peer_settings saved {peer_settings}")
         return resp.json()
 
-    def assign_work_manually(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, work_id: int, reviewer_user_id: int) -> Dict:
+    def assign_work_manually(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, author_user_id: int, reviewer_user_id: int) -> Dict:
         """Ручное назначение («+ Добавить назначение» в модалке) — дополняет
-        автораспределение, не альтернатива ему. Контракт НЕ подтверждён — реальный
-        POST ещё не перехвачен (кнопку не нажимали, чтобы не трогать чужие
-        тестовые данные на p2p-prototype)."""
+        автораспределение, не альтернатива ему.
+
+        Подтверждено живьём 12.11.2026: назначение адресуется по автору работы
+        (`author_user_id`), а не по id самой работы (`work_id` — неверная догадка, сервер
+        ответил 422 «author_user_id/reviewer_user_id обязательны»). Тело — без JSON:API-
+        обёртки, плоское `{"author_user_id": ..., "reviewer_user_id": ...}`."""
         resp = self.client.post(
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
             f"/contents/{stream_content_id}/peer-assignments",
-            json={"data": {"attributes": {"work_id": work_id, "reviewer_user_id": reviewer_user_id}}},
+            json={"author_user_id": author_user_id, "reviewer_user_id": reviewer_user_id},
         )
         expect_status(resp, (200, 201))
-        logger.info(f"Work {work_id} assigned to reviewer {reviewer_user_id} (manual)")
+        logger.info(f"Author {author_user_id}'s work assigned to reviewer {reviewer_user_id} (manual)")
         return resp.json()
 
     def run_automatic_distribution(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, reviews_per_reviewer: int = 1) -> Dict:
         """Запуск автоматического распределения («Распределить» в модалке) —
         reviews_per_reviewer — подтверждённое имя поля (было: works_per_listener).
         «Первая проверка уже завершена — перераспределение недоступно» — повторный
-        вызов после первой проверки должен отклоняться (не проверено). Контракт
-        самого POST НЕ подтверждён (кнопку не нажимали)."""
-        resp = self.client.post(
+        вызов после первой проверки должен отклоняться (не проверено).
+
+        Подтверждено живьём 12.11.2026: метод — PUT, не POST (POST вернул 405, Laravel
+        сообщил «Supported methods: PUT, PATCH, DELETE»). Тело запроса (плоское, по
+        аналогии с save_peer_settings/assign_work_manually) ещё не подтверждено до конца —
+        422/200 после смены метода не перепроверялся в этом заходе."""
+        resp = self.client.put(
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
             f"/contents/{stream_content_id}/peer-assignments/distribute",
-            json={"data": {"attributes": {"reviews_per_reviewer": reviews_per_reviewer}}},
+            json={"reviews_per_reviewer": reviews_per_reviewer},
         )
         expect_status(resp, (200, 201))
         logger.info(f"Stream content {stream_content_id}: automatic distribution started")
         return resp.json()
 
-    def list_assignments(self, program_id: int, stream_id: int, content_id: int, reviewer_user_id: Optional[int] = None) -> List[Dict]:
-        """Назначенные peer-проверки по ПЗ в потоке — для слушателя-проверяющего
-        (список «чужих» работ, 04 §3.1/§6.1) или все, если reviewer_user_id не задан.
+    # ── §3/§8: peer-проверка слушателем-проверяющим ─────────────────────────
+    # 12.11.2026, живая разведка p2p-prototype (часть 04, с записью — assign_work_manually/
+    # save_peer_settings подтверждены, run_automatic_distribution — нет, см. выше). Список
+    # «чужих» работ и форма проверки живут НЕ под /programs/{program_id} (админский числовой
+    # id), а под /my-programs/{program_uuid} (тот же UUID, что в адресной строке слушателя,
+    # /education/program/{uuid}/...) — РАЗНЫЕ id-схемы для одной и той же программы: админ
+    # использует числовой id, слушатель — uuid. module_id/stream_content_id — те же числовые
+    # id, что и в админской части (02_stream_settings.md).
 
-        Контракт не подтверждён, раздел 6.
-        """
-        endpoint = f"/programs/{program_id}/streams/{stream_id}/content/{content_id}/peer-review/assignments"
-        if reviewer_user_id is not None:
-            endpoint += f"?filters[reviewer_user_id]={reviewer_user_id}"
-        resp = self.client.get(endpoint)
+    def list_peer_submissions(self, program_uuid: str, module_id: int, stream_content_id: int) -> List[Dict]:
+        """Подтверждено живьём 12.11.2026 (перехвачен реальный XHR страницы ПЗ слушателя):
+        GET /my-programs/{program_uuid}/modules/{module_id}/contents/{stream_content_id}/
+        peer-submissions?page=1&per_page=50 -> {"data": [{homework_answer_id, title,
+        author_name, submitted_at, my_review_status, revision_status,
+        peer_review_allowed}], "meta": {...}} — это и есть список «Назначенные
+        взаимопроверки» (UI колонки «Работа»(=author_name)/«Сдана»/«Статус»)."""
+        resp = self.client.get(
+            f"/my-programs/{program_uuid}/modules/{module_id}/contents/{stream_content_id}/peer-submissions",
+            params={"page": 1, "per_page": 50},
+        )
         expect_status(resp, 200)
         return resp.json().get("data", [])
 
-    # ── §3/§8: peer-проверка слушателем-проверяющим ─────────────────────────
-
-    def submit_peer_review(self, work_id: int, reviewer_user_id: int, criteria_values: Dict, final_confirm: bool = False) -> Dict:
-        """Сохранить/обновить peer-проверку. До финального подтверждения значения можно
-        менять (04 §8.1); final_confirm=True фиксирует проверку — дальше редактирование
-        должно быть заблокировано.
-
-        Контракт не подтверждён, раздел 8.
-        """
-        resp = self.client.post(
-            f"/homework/{work_id}/peer-reviews",
-            json={"data": {"attributes": {
-                "reviewer_user_id": reviewer_user_id,
-                "criteria_values": criteria_values,
-                "final_confirm": final_confirm,
-            }}},
+    def get_peer_submission(self, program_uuid: str, module_id: int, stream_content_id: int, homework_answer_id: int) -> Dict:
+        """Подтверждено живьём 12.11.2026: GET .../peer-submissions/{homework_answer_id} ->
+        data: {homework_answer_id, title, author_name, submitted_at,
+        homework_answers_history_id, text, student_file, criteria, review, revision_status,
+        peer_review_allowed}. `criteria` — список критериев с их настройками для формы
+        проверки (на ПЗ без явно заданных критериев — пустой список, тогда форма «Оценка»
+        показывает только кнопки без полей — подтверждено живьём, не баг, просто нечего
+        заполнять)."""
+        resp = self.client.get(
+            f"/my-programs/{program_uuid}/modules/{module_id}/contents/{stream_content_id}"
+            f"/peer-submissions/{homework_answer_id}"
         )
-        expect_status(resp, (200, 201))
-        logger.info(f"Work {work_id}: peer review by {reviewer_user_id} saved (final_confirm={final_confirm})")
-        return resp.json()
-
-    def get_peer_review(self, work_id: int, review_id: int) -> Dict:
-        """Прочитать сохранённую peer-проверку — например, чтобы убедиться, что
-        значения не меняются после финального подтверждения (04 §8.1).
-
-        Контракт не подтверждён, раздел 8.
-        """
-        resp = self.client.get(f"/homework/{work_id}/peer-reviews/{review_id}")
         expect_status(resp, 200)
         return resp.json()["data"]
+
+    def finalize_peer_review(self, program_uuid: str, module_id: int, stream_content_id: int, homework_answer_id: int, values: Dict) -> Dict:
+        """Кнопка «Завершить оценку» (после диалога-предупреждения «После завершения
+        оценку нельзя будет изменить, пока автор не сдаст работу заново» — значит блокировка
+        условная, до пересдачи автором, а не навсегда, как предполагал TC-P2P-031).
+
+        Подтверждено живьём 12.11.2026: POST /my-programs/{program_uuid}/modules/{module_id}/
+        contents/{stream_content_id}/homework/answers/{homework_answer_id}/peer-reviews/
+        finalize, тело — ВНОВЬ в JSON:API-обёртке (в отличие от flat-тел assign_work_manually/
+        save_peer_settings!): {"data": {"attributes": {"values": {...}}}} — поле `values`
+        обязательно (422 без него). Точная форма `values` (map критерий→значение) НЕ
+        подтверждена до конца — на тестовых данных этого захода criteria=[] (нечего
+        заполнять), запрос стабильно получал 422 независимо от содержимого. Черновик
+        («Сохранить черновик») остаётся НЕ подтверждён — кнопка была задизейблена при
+        пустых критериях, реальный запрос не перехвачен."""
+        resp = self.client.post(
+            f"/my-programs/{program_uuid}/modules/{module_id}/contents/{stream_content_id}"
+            f"/homework/answers/{homework_answer_id}/peer-reviews/finalize",
+            json={"data": {"attributes": {"values": values}}},
+        )
+        expect_status(resp, (200, 201))
+        logger.info(f"Peer review for homework_answer_id={homework_answer_id} finalized")
+        return resp.json()
 
     def return_for_revision(self, work_id: int, reviewer_user_id: int, comment: str = "") -> Dict:
         """Возврат работы на доработку штатным проверяющим (04 §8.2 п.2). Слушатель-
