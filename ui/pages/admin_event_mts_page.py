@@ -173,7 +173,11 @@ class AdminEventMtsPage(BasePage):
     # docs/test_cases/mts_link/16_prod_safe_run.md). Решение владельца 29.10.2026:
     # использовать её и в этом автотесте, а не случайный admin-аккаунт — несмотря на то,
     # что ей будет уходить настоящее email-приглашение при каждом прогоне.
-    VERA_EMAIL_FRAGMENT = "admin2@org2.ru"
+    # ИСПРАВЛЕНО 12.11.2026 (live run #131, test_hub): константа была "admin2@org2.ru" —
+    # это логин (admin2_org_2), а не e-mail; список «Преподаватели» показывает настоящий
+    # e-mail (разведка живьём: 5 пунктов списка без фильтра, "Романова Вера Админовна -
+    # zinoveva-vs@ranepa.ru" среди них, ввод "admin2" в поиск даёт «Нет данных»).
+    VERA_EMAIL_FRAGMENT = "zinoveva-vs@ranepa.ru"
 
     def select_teacher(self, email_fragment: str = VERA_EMAIL_FRAGMENT) -> None:
         """«Преподаватели» — мультиселект. По умолчанию выбирает Веру (см.
