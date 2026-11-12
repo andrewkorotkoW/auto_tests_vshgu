@@ -49,7 +49,11 @@ class TestJoinLinkUi:
 
         with allure.step("3. Создать мероприятие «МТС Линк» и зарегистрировать слушателя"):
             kwargs = mts_link_safe_schedule_item_kwargs(
-                name="[ТЕСТ] UI join link", teacher_ids=[MTS_LINK_SAFE_TEACHER_ID]
+                # Название НЕ должно совпадать с названием программы: оно тоже остаётся
+                # на экране (хлебные крошки) после open_program, и text-локатор события
+                # резолвится в крошку, а не в карточку мероприятия (live run #131,
+                # 12.11.2026 — Locator.click timeout, резолвился в li.v-breadcrumbs-item).
+                name="[ТЕСТ] вебинар UI join link", teacher_ids=[MTS_LINK_SAFE_TEACHER_ID]
             )
             payload = generate_schedule_item_payload(**kwargs)
             item = schedule_items_endpoint.create(program["id"], stream["id"], module["id"], payload)

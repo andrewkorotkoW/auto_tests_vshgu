@@ -40,7 +40,9 @@ class TestEventType:
 
         item = created_schedule_item(item_type="mts_link", url="")
         status = mts_link_endpoint.get_part_status(item, "creation")
-        assert status == "syncing", status
+        # "syncing" ошибочно: живьём 12.11.2026 (test_hub run #131) сразу после создания
+        # стабильно "not_synced" — см. ту же поправку в test_create.py.
+        assert status == "not_synced", status
 
         activity_page = ActivityPage(user_page)
         assert activity_page.is_recording_player_visible() is False, (
