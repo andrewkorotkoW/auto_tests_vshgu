@@ -7,7 +7,11 @@
 Функциональности ещё нет ни на одной ветке (docs/missions/2026-09-30_tz2026_p2p.md),
 контракт api/endpoints/p2p.py не подтверждён. Тесты пропускаются без P2P_READY, см.
 tests/ui/p2p/conftest.py.
-"""
+
+ТРЕБУЕТ ПЕРЕПИСИ (12.11.2026, живая разведка p2p-prototype, см. 02_stream_settings.md):
+`set_stream_participants` удалён из api/endpoints/p2p.py — отдельного списка участников
+нет, все слушатели потока автоматически входят в пул взаимопроверки. Тесты ниже не
+исправлены — следующий шаг разведки части 02/03."""
 from pathlib import Path
 
 import allure

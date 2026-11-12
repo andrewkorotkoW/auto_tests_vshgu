@@ -4,7 +4,12 @@
 Контракт не подтверждён (api/endpoints/p2p.py) — функциональности ещё нет ни на одной
 ветке (docs/missions/2026-09-30_tz2026_p2p.md). Тесты пропускаются без P2P_READY, см.
 tests/api/p2p/conftest.py.
-"""
+
+ТРЕБУЕТ ПЕРЕПИСИ (12.11.2026, живая разведка p2p-prototype, см. 02_stream_settings.md):
+`set_minimum_reviews_per_work` удалён из api/endpoints/p2p.py — подтверждённое поле
+называется `min_reviews_per_work` и живёт в `peer_settings` стрим-контента
+(get_stream_content/save_peer_settings), не в отдельном методе на уровне ПЗ. Тесты
+ниже не исправлены — следующий шаг разведки части 02/03."""
 import allure
 import pytest
 

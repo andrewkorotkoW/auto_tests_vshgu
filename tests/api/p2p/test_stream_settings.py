@@ -4,7 +4,13 @@
 Контракт не подтверждён (api/endpoints/p2p.py) — функциональности ещё нет ни на одной
 ветке (docs/missions/2026-09-30_tz2026_p2p.md). Тесты пропускаются без P2P_READY, см.
 tests/api/p2p/conftest.py.
-"""
+
+ТРЕБУЕТ ПЕРЕПИСИ (12.11.2026, живая разведка p2p-prototype, см. 02_stream_settings.md):
+`set_stream_participants`/`set_distribution_mode`/`set_works_per_listener`/
+`set_minimum_reviews_per_work` удалены из api/endpoints/p2p.py — сама предпосылка файла
+неверна (нет выбора «режима» и нет отдельного списка «участников», см. новые
+get_stream_content/save_peer_settings/run_automatic_distribution). Тесты ниже не
+исправлены — следующий шаг разведки части 02/03."""
 import allure
 import pytest
 

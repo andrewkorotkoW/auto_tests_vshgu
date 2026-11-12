@@ -92,91 +92,94 @@ class P2PEndpoint:
         logger.info(f"Homework {content_id}: criteria saved ({len(criteria)} items)")
         return resp.json()
 
-    # ── §2/§6: настройки p2p-ПЗ в потоке (участники, режим, лимиты) ─────────
+    # ── §2/§6: настройки p2p-ПЗ в потоке (участники, лимиты, дедлайн) ────────
+    # 12.11.2026, живая разведка (p2p-prototype) через модалку «Взаимопроверка в
+    # потоке» (иконка «люди» в колонке «Действия» на вкладке «Расписание» потока,
+    # рядом с шестерёнкой редактирования — появляется только у content с
+    # peer_review_enabled=true). РЕАЛЬНЫЙ корень пути — не "content/{content_id}",
+    # а "modules/{module_id}/contents/{stream_content_id}" (это ДРУГОЙ id: привязка
+    # контента К ПОТОКУ, не сам content_id карточки — см. get_stream_content).
+    # Подтверждено только чтение (GET); payload сохранения («Сохранить настройки»,
+    # «Распределить», «+ Добавить назначение») ещё не перехвачен — методы записи
+    # ниже помечены отдельно.
+    #
+    # Также опровергнута сама идея «режима» распределения (set_distribution_mode
+    # удалён): ручное и автоматическое распределение — не альтернативы, а два
+    # ОДНОВРЕМЕННО доступных, дополняющих друг друга механизма (текст в модалке:
+    # «Ручные назначения дополняют автоматическое распределение»). «Участников»
+    # нельзя выбрать отдельным списком (set_stream_participants удалён) — во
+    # взаимопроверке участвуют ВСЕ слушатели потока целиком («Во взаимопроверке
+    # участвуют слушатели выбранного потока»), подмножество не выбирается.
 
-    def set_stream_participants(self, program_id: int, stream_id: int, content_id: int, user_ids: List[int]) -> Dict:
-        """Список участников взаимопроверки в потоке — только слушатели этого потока
-        (04 §2, 03 §5.1).
+    def get_stream_content(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int) -> Dict:
+        """Подтверждено живьём 12.11.2026: GET .../modules/{module_id}/contents/
+        {stream_content_id} -> data.attributes.peer_settings — единый объект со всеми
+        настройками взаимопроверки в потоке:
+        {min_reviews_per_work, reviews_per_reviewer, peer_review_deadline_at,
+        external_cert_reviews_threshold, external_cert_reviews_threshold_max, frozen,
+        author_visibility: {author_see_comments, author_see_peer_breakdown,
+        author_see_reviewer_names}, external_see_author_names, auto_final_grade_enabled}.
+        stream_content_id — НЕ content_id карточки (см. docstring класса выше)."""
+        resp = self.client.get(
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}/contents/{stream_content_id}"
+        )
+        expect_status(resp, 200)
+        return resp.json()["data"]
 
-        Контракт не подтверждён, раздел 2.
-        """
+    def list_peer_assignments(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int) -> List[Dict]:
+        """Подтверждено живьём 12.11.2026: GET .../contents/{stream_content_id}/
+        peer-assignments -> {"data": [...]} (пусто, пока распределения не было —
+        форма записи элемента списка ещё не разведана)."""
+        resp = self.client.get(
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
+            f"/contents/{stream_content_id}/peer-assignments"
+        )
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
+
+    def save_peer_settings(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, **fields) -> Dict:
+        """Сохранить настройки взаимопроверки (кнопка «Сохранить настройки» —
+        min_reviews_per_work/peer_review_deadline_at/external_cert_reviews_threshold/
+        author_visibility.*/external_see_author_names/auto_final_grade_enabled, см.
+        get_stream_content). Контракт НЕ подтверждён — метод, PUT и форма payload
+        построены по аналогии с полями peer_settings, реальный запрос сохранения
+        ещё не перехвачен (следующий шаг разведки)."""
         resp = self.client.put(
-            f"/programs/{program_id}/streams/{stream_id}/content/{content_id}/peer-review/participants",
-            json={"data": {"attributes": {"user_ids": user_ids}}},
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
+            f"/contents/{stream_content_id}/peer-settings",
+            json={"data": {"attributes": fields}},
         )
         expect_status(resp, (200, 201))
-        logger.info(f"Stream {stream_id}, content {content_id}: p2p participants set {user_ids}")
+        logger.info(f"Stream content {stream_content_id}: peer_settings saved {fields}")
         return resp.json()
 
-    def set_distribution_mode(self, program_id: int, stream_id: int, content_id: int, mode: str) -> Dict:
-        """Режим распределения работ в потоке: "manual" или "auto" (04 §6.1—6.2).
-
-        Контракт не подтверждён, раздел 6.
-        """
-        resp = self.client.put(
-            f"/programs/{program_id}/streams/{stream_id}/content/{content_id}/peer-review/settings",
-            json={"data": {"attributes": {"distribution_mode": mode}}},
-        )
-        expect_status(resp, (200, 201))
-        logger.info(f"Stream {stream_id}, content {content_id}: distribution_mode={mode}")
-        return resp.json()
-
-    def set_works_per_listener(self, program_id: int, stream_id: int, content_id: int, count: int) -> Dict:
-        """«Количество работ для проверки одним слушателем» в автоматическом режиме
-        (04 §6.2).
-
-        Контракт не подтверждён, раздел 6.
-        """
-        resp = self.client.put(
-            f"/programs/{program_id}/streams/{stream_id}/content/{content_id}/peer-review/settings",
-            json={"data": {"attributes": {"works_per_listener": count}}},
-        )
-        expect_status(resp, (200, 201))
-        logger.info(f"Stream {stream_id}, content {content_id}: works_per_listener={count}")
-        return resp.json()
-
-    def set_minimum_reviews_per_work(self, program_id: int, stream_id: int, content_id: int, count: int) -> Dict:
-        """Минимальное количество peer-проверок на одну работу — применяется независимо
-        от режима распределения (04 §6.2, §10.1).
-
-        Контракт не подтверждён, раздел 6.
-        """
-        resp = self.client.put(
-            f"/programs/{program_id}/streams/{stream_id}/content/{content_id}/peer-review/settings",
-            json={"data": {"attributes": {"minimum_reviews_per_work": count}}},
-        )
-        expect_status(resp, (200, 201))
-        logger.info(f"Stream {stream_id}, content {content_id}: minimum_reviews_per_work={count}")
-        return resp.json()
-
-    # ── §6: распределение работ ──────────────────────────────────────────────
-
-    def assign_work_manually(self, program_id: int, stream_id: int, content_id: int, work_id: int, reviewer_user_id: int) -> Dict:
-        """Ручное назначение конкретной чужой работы конкретному слушателю-проверяющему
-        (04 §6.1). Сервер должен отклонять назначение собственной работы автору.
-
-        Контракт не подтверждён, раздел 6.
-        """
+    def assign_work_manually(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, work_id: int, reviewer_user_id: int) -> Dict:
+        """Ручное назначение («+ Добавить назначение» в модалке) — дополняет
+        автораспределение, не альтернатива ему. Контракт НЕ подтверждён — реальный
+        POST ещё не перехвачен (кнопку не нажимали, чтобы не трогать чужие
+        тестовые данные на p2p-prototype)."""
         resp = self.client.post(
-            f"/programs/{program_id}/streams/{stream_id}/content/{content_id}/peer-review/assignments",
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
+            f"/contents/{stream_content_id}/peer-assignments",
             json={"data": {"attributes": {"work_id": work_id, "reviewer_user_id": reviewer_user_id}}},
         )
         expect_status(resp, (200, 201))
         logger.info(f"Work {work_id} assigned to reviewer {reviewer_user_id} (manual)")
         return resp.json()
 
-    def run_automatic_distribution(self, program_id: int, stream_id: int, content_id: int) -> Dict:
-        """Запуск автоматического распределения по потоку с учётом works_per_listener
-        и исключением собственных работ (04 §6.2).
-
-        Контракт не подтверждён, раздел 6.
-        """
+    def run_automatic_distribution(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, reviews_per_reviewer: int = 1) -> Dict:
+        """Запуск автоматического распределения («Распределить» в модалке) —
+        reviews_per_reviewer — подтверждённое имя поля (было: works_per_listener).
+        «Первая проверка уже завершена — перераспределение недоступно» — повторный
+        вызов после первой проверки должен отклоняться (не проверено). Контракт
+        самого POST НЕ подтверждён (кнопку не нажимали)."""
         resp = self.client.post(
-            f"/programs/{program_id}/streams/{stream_id}/content/{content_id}/peer-review/distribute",
-            json={},
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
+            f"/contents/{stream_content_id}/peer-assignments/distribute",
+            json={"data": {"attributes": {"reviews_per_reviewer": reviews_per_reviewer}}},
         )
         expect_status(resp, (200, 201))
-        logger.info(f"Stream {stream_id}, content {content_id}: automatic distribution started")
+        logger.info(f"Stream content {stream_content_id}: automatic distribution started")
         return resp.json()
 
     def list_assignments(self, program_id: int, stream_id: int, content_id: int, reviewer_user_id: Optional[int] = None) -> List[Dict]:
