@@ -9,6 +9,15 @@
 <!-- Кейсы написаны вручную до появления ветки, tools/test_cases/generate.py их не создавал.
      Источник: docs/requirements/tz2026/mts_link/11_часть_0.1_настройка_интеграции_в_карточке_тенанта.md -->
 
+**12.11.2026 — TC-MTS-001…003, 005…007 (всё, что пишет токен) удалены вместе с
+`tests/api/mts_link/test_tenant_settings.py` и методом `save_tenant_settings`.** Решение владельца:
+на этом стенде токен интеграции — единственный рабочий на всю организацию, автотестами его не писать
+никогда (риск отключить интеграцию всем), а не «пока не подтверждён контракт». TC-MTS-004 (GET,
+токен в ответе замаскирован) — **покрыт**, другим тестом: `tests/api/mts_link/test_tenant_config.py::
+TestTenantConfig::test_get_mts_link_config_returns_masked_token_and_enabled`, реальный маршрут
+подтверждён curl владельца 12.11.2026: `GET /api/v1/tenants/{tenant_id}/mts_link_config` (не
+`/admin/organizations/{id}/mts-link-settings`, который указан ниже в кейсах — 404, не существует).
+
 ### TC-MTS-001 Сохранение с валидным токеном → интеграция настроена и проверена
 - Автотест: tests/api/mts_link/test_tenant_settings.py::TestTenantSettings::test_save_valid_token_marks_integration_configured
 - Приоритет: high   Тип: api   Роли: admin, tenant-admin

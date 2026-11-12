@@ -1,4 +1,10 @@
-"""Часть 10 — логирование (docs/test_cases/mts_link/11_logging.md)."""
+"""Часть 10 — логирование (docs/test_cases/mts_link/11_logging.md).
+
+12.11.2026: тесты про логирование настроек/токена (test_tenant_settings_change_logged_without_token_value,
+test_token_masked_in_request_log_body) убраны — владелец решил не писать токен интеграции тестами вообще
+(единственный рабочий на организацию, см. api/endpoints/mts_link.py и удалённый
+tests/api/mts_link/test_tenant_settings.py). Оставшиеся 3 теста (создание/изменение/удаление мероприятия
+логируется) к токену не привязаны — остаются под skip по отдельной причине ниже."""
 import allure
 import pytest
 
@@ -9,21 +15,10 @@ import pytest
 @pytest.mark.mts_link
 @pytest.mark.skip(
     reason="Контракт не подтверждён живой разведкой (api/endpoints/mts_link.py: "
-    "'логирование/аудит — НЕ пересмотрено 02.11.2026'); часть методов зовёт тот же "
-    "несуществующий /mts-link-settings. До разведки — не включать в прогоны mts_link."
+    "'логирование/аудит — НЕ пересмотрено 02.11.2026', /admin/mts-link/request-log-audit и "
+    "/admin/logs подтверждённо 404). До разведки — не включать в прогоны mts_link."
 )
 class TestLogging:
-    @allure.title("Изменение настроек тенанта логируется без значения токена")
-    @pytest.mark.smoke
-    def test_tenant_settings_change_logged_without_token_value(self, mts_link_endpoint, mts_link_tenant_id):
-        """Предусловие: тенант с интеграцией."""
-        mts_link_endpoint.save_tenant_settings(mts_link_tenant_id, token="new-logged-token")
-
-        log = mts_link_endpoint.get_action_log("organization", mts_link_tenant_id)
-        assert log, "Ожидалась запись об изменении настроек"
-        entry = log[0]
-        assert "new-logged-token" not in str(entry)
-
     @allure.title("Создание мероприятия «МТС Линк» логируется")
     def test_event_creation_logged(self, mts_link_endpoint, created_schedule_item):
         """Предусловие: -."""
@@ -85,14 +80,3 @@ class TestLogging:
         assert expected.issubset(operations), operations
         for entry in audit:
             assert "request_body" in entry and "response_body" in entry and "success" in entry
-
-    @allure.title("Токен маскируется в теле запроса в логе")
-    def test_token_masked_in_request_log_body(self, mts_link_endpoint, mts_link_tenant_id):
-        """Предусловие: операция, где в теле/заголовке запроса к МТС Линк фигурирует токен."""
-        secret_token = "very-secret-mts-link-token"
-        mts_link_endpoint.save_tenant_settings(mts_link_tenant_id, token=secret_token)
-
-        entries = mts_link_endpoint.get_request_log_entries(operation="settings_update")
-        assert entries
-        for entry in entries:
-            assert secret_token not in str(entry.get("request_body", ""))

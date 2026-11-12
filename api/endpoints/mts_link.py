@@ -129,28 +129,16 @@ class MtsLinkEndpoint:
     # GET подтверждён живым curl владельца 12.11.2026 на mts-link-release-main:
     # GET /api/v1/tenants/{tenant_id}/mts_link_config -> 200 {"data": {"masked_token": "***xxxxx",
     # "is_enabled": true}}. Старый путь /admin/organizations/{id}/mts-link-settings — 404, не
-    # существует (на нём и падал test_tenant_settings.py). PUT (сохранение токена) НЕ подтверждён —
-    # не угадывать: это единственный рабочий токен организации, писать его вслепую нельзя
-    # (см. docs/test_cases/mts_link/16_prod_safe_run.md). save_tenant_settings ниже оставлен как
-    # был (контракт не подтверждён), TestTenantSettings/TestLogging — @pytest.mark.skip.
+    # существует (на нём и падал test_tenant_settings.py).
+    # ПОРЕШЕНО владельцем 12.11.2026 — НЕ писать токен вообще: это единственный рабочий токен
+    # организации, без теста риск отключить интеграцию всем. save_tenant_settings (PUT) удалён
+    # вместе с tests/api/mts_link/test_tenant_settings.py (см. docs/test_cases/mts_link/
+    # 00_tenant_settings.md) — не восстанавливать без явного запроса владельца.
 
     def get_tenant_settings(self, tenant_id: int) -> Dict:
         resp = self.client.get(f"/tenants/{tenant_id}/mts_link_config")
         expect_status(resp, 200)
         return resp.json().get("data", {})
-
-    def save_tenant_settings(self, tenant_id: int, token: Optional[str] = None, **other_fields):
-        """Контракт НЕ подтверждён — путь/форма тела под вопросом, не использовать вслепую
-        на прод-аккаунте (см. комментарий выше)."""
-        attributes = dict(other_fields)
-        if token is not None:
-            attributes["token"] = token
-        resp = self.client.put(
-            f"/admin/organizations/{tenant_id}/mts-link-settings",
-            json={"data": {"attributes": attributes}},
-        )
-        logger.info(f"Tenant {tenant_id}: save mts-link settings -> {resp.status_code}")
-        return resp
 
     def get_tenant_integration_enabled(self, tenant_id: int) -> bool:
         """Подтверждено вместе с get_tenant_settings 12.11.2026: поле — is_enabled, не
