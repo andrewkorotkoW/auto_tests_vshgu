@@ -1248,6 +1248,7 @@ def generate_homework_payload(
     archive_uuid: str = "",
     sub_files_uuids: list = None,
     peer_review_enabled: bool = None,
+    peer_pass_threshold: int = None,
 ) -> dict:
     """Генерация payload для создания практического задания (homework).
 
@@ -1255,7 +1256,13 @@ def generate_homework_payload(
     p2p-prototype: это поле payload СОЗДАНИЯ, не отдельный эндпоинт/PATCH — и после
     сохранения карточки ПЗ оно больше не редактируется (см.
     docs/test_cases/p2p/00_pt_card_settings.md). None — не передавать ключ вовсе (не
-    трогать поведение обычных, не-p2p тестов)."""
+    трогать поведение обычных, не-p2p тестов).
+
+    peer_pass_threshold — порог «зачёт/незачёт» по агрегированной peer-оценке, актуален
+    только при grade_type=pass_fail (при других grade_type сервер всегда возвращает null
+    независимо от переданного значения). Подтверждено живьём 13.11.2026: задаётся в payload
+    создания, И остаётся редактируемым после (в отличие от peer_review_enabled) — см.
+    P2PEndpoint.update_peer_pass_threshold. None — не передавать ключ вовсе."""
     if not name:
         timestamp = unique_suffix()
         name = f"Автотест_практическое_задание_админка_{timestamp}"
@@ -1290,6 +1297,8 @@ def generate_homework_payload(
     }
     if peer_review_enabled is not None:
         attributes["peer_review_enabled"] = peer_review_enabled
+    if peer_pass_threshold is not None:
+        attributes["peer_pass_threshold"] = peer_pass_threshold
 
     return {
         "data": {

@@ -29,18 +29,45 @@ class P2PEndpoint:
     # ── §4: карточка ПЗ — тумблер, штатные проверяющие ──────────────────────
 
     def enable_peer_review(self, content_id: int, enabled: bool = True) -> Dict:
-        """Включить/выключить взаимопроверку в карточке ПЗ.
-
-        Контракт не подтверждён, раздел 4. Предполагается payload по аналогии с
-        homework_pass_fail.py/homework_ten_point.py (доп. атрибут в payload создания
-        активности), здесь — отдельный PATCH по аналогии с examine()/change_state()
-        (точечное изменение уже созданного ПЗ).
+        """ОПРОВЕРГНУТО живьём 12-13.11.2026 — НЕ ИСПОЛЬЗОВАТЬ. `PATCH /content/{id}/
+        peer-review` не существует, и сама идея точечного включения после создания неверна:
+        `peer_review_enabled` задаётся ТОЛЬКО в payload `POST /content` (см.
+        generate_homework_payload(peer_review_enabled=True) в api/helpers/data_generator.py)
+        и неизменяем после — подтверждено 13.11.2026 явной серверной ошибкой на `PUT
+        /content/{id}`: «Нельзя изменить признак включения взаимопроверки после создания
+        карточки.» (не просто задизейбленное поле в UI, серверная валидация). Метод оставлен
+        для обратной совместимости вызовов в tests/api/p2p/*.py (conftest.py и 7+ тестовых
+        файлов ещё используют его в предположении, что контракт когда-нибудь появится) — все
+        они требуют переписи на передачу `peer_review_enabled=True` в `created_homework(...)`,
+        как уже сделано в tests/ui/p2p/conftest.py::p2p_practical_task.
         """
         resp = self.client.patch(f"/content/{content_id}/peer-review", json={
             "data": {"attributes": {"enabled": enabled}}
         })
         expect_status(resp, (200, 201))
         logger.info(f"Homework {content_id}: peer-review enabled={enabled}")
+        return resp.json()
+
+    def update_peer_pass_threshold(self, content_id: int, peer_pass_threshold: int) -> Dict:
+        """Обновить порог «зачёт/незачёт» карточки ПЗ (актуально только при
+        grade_type=pass_fail — на других типах оценивания поле всегда null).
+
+        Подтверждено живьём 13.11.2026: `PUT /content/{id}` с полным набором атрибутов
+        (вернуть текущие attributes из GET, подменить peer_pass_threshold — поштучная
+        частичная замена не проверялась) — поле РЕДАКТИРУЕМО после создания (в отличие от
+        peer_review_enabled). При обновлении через PUT сервер отклоняет (422 «должно
+        отсутствовать») read-only поля external_review_config_locked/peer_criteria_frozen
+        в теле запроса — их нужно исключать перед отправкой, если формируете payload из
+        ответа GET (как делает этот метод)."""
+        current = self.client.get(f"/content/{content_id}").json()["data"]["attributes"]
+        attributes = {k: v for k, v in current.items() if k not in (
+            "created_at", "updated_at", "deleted_at", "files", "teachers", "inspectors", "iri",
+            "external_review_config_locked", "peer_criteria_frozen",
+        )}
+        attributes["peer_pass_threshold"] = peer_pass_threshold
+        resp = self.client.put(f"/content/{content_id}", json={"data": {"attributes": attributes}})
+        expect_status(resp, 200)
+        logger.info(f"Content {content_id}: peer_pass_threshold updated to {peer_pass_threshold}")
         return resp.json()
 
     def list_eligible_reviewers(self, content_id: int) -> List[Dict]:
