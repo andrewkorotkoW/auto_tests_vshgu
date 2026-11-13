@@ -74,12 +74,17 @@
     "status": "draft", "homework_answer_id", "homework_answers_history_id", "assignment_id",
     "finalized_at": null, "values": [...]}}`.
   - «Завершить оценку» (TC-P2P-031) → `POST .../peer-reviews/finalize` → тот же формат ответа,
-    `status: "finalized"`, `finalized_at` проставлен. **Контраст с assign_work_manually/
-    save_peer_settings**: `values` — список пар `{"peer_criterion_id": id, "value": ...}` (НЕ
-    map/dict, НЕ JSON:API data.attributes — более ранняя гипотеза о `data.attributes.values`
-    была проверена только на ПЗ с пустыми критериями и, похоже, была ошибочной трактовкой 422).
-    `value` по типу критерия: quantitative → число, qualitative → строка, single_choice → id
-    выбранного варианта (строка вида `"opt-xxxxx-N"`), multiple_choice → список таких id.
+    `status: "finalized"`, `finalized_at` проставлен. `values` в ОТВЕТЕ — список пар
+    `{"peer_criterion_id": id, "value": ...}` (не map/dict). `value` по типу критерия:
+    quantitative → число, qualitative → строка, single_choice → id выбранного варианта (строка
+    вида `"opt-xxxxx-N"`), multiple_choice → список таких id.
+    **13.11.2026 — ИСПРАВЛЕНО**: тело ЗАПРОСА (и у черновика, и у финализации) — ВСЁ ЖЕ
+    JSON:API-обёртка `{"data": {"attributes": {"values": [...]}}}`, а не плоское
+    `{"values": [...]}`, как записано было здесь раньше. Прежняя гипотеза о плоском теле была
+    выведена из формы ОТВЕТА сервера (где `values` лежит прямо в `data`, без `attributes`), а
+    не из перехваченного реального запроса — проверка 13.11.2026 прямым вызовом (уже с
+    непустыми критериями, не как в прошлый раз) дала 422 «Поле data.attributes.values
+    обязательно для заполнения» на плоском теле и успех с обёрткой.
   - После сохранения черновика значения остаются редактируемыми (поля не disabled) — повторное
     открытие/заполнение/черновик работает (TC-P2P-030 подтверждён).
   - После «Завершить оценку»: зелёный баннер **«Оценка завершена. Изменить её можно будет после

@@ -122,16 +122,18 @@ class P2PEndpoint:
         return resp.json().get("data", [])
 
     def set_criteria(self, content_id: int, criteria: List[Dict]) -> Dict:
-        """Сохранить форму критериев целиком (полная замена — подтверждено по аналогии
-        с save_peer_settings, сам payload записи НЕ перехвачен, только структура ответа
-        GET выше, которую отправка явно воспроизводит). После первой полученной
+        """Сохранить форму критериев целиком (полная замена). После первой полученной
         peer-проверки добавление/удаление критериев должно быть запрещено (04 §5.2, сам
         переход не проверен).
 
-        Контракт ЧАСТИЧНО подтверждён: путь/метод — POST /homework/{content_id}/
-        peer-criteria (перехвачен живьём), форма payload — по аналогии с криетериями из
-        get_criteria (не перехвачена напрямую)."""
-        resp = self.client.post(f"/homework/{content_id}/peer-criteria", json={"data": criteria})
+        Подтверждено живьём 13.11.2026 (прямой вызов, не через UI): `POST /homework/
+        {content_id}/peer-criteria`, тело — `{"data": {"attributes": {"items": [...]}}}`
+        (JSON:API-обёртка с ключом `items`, НЕ плоский список `{"data": [...]}`, как
+        предполагалось раньше — именно так и выяснилось: 422 «Поле data.attributes.items
+        должно присутствовать» на плоском теле). Элемент списка — как в ответе GET
+        (type/title/score_min/score_max/is_system для quantitative; options для choice-
+        типов), `id`/`sort_order`/`weight` можно не передавать — сервер присваивает сам."""
+        resp = self.client.post(f"/homework/{content_id}/peer-criteria", json={"data": {"attributes": {"items": criteria}}})
         expect_status(resp, (200, 201))
         logger.info(f"Homework {content_id}: criteria saved ({len(criteria)} items)")
         return resp.json()
@@ -197,7 +199,23 @@ class P2PEndpoint:
         author_see_reviewer_names, author_see_peer_breakdown}, external_see_author_names —
         без них 422. external_cert_reviews_threshold/_max/auto_final_grade_enabled/frozen
         необязательны (не было в списке обязательных) — extra_fields добавляет их при
-        необходимости."""
+        необходимости.
+
+        13.11.2026, подтверждено живьём дополнительно:
+        - `peer_review_deadline_at` обязан лежать СТРОГО в границах дат модуля
+          (`date_from`..`date_to`) — проверено В ОБЕ СТОРОНЫ: и дата позже `date_to`, и дата
+          раньше `date_from` одинаково дают 422 «Срок взаимопроверки должен лежать в границах
+          дат модуля.».
+        - `min_reviews_per_work`/`reviews_per_reviewer` (M/N) при СОЗДАНИИ stream_content
+          всегда `1`/`1` (до первого вызова этого метода) — подтверждено ещё раз.
+        - M/N свободно меняются ДО `peer_settings.frozen` (становится `true` после первого
+          завершённого — `finalize_peer_review` — отзыва на эту работу в потоке, см.
+          finalize_peer_review). ПОСЛЕ freeze попытка изменить M/N на ДРУГОЕ значение даёт 422
+          «Нельзя изменить минимальное число проверок на работу или число проверок на
+          проверяющего: настройки заморожены.» — остальные поля (проверено на
+          author_visibility.*) остаются редактируемыми и после freeze, если M/N в теле
+          совпадают с текущими (отправлять их нужно — поля обязательны, но без изменения
+          значения)."""
         peer_settings = {
             "min_reviews_per_work": min_reviews_per_work,
             "reviews_per_reviewer": reviews_per_reviewer,
@@ -295,9 +313,8 @@ class P2PEndpoint:
 
     @staticmethod
     def _peer_review_values_payload(values_by_criterion_id: Dict) -> List[Dict]:
-        """Подтверждено живьём 12.11.2026 (реальный ответ сервера после сохранения через
-        UI, см. save_peer_review_draft/finalize_peer_review): `values` — СПИСОК пар
-        {peer_criterion_id, value}, не map/dict. value по типу критерия: quantitative ->
+        """Форма ОДНОГО элемента `values` подтверждена по ответу сервера (структура
+        {peer_criterion_id, value}, список, не map). value по типу критерия: quantitative ->
         число (0..100), qualitative -> строка, single_choice -> id варианта (строка,
         напр. "opt-mwdx5unx-1"), multiple_choice -> список id вариантов."""
         return [{"peer_criterion_id": cid, "value": value} for cid, value in values_by_criterion_id.items()]
@@ -306,18 +323,21 @@ class P2PEndpoint:
         """Кнопка «Сохранить черновик» — сохраняет без финального подтверждения,
         значения можно менять повторно (04 §8.1).
 
-        Подтверждено живьём 12.11.2026 (перехвачен реальный XHR при клике в UI):
-        POST /my-programs/{program_uuid}/modules/{module_id}/contents/{stream_content_id}
-        /homework/answers/{homework_answer_id}/peer-reviews (БЕЗ /finalize — отдельный путь
-        от finalize_peer_review ниже). Ответ: {"data": {id, status: "draft",
-        homework_answer_id, homework_answers_history_id, assignment_id, finalized_at: null,
-        values: [...]}}. Тело запроса НЕ перехвачено напрямую (только ответ) — по аналогии
-        с ответом здесь предполагается {"values": [...]} (см. _peer_review_values_payload),
-        не JSON:API-обёртка."""
+        Подтверждено живьём: POST /my-programs/{program_uuid}/modules/{module_id}/
+        contents/{stream_content_id}/homework/answers/{homework_answer_id}/peer-reviews
+        (БЕЗ /finalize — отдельный путь от finalize_peer_review ниже). Ответ: {"data": {id,
+        status: "draft", homework_answer_id, homework_answers_history_id, assignment_id,
+        finalized_at: null, values: [...]}}.
+
+        13.11.2026 — ИСПРАВЛЕНО: тело запроса ВСЁ ЖЕ в JSON:API-обёртке
+        `{"data": {"attributes": {"values": [...]}}}` (гипотеза о плоском `{"values": [...]}`
+        из прошлого захода была ошибочной — выведена из формы ОТВЕТА, а не перехваченного
+        реального запроса, и прямая проверка 13.11.2026 дала 422 «Поле data.attributes.values
+        обязательно для заполнения» на плоском теле; с обёрткой сработало)."""
         resp = self.client.post(
             f"/my-programs/{program_uuid}/modules/{module_id}/contents/{stream_content_id}"
             f"/homework/answers/{homework_answer_id}/peer-reviews",
-            json={"values": self._peer_review_values_payload(values_by_criterion_id)},
+            json={"data": {"attributes": {"values": self._peer_review_values_payload(values_by_criterion_id)}}},
         )
         expect_status(resp, (200, 201))
         logger.info(f"Peer review draft for homework_answer_id={homework_answer_id} saved")
@@ -330,16 +350,16 @@ class P2PEndpoint:
         TC-P2P-031. После завершения все поля формы показываются disabled с сохранёнными
         значениями и этим баннером вместо кнопок.
 
-        Подтверждено живьём 12.11.2026 (полный цикл: заполнил реальную форму критериев —
-        quantitative/qualitative/single_choice/multiple_choice — через UI, перехватил XHR):
-        POST .../homework/answers/{homework_answer_id}/peer-reviews/finalize. Ответ та же
-        форма, что у save_peer_review_draft, но status="finalized" и finalized_at
-        проставлен. Тело запроса (как и у draft) не перехвачено напрямую — по аналогии
-        {"values": [...]} (НЕ JSON:API-обёртка, в отличие от более ранней гипотезы)."""
+        Подтверждено живьём: POST .../homework/answers/{homework_answer_id}/peer-reviews/
+        finalize. Ответ та же форма, что у save_peer_review_draft, но status="finalized" и
+        finalized_at проставлен.
+
+        13.11.2026 — ИСПРАВЛЕНО: тело запроса — JSON:API-обёртка `{"data": {"attributes":
+        {"values": [...]}}}`, см. docstring save_peer_review_draft (та же история ошибки)."""
         resp = self.client.post(
             f"/my-programs/{program_uuid}/modules/{module_id}/contents/{stream_content_id}"
             f"/homework/answers/{homework_answer_id}/peer-reviews/finalize",
-            json={"values": self._peer_review_values_payload(values_by_criterion_id)},
+            json={"data": {"attributes": {"values": self._peer_review_values_payload(values_by_criterion_id)}}},
         )
         expect_status(resp, (200, 201))
         logger.info(f"Peer review for homework_answer_id={homework_answer_id} finalized")
