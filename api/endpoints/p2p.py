@@ -378,20 +378,38 @@ class P2PEndpoint:
         logger.info(f"Peer review for homework_answer_id={homework_answer_id} finalized")
         return resp.json()
 
-    def return_for_revision(self, work_id: int, reviewer_user_id: int, comment: str = "") -> Dict:
-        """Возврат работы на доработку штатным проверяющим (04 §8.2 п.2). Слушатель-
-        проверяющий не должен иметь доступа к этому действию — проверяется на уровне
-        API-ответа (403/аналог), а не сокрытием кнопки.
+    def return_for_revision(self, content_id: int, homework_answer_id: int, deadline: str,
+                            comment: str = "Вернуть на доработку") -> Dict:
+        """Возврат работы на доработку штатным проверяющим (04 §8.2 п.2).
 
-        Контракт не подтверждён, раздел 8.
-        """
+        Подтверждено живьём 17.11.2026: отдельного peer-эндпоинта нет (прежний стаб
+        `/homework/{work}/return-for-revision` — догадка) — это штатный examination ПЗ:
+        `POST /homework/{content_id}/answers/{homework_answer_id}/examination` с
+        `status: "sent_back"` и ОБЯЗАТЕЛЬНЫМ `deadline` (YYYY-MM-DD). После: answer_status=sent_back
+        (status=7), sent_back_count+1, у слушателей-проверяющих peer_review_allowed=false /
+        revision_status="sent_back" до пересдачи автором (08_return_for_revision.md).
+        Слушатель-проверяющий такого маршрута в /my-programs не имеет."""
         resp = self.client.post(
-            f"/homework/{work_id}/return-for-revision",
-            json={"data": {"attributes": {"reviewer_user_id": reviewer_user_id, "comment": comment}}},
+            f"/homework/{content_id}/answers/{homework_answer_id}/examination",
+            json={"data": {"attributes": {"grade": "", "status": "sent_back", "deadline": deadline,
+                                          "teacher_comment": comment}}},
         )
         expect_status(resp, (200, 201))
-        logger.info(f"Work {work_id}: returned for revision by {reviewer_user_id}")
+        logger.info(f"Answer {homework_answer_id} (homework {content_id}): sent back for revision")
         return resp.json()
+
+    def delete_peer_assignment(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, peer_assignment_id: int) -> None:
+        """Снять назначение слушателя-проверяющего (TC-P2P-069). Подтверждено живьём 17.11.2026:
+        `DELETE .../contents/{stream_content_id}/peer-assignments/{homework_peer_assignment_id}` →
+        200 {"status":"success"}; у проверяющего работа пропадает из peer-submissions, черновик
+        исчезает из агрегатов, finalize → 403 «Нет peer-назначения на проверку». Отдельного статуса
+        «Отменена» нет — запись удаляется."""
+        resp = self.client.delete(
+            f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
+            f"/contents/{stream_content_id}/peer-assignments/{peer_assignment_id}"
+        )
+        expect_status(resp, 200)
+        logger.info(f"Peer assignment {peer_assignment_id} deleted")
 
     # ── §9: итоговый результат и агрегаты ────────────────────────────────────
     # 17.11.2026, живая разведка p2p-prototype (06_final_result.md, 07_aggregation.md):
@@ -480,28 +498,22 @@ class P2PEndpoint:
 
     # ── §10: статусы работы и назначенной проверки ───────────────────────────
 
-    def get_work_status(self, content_id: int, work_id: int) -> str:
-        """Статус работы p2p-ПЗ (03 §8.2: «Не сдано» → «Сдано» → «На взаимопроверке» →
-        «Взаимопроверка завершена, ожидает итогового результата» → «Итоговый результат
-        выставлен»; 04 §10 подтверждает верхнеуровневый список). По аналогии с
-        HomeworkEndpoint.get_status — тот же путь на уровне content/user, здесь на
-        уровне work_id p2p-работы.
-
-        Контракт не подтверждён, раздел 10.
-        """
-        resp = self.client.get(f"/content/{content_id}/peer-review/works/{work_id}/status")
+    def get_work_status(self, content_id: int, homework_answer_id: int) -> str:
+        """Статус работы = answer_status обычного ПЗ (подтверждено 17.11.2026, 09_statuses.md):
+        "on_review" (5) после сдачи/пересдачи, "sent_back" (7) после возврата, "accepted" (2) после
+        итога. Peer-специфичных статусов работы («На взаимопроверке», «ожидает итога») нет;
+        назначение проверяющих и набор min_reviews_per_work статус не меняют."""
+        resp = self.client.get(f"/homework/{content_id}/answers/{homework_answer_id}")
         expect_status(resp, 200)
-        data = resp.json().get("data", {})
-        return data.get("attributes", {}).get("status") or data.get("status")
+        return resp.json()["data"]["attributes"]["answer_status"]
 
-    def get_review_status(self, review_id: int) -> str:
-        """Статус назначенной peer-проверки (03 §8: «Назначена» → «В процессе» →
-        «Проверено», либо «Приостановлена» при возврате на доработку, либо «Отменена»,
-        если проверка больше не требуется).
-
-        Контракт не подтверждён, раздел 10.
-        """
-        resp = self.client.get(f"/peer-reviews/{review_id}/status")
-        expect_status(resp, 200)
-        data = resp.json().get("data", {})
-        return data.get("attributes", {}).get("status") or data.get("status")
+    def get_review_status(self, program_uuid: str, module_id: int, stream_content_id: int, homework_answer_id: int) -> Optional[str]:
+        """Статус назначенной проверки глазами слушателя-проверяющего (TC-P2P-067, подтверждено
+        17.11.2026): поле my_review_status в peer-submissions — None (назначена, не начата) →
+        "draft" (черновик) → "finalized" (завершена). Статусов «Приостановлена»/«Отменена» нет:
+        на время возврата работы peer_review_allowed=false, снятое назначение просто исчезает."""
+        for item in self.list_peer_submissions(program_uuid, module_id, stream_content_id):
+            attrs = item.get("attributes") or item
+            if attrs.get("homework_answer_id") == homework_answer_id:
+                return attrs.get("my_review_status")
+        return None

@@ -5,7 +5,15 @@
 ветке (docs/missions/2026-09-30_tz2026_p2p.md). Тесты пропускаются без P2P_READY, см.
 tests/api/p2p/conftest.py.
 
-ТРЕБУЕТ ПЕРЕПИСИ (12.11.2026, живая разведка p2p-prototype, см. 02_stream_settings.md):
+ТРЕБУЕТ ПЕРЕПИСИ (17.11.2026, живая разведка p2p-prototype, 09_statuses.md): статусы работы —
+обычные answer_status ПЗ (on_review/sent_back/accepted, `P2PEndpoint.get_work_status(content_id,
+answer_id)`), статусов «На взаимопроверке»/«ожидает итога»/«Итог выставлен» нет (TC-063/064/065
+опровергнуты); статус проверки — my_review_status None/draft/finalized
+(`get_review_status(program_uuid, module_id, stream_content_id, answer_id)`), «Приостановлена»/
+«Отменена» нет (peer_review_allowed=false на время возврата; `delete_peer_assignment`). Итог —
+`set_final_result(content_id, answer_id, grade)`, возврат — `return_for_revision(content_id,
+answer_id, deadline)`. Сдача/пересдача работы только через UI.
+Прежнее: ТРЕБУЕТ ПЕРЕПИСИ (12.11.2026, живая разведка p2p-prototype, см. 02_stream_settings.md):
 `set_minimum_reviews_per_work` удалён из api/endpoints/p2p.py — подтверждённое поле
 называется `min_reviews_per_work` и живёт в `peer_settings` стрим-контента
 (get_stream_content/save_peer_settings), не в отдельном методе на уровне ПЗ. Тесты
