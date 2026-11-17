@@ -1,7 +1,15 @@
 """p2p / агрегация результатов peer-проверок по критериям
 (docs/test_cases/p2p/07_aggregation.md, TC-P2P-049..051).
 
-Контракт не подтверждён (api/endpoints/p2p.py) — функциональности ещё нет ни на одной
+ТРЕБУЕТ ПЕРЕПИСИ (17.11.2026, живая разведка p2p-prototype, 07_aggregation.md): агрегаты
+читаются `P2PEndpoint.get_peer_results(content_id, answer_id)` -> criteria_stats[] с `avg`,
+`entries`, `option_counts`; критерии задаются реальными типами (quantitative 0–100, qualitative,
+single_choice/multiple_choice с options[{id: "opt-…", text, score}] и weight), а не "scale"/"text";
+значения проверки — `finalize_peer_review(..., {criterion_id: value})`. Средние округляются до
+ЦЕЛОГО (70/71/100 -> 80; 70/71 -> 71), ожидание `round(..., 1) == 4.3` ниже неверно. Сдача работы
+автором — только через UI (фикстура submitted_work требует переписи).
+
+Контракт был не подтверждён (api/endpoints/p2p.py) — функциональности ещё нет ни на одной
 ветке (docs/missions/2026-09-30_tz2026_p2p.md). Тесты пропускаются без P2P_READY, см.
 tests/api/p2p/conftest.py.
 """

@@ -132,7 +132,13 @@ class P2PEndpoint:
         предполагалось раньше — именно так и выяснилось: 422 «Поле data.attributes.items
         должно присутствовать» на плоском теле). Элемент списка — как в ответе GET
         (type/title/score_min/score_max/is_system для quantitative; options для choice-
-        типов), `id`/`sort_order`/`weight` можно не передавать — сервер присваивает сам."""
+        типов), `id`/`sort_order` критерия можно не передавать — сервер присваивает сам.
+
+        17.11.2026, уточнено живьём: у вариантов choice-критериев `options[].id` ОБЯЗАТЕЛЕН и
+        задаётся клиентом (строка вида `opt-<slug>-N`; без него 422 «Поле ...options.0.id
+        обязательно для заполнения, когда ...options указано»), а у взвешиваемых критериев
+        (single_choice/multiple_choice с баллами) обязателен `weight` (422 «У взвешиваемого
+        критерия нужен weight.») — сумма весов не системных критериев = 1."""
         resp = self.client.post(f"/homework/{content_id}/peer-criteria", json={"data": {"attributes": {"items": criteria}}})
         expect_status(resp, (200, 201))
         logger.info(f"Homework {content_id}: criteria saved ({len(criteria)} items)")
@@ -215,7 +221,11 @@ class P2PEndpoint:
           проверяющего: настройки заморожены.» — остальные поля (проверено на
           author_visibility.*) остаются редактируемыми и после freeze, если M/N в теле
           совпадают с текущими (отправлять их нужно — поля обязательны, но без изменения
-          значения)."""
+          значения).
+        - 17.11.2026: `auto_final_grade_enabled` через этот PUT на ПЗ с `grade_type=five_point`
+          НЕ принимается — 422 «Поле peer settings.auto final grade enabled должно
+          отсутствовать» (в ответе GET поле есть, всегда false); где включается автоитог —
+          не найдено (06_final_result.md)."""
         peer_settings = {
             "min_reviews_per_work": min_reviews_per_work,
             "reviews_per_reviewer": reviews_per_reviewer,
@@ -254,23 +264,26 @@ class P2PEndpoint:
         logger.info(f"Author {author_user_id}'s work assigned to reviewer {reviewer_user_id} (manual)")
         return resp.json()
 
-    def run_automatic_distribution(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, reviews_per_reviewer: int = 1) -> Dict:
-        """Запуск автоматического распределения («Распределить» в модалке) —
-        reviews_per_reviewer — подтверждённое имя поля (было: works_per_listener).
-        «Первая проверка уже завершена — перераспределение недоступно» — повторный
-        вызов после первой проверки должен отклоняться (не проверено).
+    def run_automatic_distribution(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int) -> Dict:
+        """Запуск автоматического распределения («Распределить» в модалке).
 
-        Подтверждено живьём 12.11.2026: метод — PUT, не POST (POST вернул 405, Laravel
-        сообщил «Supported methods: PUT, PATCH, DELETE»). Тело запроса (плоское, по
-        аналогии с save_peer_settings/assign_work_manually) ещё не подтверждено до конца —
-        422/200 после смены метода не перепроверялся в этом заходе."""
-        resp = self.client.put(
+        17.11.2026: реальный путь найден в таблице именованных маршрутов стенда (`GET /routes`,
+        `programs.streams.modules.contents.peer-assignments.redistribute`) — это
+        `POST .../contents/{stream_content_id}/peer-assignments/redistribute`. Прежняя догадка
+        `PUT .../peer-assignments/distribute` была неверной: сервер трактовал «distribute» как
+        `{peer_assignment}` route-binding (под `/peer-assignments/{id}` живут PUT/PATCH/DELETE
+        отдельного назначения). Тело запроса и ответ ЖИВЬЁМ НЕ ПРОВЕРЕНЫ (вызов на демо-данных
+        переразложил бы назначения; «Первая проверка уже завершена — перераспределение
+        недоступно» — после первой финализации кнопка в UI задизейблена, ожидаем 422).
+        Параметры распределения берутся из peer_settings (reviews_per_reviewer), в теле ничего
+        не предполагаем."""
+        resp = self.client.post(
             f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
-            f"/contents/{stream_content_id}/peer-assignments/distribute",
-            json={"reviews_per_reviewer": reviews_per_reviewer},
+            f"/contents/{stream_content_id}/peer-assignments/redistribute",
+            json={},
         )
         expect_status(resp, (200, 201))
-        logger.info(f"Stream content {stream_content_id}: automatic distribution started")
+        logger.info(f"Stream content {stream_content_id}: automatic (re)distribution started")
         return resp.json()
 
     # ── §3/§8: peer-проверка слушателем-проверяющим ─────────────────────────
@@ -381,39 +394,45 @@ class P2PEndpoint:
         return resp.json()
 
     # ── §9: итоговый результат и агрегаты ────────────────────────────────────
+    # 17.11.2026, живая разведка p2p-prototype (06_final_result.md, 07_aggregation.md):
+    # отдельных эндпоинтов «итог»/«агрегаты» НЕТ — агрегаты отдаёт `answers.peer-results`,
+    # итог выставляется штатной проверкой ПЗ (`homework.answers.examination`,
+    # api/endpoints/homework.py::examine). Прежние стабы get_peer_reviews_for_work /
+    # get_aggregates / set_final_result (пути /homework/{work}/peer-reviews[/aggregates],
+    # /homework/{work}/final-result) были неверной догадкой и удалены.
 
-    def get_peer_reviews_for_work(self, work_id: int) -> List[Dict]:
-        """Все peer-проверки по работе — доступно штатному проверяющему ПЗ (04 §9, §3).
-
-        Контракт не подтверждён, раздел 9.
-        """
-        resp = self.client.get(f"/homework/{work_id}/peer-reviews")
+    def get_peer_results(self, content_id: int, homework_answer_id: int) -> Dict:
+        """Подтверждено живьём 17.11.2026: `GET /homework/{content_id}/answers/{homework_answer_id}/
+        peer-results` -> `data.attributes`: `viewer` ("staff" | "author" | "peer_reviewer" — зависит
+        от того, кто спрашивает, и от author_visibility в peer_settings), `reviews` [{peer_review_id,
+        reviewer_name, review_score, values[{peer_criterion_id, title, value}]}], `reviews_count`,
+        `review_score_avg`, `criteria_stats` [{peer_criterion_id, title, type, is_system, avg,
+        entries[{peer_review_id, reviewer_type, reviewer_id, value|text, score}], option_counts,
+        options}]. Учитываются только финализированные проверки (черновики не входят).
+        Все средние и `review_score` округлены до ЦЕЛОГО (70,5 -> 71; 3,5 -> 4), не до 0,1.
+        `review_score` = сумма weight × score по взвешенным НЕ системным критериям; системная
+        «Общая оценка» и качественные критерии в него не входят."""
+        resp = self.client.get(f"/homework/{content_id}/answers/{homework_answer_id}/peer-results")
         expect_status(resp, 200)
-        return resp.json().get("data", [])
+        return resp.json().get("data", {}).get("attributes", {})
 
-    def get_aggregates(self, work_id: int) -> Dict:
-        """Агрегированные значения по критериям: среднее по числовым (округление до
-        0,1), текстовые — списком без агрегации (04 §5.1).
-
-        Контракт не подтверждён, раздел 5.
-        """
-        resp = self.client.get(f"/homework/{work_id}/peer-reviews/aggregates")
-        expect_status(resp, 200)
-        return resp.json().get("data", {})
-
-    def set_final_result(self, work_id: int, reviewer_user_id: int, result: Dict) -> Dict:
-        """Выставить/изменить итоговый результат по работе. По приоритетной версии (04)
-        доступно любому штатному проверяющему этого ПЗ; администратор без такого
-        назначения получает отказ (04 §9, §3 — роли).
-
-        Контракт не подтверждён, раздел 9.
-        """
-        resp = self.client.put(
-            f"/homework/{work_id}/final-result",
-            json={"data": {"attributes": {"reviewer_user_id": reviewer_user_id, **result}}},
+    def set_final_result(self, content_id: int, homework_answer_id: int, grade: str,
+                         teacher_comment: str = "Итоговый результат по взаимопроверке") -> Dict:
+        """Итоговый результат по работе = ШТАТНАЯ проверка ПЗ (подтверждено живьём 17.11.2026):
+        `POST /homework/{content_id}/answers/{homework_answer_id}/examination`,
+        `{"data":{"attributes":{"grade","status":"accepted","deadline":"","teacher_comment"}}}`.
+        После него answer_status=accepted (status=2), отдельного статуса «Итоговый результат
+        выставлен» нет; повторный вызов с другой оценкой меняет итог; peer-проверки по работе
+        после этого финализировать уже нельзя (422 «Работа на доработке или уже принята»).
+        Право на вызов — штатные права проверки ПЗ, а не «назначение проверяющим ПЗ» (админ вне
+        списка teachers работы проходит) — расхождение с 04 §3/§9, см. 06_final_result.md."""
+        resp = self.client.post(
+            f"/homework/{content_id}/answers/{homework_answer_id}/examination",
+            json={"data": {"attributes": {"grade": str(grade), "status": "accepted", "deadline": "",
+                                          "teacher_comment": teacher_comment}}},
         )
         expect_status(resp, (200, 201))
-        logger.info(f"Work {work_id}: final result set by {reviewer_user_id}")
+        logger.info(f"Answer {homework_answer_id} (homework {content_id}): final grade {grade} set")
         return resp.json()
 
     # ── §7: внешний проверяющий по ссылке ────────────────────────────────────
