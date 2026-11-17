@@ -453,6 +453,42 @@ class P2PEndpoint:
         logger.info(f"Answer {homework_answer_id} (homework {content_id}): final grade {grade} set")
         return resp.json()
 
+    # ── §11: отчёты по взаимопроверке (17.11.2026, предварительно — 11_report.md) ──
+
+    def regenerate_answer_report(self, homework_answer_id: int) -> Dict:
+        """Пересобрать PDF-отчёт по одной работе (кнопка «Пересобрать отчёт (PDF)» на админской
+        странице работы). Подтверждено 17.11.2026: `POST /homework-answers/{id}/peer-review-report/
+        regenerate` → 201 с записью экспорта {id, name "Отчёт_взаимопроверка_<id>_full_….pdf",
+        type 31, status, download_url}."""
+        resp = self.client.post(f"/homework-answers/{homework_answer_id}/peer-review-report/regenerate", json={})
+        expect_status(resp, (200, 201))
+        return resp.json().get("data", {})
+
+    def regenerate_stream_report(self, stream_content_id: int) -> Dict:
+        """Поставить в очередь отчёт по потоку. Подтверждено 17.11.2026: `POST /stream-contents/{id}/
+        peer-review-report/regenerate` → 202 {"queued": true, "stream_content_id"}; результат —
+        download_stream_report (zip с PDF+DOCX по каждой работе, экспорт type 33)."""
+        resp = self.client.post(f"/stream-contents/{stream_content_id}/peer-review-report/regenerate", json={})
+        expect_status(resp, (200, 201, 202))
+        return resp.json().get("data", {})
+
+    def download_stream_report(self, stream_content_id: int) -> Optional[Dict]:
+        """Запись экспорта отчёта потока или None, пока не собран (422 «Отчёт ещё не сформирован»).
+        Подтверждено 17.11.2026: `GET /stream-contents/{id}/peer-review-report/download` отдаёт
+        НЕ файл, а JSON {id, name, type 33, status, download_url} — сам zip по download_url."""
+        resp = self.client.get(f"/stream-contents/{stream_content_id}/peer-review-report/download")
+        if resp.status_code == 422:
+            return None
+        expect_status(resp, 200)
+        return resp.json().get("data", {})
+
+    def get_author_report(self, homework_answer_id: int):
+        """Отчёт автора по своей работе: `GET /my/homework-answers/{id}/peer-review-report`.
+        17.11.2026: на всех проверенных работах отвечает 422 «Отчёт ещё не сформирован», чужому
+        пользователю — 403; файл ни разу не получен (кандидат в дефект, 11_report.md). Возвращает
+        response как есть."""
+        return self.client.get(f"/my/homework-answers/{homework_answer_id}/peer-review-report")
+
     # ── §7: внешний проверяющий по ссылке ────────────────────────────────────
 
     def add_external_reviewer(self, program_id: int, stream_id: int, content_id: int, full_name: str, email: Optional[str] = None) -> Dict:
