@@ -11,6 +11,17 @@
 `tests/ui/practical_tasks/groups/test_group_practical_task_flow.py`,
 `tests/ui/practical_tasks/personal_assignment/test_complete_and_review_personal_assignment.py`.
 
+**17.11.2026 — живой регресс на p2p-prototype (ветка со взаимопроверкой): существующие тесты обычного
+ПЗ прогнаны локально против стенда — `tests/ui/practical_tasks` (11 файлов: создание программы/потока/
+модуля, ПЗ в расписании, добавление слушателя, сдача, проверка, групповое ПЗ, индивидуальное назначение,
+доп. материалы) + `tests/api/create_activity/homeworks` (five_point/pass_fail/ten_point) — **14 passed,
+2 rerun (флаки UI), 0 failed, 17 мин**. Т.е. при выключенной взаимопроверке (`peer_review_enabled` не
+передаётся) стандартный сценарий сдачи/проверки, групповые ПЗ и индивидуальные назначения работают как
+раньше — **TC-P2P-108/109/110 подтверждены** существующими тестами (отдельные p2p-регресс-тесты
+дублируют их и могут ссылаться на эти файлы). TC-P2P-111 (одно ПЗ дважды в программу) отдельно не
+гонялся. Автотесты `tests/{api,ui}/p2p/test_regression.py` по-прежнему на каркасных контрактах — переписать
+как тонкие обёртки/ссылки на перечисленные тесты.
+
 ### TC-P2P-108 ПЗ с выключенной взаимопроверкой сдаётся и проверяется по прежнему сценарию
 - Требование: 04 §1
 - Автотест: tests/ui/p2p/test_regression.py::TestRegression::test_homework_without_p2p_keeps_standard_flow
