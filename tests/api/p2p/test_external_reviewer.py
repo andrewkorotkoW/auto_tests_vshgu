@@ -1,4 +1,12 @@
-"""p2p / внешний проверяющий по ссылке: добавление, персональная ссылка, уникальность
+"""ТРЕБУЕТ ПЕРЕПИСИ (17.11.2026, живая разведка p2p-prototype, 05_external_reviewer.md): внешний
+создаётся `add_external_reviewer(program, stream, module, stream_content_id, display_name, email)` после
+`external_review_allowed=true` на карточке; ссылка/токен — в ответе создания (`url`, `access_token`),
+`get_external_reviewer_link` удалён; анонимный цикл — `open_external_session(token, tenant_cookies)` →
+`external_list_submissions` / `external_finalize_review` (заголовок X-Peer-Ext-Csrf). Токен одноразовый
+(TC-037 опровергнут). На ветке два блокера: exchange без выбранной организации — 500, SPA не шлёт
+csrf-заголовок — UI-запись 403; UI-тесты 035–039 до их исправления не пройдут.
+
+Прежнее: p2p / внешний проверяющий по ссылке: добавление, персональная ссылка, уникальность
 по ФИО (docs/test_cases/p2p/05_external_reviewer.md, TC-P2P-033, 034, 038).
 
 Контракт не подтверждён (api/endpoints/p2p.py) — функциональности ещё нет ни на одной

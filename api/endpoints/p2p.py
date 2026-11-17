@@ -489,50 +489,94 @@ class P2PEndpoint:
         response как есть."""
         return self.client.get(f"/my/homework-answers/{homework_answer_id}/peer-review-report")
 
-    # ── §7: внешний проверяющий по ссылке ────────────────────────────────────
+    # ── §7: внешний проверяющий по ссылке (подтверждено живьём 17.11.2026, 05_external_reviewer.md) ──
+    # Прежние стабы (/peer-review/external-reviewers/{id}, /peer-review/external/{token}/works)
+    # были догадкой и удалены. Реальные маршруты — из таблицы /routes:
+    # admin: programs.streams.modules.contents.peer-external-reviewers.{index,store,revoke,resend,destroy};
+    # anonymous: peer-external.{exchange,context,session-probe,submissions.*}.
 
-    def add_external_reviewer(self, program_id: int, stream_id: int, content_id: int, full_name: str, email: Optional[str] = None) -> Dict:
-        """Добавить внешнего проверяющего к p2p-ПЗ в потоке (ФИО обязательно, email
-        опционален, 04 §7 п.1–2). Несколько внешних с одинаковым ФИО — разные сущности,
-        различаются по внутреннему идентификатору (04 §7 п.6–7), не по ФИО.
+    def _ext_base(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int) -> str:
+        return (f"/programs/{program_id}/streams/{stream_id}/modules/{module_id}"
+                f"/contents/{stream_content_id}/peer-external-reviewers")
 
-        Контракт не подтверждён, раздел 7.
-        """
-        payload = {"data": {"attributes": {"full_name": full_name}}}
+    def add_external_reviewer(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int,
+                              display_name: str, email: Optional[str] = None) -> Dict:
+        """Создать внешнего проверяющего (04 §7 п.1–3). Требует `external_review_allowed=true` на карточке
+        ПЗ (иначе 422 «Внешняя проверка на карточке … не разрешена»); после первого внешнего карточка
+        получает `external_review_config_locked=true`. Тело плоское `{"display_name", "email"?}`; ответ —
+        {peer_external_reviewer_id, display_name, email, expires_at (= дедлайн взаимопроверки потока),
+        revoked_at, is_active, access_token, url}. access_token/url отдаются ТОЛЬКО здесь и в resend."""
+        body = {"display_name": display_name}
         if email:
-            payload["data"]["attributes"]["email"] = email
-        resp = self.client.post(
-            f"/programs/{program_id}/streams/{stream_id}/content/{content_id}/peer-review/external-reviewers",
-            json=payload,
-        )
+            body["email"] = email
+        resp = self.client.post(self._ext_base(program_id, stream_id, module_id, stream_content_id), json=body)
         expect_status(resp, (200, 201))
         data = resp.json()["data"]
-        logger.info(f"External reviewer added: {full_name} (id={data.get('id')})")
+        logger.info(f"External reviewer created: id={data.get('peer_external_reviewer_id')} '{display_name}'")
         return data
 
-    def get_external_reviewer_link(self, external_reviewer_id: int) -> str:
-        """Персональная ссылка внешнего проверяющего (04 §7 п.3) — многоразовая по
-        приоритетной версии 04 (расхождение с 03/05, см. README и 05_external_reviewer.md).
-
-        Контракт не подтверждён, раздел 7.
-        """
-        resp = self.client.get(f"/peer-review/external-reviewers/{external_reviewer_id}")
-        expect_status(resp, 200)
-        return resp.json()["data"]["attributes"]["link"]
-
-    def list_works_for_external_link(self, link_token: str) -> List[Dict]:
-        """Список всех сданных работ ПЗ в потоке по персональной ссылке — без
-        авторизации (04 §7 п.4). Используется отдельным HTTP-клиентом без сессионной
-        куки (см. ui/pages/external_review_page.py — там это делается через отдельный
-        browser context, здесь для API-проверок нужен клиент без Cookie/токена).
-
-        Контракт не подтверждён, раздел 7.
-        """
-        resp = self.client.get(f"/peer-review/external/{link_token}/works")
+    def list_external_reviewers(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int) -> List[Dict]:
+        """GET index — те же поля, что при создании, но БЕЗ access_token/url."""
+        resp = self.client.get(self._ext_base(program_id, stream_id, module_id, stream_content_id))
         expect_status(resp, 200)
         return resp.json().get("data", [])
 
-    # ── §10: статусы работы и назначенной проверки ───────────────────────────
+    def revoke_external_reviewer(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, reviewer_id: int) -> Dict:
+        """POST .../{id}/revoke → is_active=false, revoked_at; обмен токена дальше — 403."""
+        resp = self.client.post(f"{self._ext_base(program_id, stream_id, module_id, stream_content_id)}/{reviewer_id}/revoke", json={})
+        expect_status(resp, 200)
+        return resp.json()["data"]
+
+    def resend_external_reviewer_link(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, reviewer_id: int) -> Dict:
+        """POST .../{id}/resend — ПЕРЕВЫПУСКАЕТ токен (старая ссылка перестаёт работать), новая в ответе
+        (`access_token`, `url`); требует email у внешнего (иначе 422)."""
+        resp = self.client.post(f"{self._ext_base(program_id, stream_id, module_id, stream_content_id)}/{reviewer_id}/resend", json={})
+        expect_status(resp, 200)
+        return resp.json()["data"]
+
+    def delete_external_reviewer(self, program_id: int, stream_id: int, module_id: int, stream_content_id: int, reviewer_id: int) -> None:
+        resp = self.client.delete(f"{self._ext_base(program_id, stream_id, module_id, stream_content_id)}/{reviewer_id}")
+        expect_status(resp, 200)
+
+    def open_external_session(self, access_token: str, tenant_cookies=None):
+        """Анонимная сессия внешнего проверяющего по токену (страница /peer-external/<token>).
+
+        Подтверждено 17.11.2026: `POST /peer-external/exchange` `{"token"}` → 200 {peer_external_reviewer_id,
+        display_name, expires_at, csrf} + cookies peer_ext_sid/peer_ext_csrf. Токен ОДНОРАЗОВЫЙ (повторный
+        exchange → 403), обмен троттлится (429 после ~5 попыток/мин). Все POST внешнего требуют заголовок
+        `X-Peer-Ext-Csrf: <csrf>` — без него 403 «Доступ по ссылке недоступен» (SPA на ветке его не шлёт —
+        дефект, 05_external_reviewer.md). В чистой сессии без выбранной организации exchange падает
+        500 «Unauthorized user accessing tenant» (дефект) — поэтому tenant_cookies: cookies авторизованной
+        сессии стенда, с ними обмен проходит. Возвращает (requests.Session с нужными заголовками, data)."""
+        import requests
+        session = requests.Session()
+        if tenant_cookies is not None:
+            session.cookies.update(tenant_cookies)
+        session.headers.update({"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"})
+        resp = session.post(f"{self.client.base_url}/peer-external/exchange", json={"token": access_token}, timeout=30)
+        expect_status(resp, 200)
+        data = resp.json()["data"]
+        session.headers["X-Peer-Ext-Csrf"] = data["csrf"]
+        logger.info(f"External session opened for reviewer {data.get('peer_external_reviewer_id')}")
+        return session, data
+
+    def external_list_submissions(self, ext_session) -> List[Dict]:
+        """GET /peer-external/submissions — те же поля, что list_peer_submissions (author_name=null при
+        external_see_author_names=false); только работы, доступные к проверке."""
+        resp = ext_session.get(f"{self.client.base_url}/peer-external/submissions", timeout=30)
+        expect_status(resp, 200)
+        return resp.json().get("data", [])
+
+    def external_finalize_review(self, ext_session, homework_answer_id: int, values_by_criterion_id: Dict, draft_only: bool = False) -> Dict:
+        """POST /peer-external/submissions/{id}/reviews[/finalize] — тело как у слушателя; finalize требует
+        значения по всем критериям; после finalize повторный draft — 422."""
+        suffix = "" if draft_only else "/finalize"
+        resp = ext_session.post(
+            f"{self.client.base_url}/peer-external/submissions/{homework_answer_id}/reviews{suffix}",
+            json={"data": {"attributes": {"values": self._peer_review_values_payload(values_by_criterion_id)}}}, timeout=30,
+        )
+        expect_status(resp, (200, 201))
+        return resp.json()["data"]
 
     def get_work_status(self, content_id: int, homework_answer_id: int) -> str:
         """Статус работы = answer_status обычного ПЗ (подтверждено 17.11.2026, 09_statuses.md):
